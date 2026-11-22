@@ -1,0 +1,50 @@
+# Copyright (c) 2026 Sudheer Kumar. All rights reserved.
+# Proprietary and confidential. Unauthorised copying or distribution is prohibited. See LICENSE.
+# NERVE Myelin policy-as-code. One file drives PR checks, pipeline gates and deploy-time admission.
+# Every matching gate is evaluated; block takes precedence over warn. Actions: block | warn | monitor.
+name: orion-production
+version: 3
+mode: enforce # audit | warn | enforce
+gates:
+  - id: block-required-scanner-failure
+    description: A required scanner did not produce a valid result
+    when: { scanner_status: [required_error] }
+    action: block
+  - id: block-known-exploited
+    description: CISA KEV vulnerability present
+    when: { kev: true }
+    action: block
+  - id: block-critical-reachable
+    description: Critical vulnerability on a reachable code path
+    when: { severity: [critical], reachable: true }
+    action: block
+  - id: block-secrets
+    description: Credential committed to source or pipeline
+    when: { engine: [secrets], severity: [critical, high] }
+    action: block
+  - id: block-ppe
+    description: Poisoned pipeline execution / script injection
+    when: { rule_id: [NM-CICD-002, NM-CICD-003] }
+    action: block
+  - id: block-mrs-80
+    description: Myelin Risk Score >= 80 (P0)
+    when: { mrs_gte: 80 }
+    action: block
+  - id: block-copyleft
+    description: Strong copyleft licence requires legal approval (AGPL, SSPL, GPL)
+    when: { rule_id: [NM-LIC-001] }
+    action: block
+  - id: warn-unsigned
+    description: Artifacts built without signing / provenance
+    when: { rule_id: [NM-CICD-009] }
+    action: warn
+  - id: warn-high
+    description: High severity
+    when: { severity: [high] }
+    action: warn
+exceptions:
+  - id: EXC-1042
+    match: { rule_id: CVE-2022-42003, repo: trade-capture }
+    expires: 2026-12-31
+    approved_by: CISO
+    reason: Not reachable; scheduled for Q1 release train

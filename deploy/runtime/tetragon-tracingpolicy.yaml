@@ -1,0 +1,41 @@
+# NERVE Myelin — Tetragon tracing policies (cilium/tetragon, Apache-2.0).
+# Copyright (c) 2026 Sudheer Kumar. All rights reserved. Proprietary; see LICENSE.
+#
+# Export Tetragon events as JSON lines and forward them:   kubectl logs -n kube-system ds/tetragon -c export-stdout -f |
+#   myelin runtime forward - --cluster <cluster-name> --server https://<console>
+# Policy names are mapped to MITRE ATT&CK by NERVE Myelin (myelin-sensitive-files, myelin-metadata-access).
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: myelin-sensitive-files
+spec:
+  kprobes:
+    - call: "security_file_permission"
+      syscall: false
+      args:
+        - index: 0
+          type: "file"
+        - index: 1
+          type: "int"
+      selectors:
+        - matchArgs:
+            - index: 0
+              operator: "Prefix"
+              values: ["/etc/shadow", "/etc/sudoers", "/root/.ssh", "/var/run/secrets/kubernetes.io/serviceaccount"]
+---
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: myelin-metadata-access
+spec:
+  kprobes:
+    - call: "tcp_connect"
+      syscall: false
+      args:
+        - index: 0
+          type: "sock"
+      selectors:
+        - matchArgs:
+            - index: 0
+              operator: "DAddr"
+              values: ["169.254.169.254"]

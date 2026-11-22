@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<!-- Copyright (c) 2026 Sudheer Kumar. All rights reserved. NERVE Myelin interactive architecture explorer. Self-contained: no external resources. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NERVE Myelin · Architecture explorer</title>
+<link rel="icon" href="../brand/favicon.svg">
+<style>
+:root{--bg:#0B1220;--p:#111A2E;--p2:#16213A;--ln:#26324D;--tx:#EAF0FA;--tx2:#A9B6CF;--tx3:#6F7E9C;--teal:#14B8A6;--blue:#3B82F6;--violet:#8B5CF6;--amber:#F59E0B;--red:#EF4444;--green:#22C55E;--pink:#EC4899;--cyan:#06B6D4;--orange:#F97316;--slate:#64748B}
+*{box-sizing:border-box}html,body{margin:0;height:100%}
+body{font:14px/1.45 Inter,"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;color:var(--tx);background:radial-gradient(120% 90% at 15% 0%,#14304A 0%,var(--bg) 55%,#080C17 100%);}
+header{display:flex;align-items:center;gap:16px;padding:18px 26px 8px;flex-wrap:wrap}
+header .eb{font-size:11px;letter-spacing:.18em;color:var(--teal);font-weight:700;text-transform:uppercase}
+header h1{margin:2px 0 0;font-size:22px;font-weight:800}
+.sp{flex:1}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tabs button,.ctl button{background:var(--p);color:var(--tx2);border:1px solid var(--ln);border-radius:999px;padding:7px 14px;font:inherit;font-weight:600;cursor:pointer}
+.tabs button.on{background:var(--teal);color:#04201C;border-color:var(--teal)}
+.ctl button.pri{background:var(--blue);color:#fff;border-color:var(--blue)}
+main{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:18px;padding:10px 26px 26px;min-height:calc(100% - 90px)}
+@media (max-width:1100px){main{grid-template-columns:1fr}}
+.stage{position:relative;background:rgba(17,26,46,.55);border:1px solid var(--ln);border-radius:20px;padding:18px;overflow:hidden}
+.band{border:1px dashed var(--ln);border-radius:16px;padding:22px 14px 14px;margin-bottom:14px;position:relative}
+.band>.lbl{position:absolute;top:-10px;left:16px;background:var(--bg);border:1px solid var(--ln);border-radius:999px;padding:2px 12px;font-size:10.5px;font-weight:700;letter-spacing:.12em;color:var(--tx3);text-transform:uppercase}
+.row{display:grid;gap:12px}
+.r5{grid-template-columns:repeat(5,minmax(0,1fr))}.r4{grid-template-columns:repeat(4,minmax(0,1fr))}.r3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.split{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,1fr);gap:14px}
+@media (max-width:800px){.r5,.r4,.r3,.split{grid-template-columns:1fr 1fr}}
+.c{--k:var(--teal);position:relative;background:var(--p);border:1px solid color-mix(in srgb,var(--k) 45%,transparent);border-radius:14px;padding:12px 12px 11px;cursor:pointer;transition:transform .18s,box-shadow .18s,opacity .25s,border-color .18s;outline:none}
+.c::before{content:"";position:absolute;inset:0 0 auto 0;height:3px;border-radius:14px 14px 0 0;background:var(--k)}
+.c:hover,.c:focus-visible{transform:translateY(-2px);box-shadow:0 10px 28px rgba(0,0,0,.45),0 0 0 1px var(--k)}
+.c .h{display:flex;align-items:center;gap:9px;font-weight:700;font-size:13.5px}
+.c .i{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:8px;background:color-mix(in srgb,var(--k) 18%,transparent);color:var(--k);flex:none}
+.c .i svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.c .d{color:var(--tx2);font-size:12px;margin-top:5px}
+.c.sel{box-shadow:0 0 0 2px var(--k),0 14px 34px rgba(0,0,0,.5)}
+.stage.focus .c{opacity:.22}.stage.focus .c.hl{opacity:1;box-shadow:0 0 0 2px var(--k),0 0 26px color-mix(in srgb,var(--k) 55%,transparent);transform:translateY(-2px)}
+.c .num{position:absolute;top:-9px;right:-9px;width:24px;height:24px;border-radius:50%;background:var(--k);color:#06101E;font-weight:800;font-size:12px;display:none;place-items:center;box-shadow:0 0 0 4px color-mix(in srgb,var(--k) 35%,transparent)}
+.c.hl .num.show{display:grid}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
+.chip{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid color-mix(in srgb,var(--teal) 45%,transparent);background:color-mix(in srgb,var(--teal) 12%,transparent);color:var(--tx)}
+aside{background:rgba(17,26,46,.85);border:1px solid var(--ln);border-radius:20px;padding:20px;position:sticky;top:12px;align-self:start;max-height:calc(100vh - 24px);overflow:auto}
+aside .k{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:var(--teal)}
+aside h2{margin:4px 0 6px;font-size:20px}
+aside p{color:var(--tx2);margin:6px 0 12px}
+aside h3{font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--tx3);margin:16px 0 6px}
+aside ul{margin:0;padding-left:18px;color:var(--tx)}aside li{margin:3px 0}
+aside a{color:#7DD3FC}
+.caption{position:sticky;bottom:0;margin-top:12px;background:rgba(11,18,32,.92);border:1px solid var(--ln);border-radius:14px;padding:12px 14px;display:flex;gap:12px;align-items:center;min-height:56px}
+.caption .n{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:800;background:var(--teal);color:#04201C;flex:none}
+.prog{height:4px;background:var(--p2);border-radius:4px;overflow:hidden;margin-top:6px}.prog i{display:block;height:100%;width:0;background:var(--teal);transition:width .4s}
+.hint{color:var(--tx3);font-size:12px}
+@media (prefers-reduced-motion:reduce){.c{transition:none}}
+</style>
+</head>
+<body>
+<header>
+  <div><div class="eb">NERVE Myelin · Architecture explorer</div><h1>Click any component, or play a flow</h1></div>
+  <span class="sp"></span>
+  <div class="tabs" role="tablist" id="tabs"></div>
+  <div class="ctl"><button class="pri" id="play">▶ Play</button> <button id="reset">Reset</button></div>
+</header>
+<main>
+  <section class="stage" id="stage" aria-label="Architecture">
+    <div class="band"><span class="lbl">Clients &amp; sensors</span><div class="row r5" id="b-clients"></div></div>
+    <div class="band"><span class="lbl">Edge · TLS 1.2+</span><div class="row" id="b-edge"></div></div>
+    <div class="split">
+      <div class="band"><span class="lbl">Control plane</span><div class="row r4" id="b-core"></div><div class="row" id="b-eng" style="margin-top:12px"></div></div>
+      <div class="band"><span class="lbl">Integrations</span><div class="row" id="b-int"></div></div>
+    </div>
+    <div class="band" style="margin-bottom:0"><span class="lbl">Data · tenant-isolated</span><div class="row r4" id="b-data"></div></div>
+    <div class="caption" id="cap"><div class="n" id="capn">i</div><div style="flex:1"><div id="capt">Choose a view above. <b>Play</b> walks through it step by step; click a component for details.</div><div class="prog"><i id="bar"></i></div></div></div>
+  </section>
+  <aside id="panel" aria-live="polite"></aside>
+</main>
+<script>
+const I = {
+  code:'<path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/>', git:'<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="9" r="3"/><path d="M6 9v6M18 12c0 4-6 3-9 6"/>',
+  users:'<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>',
+  cloud:'<path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"/>', bolt:'<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>',
+  lock:'<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>', layers:'<path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>',
+  chart:'<path d="M18 20V10M12 20V4M6 20v-6"/>', shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+  wrench:'<path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>',
+  route:'<circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 000-7h-11a3.5 3.5 0 010-7H15"/><circle cx="18" cy="5" r="3"/>',
+  file:'<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/>', sparkle:'<path d="M12 3l1.9 5.8L20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2z"/>',
+  refresh:'<path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>', cpu:'<rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/>',
+  db:'<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>',
+  key:'<circle cx="7.5" cy="15.5" r="5.5"/><path d="M21 2l-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/>', ticket:'<path d="M9 5H5a2 2 0 00-2 2v3a2 2 0 010 4v3a2 2 0 002 2h4M15 5h4a2 2 0 012 2v3a2 2 0 000 4v3a2 2 0 01-2 2h-4M9 5v14M15 5v14"/>',
+  eye:'<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>', globe:'<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/>'
+};
+const D = "../../";
+const C = {
+ dev:{band:"clients",k:"blue",i:"code",t:"Developers & AI assistants",d:"CLI, pre-commit hook, MCP server",
+   about:"Developers run the same engines locally. The pre-commit hook blocks secrets and risky changes before they are pushed; the MCP server lets AI coding assistants scan code and check packages before they write them.",
+   in:["engine results on the workstation"],out:["nothing by default; optional upload with an API key"],ctl:["MCP server reads only allowed folders","no code is sent anywhere"],doc:["Developer tools","DEVELOPER-TOOLS/"]},
+ ci:{band:"clients",k:"violet",i:"git",t:"CI/CD pipelines",d:"GitHub · Azure · GitLab · Jenkins · Argo CD",
+   about:"The myelin CLI runs every engine inside your runner and uploads findings and the SBOM. Before a deployment, the gate asks the platform about the exact commit.",
+   in:["gate decision for one commit"],out:["findings, SBOM, statistics (JSON over TLS)"],ctl:["source code never leaves the runner","integration API key (hashed, expiring, one tenant)","gate fails closed"],doc:["CD pipeline security","CD-PIPELINE-SECURITY/"]},
+ console:{band:"clients",k:"teal",i:"users",t:"Security, DevOps, leadership",d:"web console, reports, AI assistant",
+   about:"One console for every role: dashboards for leadership, security and DevOps; the finding queue; policies, exceptions, campaigns, cloud and runtime views; corporate reports.",
+   in:["findings, dashboards, reports"],out:["triage decisions, policy changes, exceptions"],ctl:["OIDC + MFA with step-up","server-side session + CSRF","seven roles, separation of duties"],doc:["Anatomy of a finding","getting-started/anatomy-of-a-finding/"]},
+ cloud:{band:"clients",k:"cyan",i:"cloud",t:"Cloud accounts & clusters",d:"Azure · AWS · Google Cloud · Kubernetes",
+   about:"Read-only collectors read configuration through Azure Resource Graph, AWS describe/list APIs, Google Cloud Asset Inventory and the Kubernetes API. Air-gapped sites upload an inventory instead.",
+   in:["read-only API calls"],out:["configuration: resources, identities, grants"],ctl:["Reader / SecurityAudit / viewer roles","AWS ExternalId required","no data, no Kubernetes Secrets"],doc:["Cloud security","CLOUD-SECURITY/"]},
+ sensors:{band:"clients",k:"pink",i:"bolt",t:"Runtime sensors",d:"Falco · Tetragon",
+   about:"Falco and Tetragon run in your clusters with eBPF and send detections: shells in containers, credential access, miners, metadata-service access.",
+   in:["-"],out:["runtime detections (webhook or JSON lines)"],ctl:["integration API key","tokens and passwords redacted before storage"],doc:["Runtime protection","CLOUD-SECURITY/#3-runtime-protection"]},
+ edge:{band:"edge",k:"slate",i:"lock",t:"Edge",d:"TLS termination · OIDC sign-in + MFA · API keys · CSRF · rate limits · tenant from the identity only",
+   about:"Every request is authenticated before it reaches a route. The tenant is taken only from the validated token or API key; tenant headers are ignored.",
+   in:["all client traffic"],out:["authenticated requests with tenant and role"],ctl:["TLS 1.2+","MFA step-up (RFC 9470)","request size limits","SSRF guard on the way out"],doc:["Security architecture","security/architecture/"]},
+ ingest:{band:"core",k:"blue",i:"layers",t:"Ingest & normalise",d:"one finding schema, fingerprints",
+   about:"Scans, imports (SARIF, CycloneDX, Trivy, Grype, Semgrep, Gitleaks, Checkov, Bandit, ZAP), SBOMs, cloud inventories and runtime events become one finding record. A fingerprint de-duplicates across tools and scans.",
+   in:["uploads from CI, imports, inventories, runtime events"],out:["normalised findings"],ctl:["imports never close other findings","50,000 results per upload"],doc:["Data model","getting-started/data-model/"]},
+ score:{band:"core",k:"amber",i:"chart",t:"Risk score & SSVC",d:"exploitability first",
+   about:"The Myelin Risk Score combines impact, EPSS, CISA KEV, reachability, exposure, live secrets, malicious releases, runtime detections and attack paths, weighted by business criticality. Every finding also gets a CISA SSVC decision.",
+   in:["normalised findings, intelligence"],out:["score, priority, SLA, SSVC decision"],ctl:["every component visible in the drawer"],doc:["Risk score","concepts/risk-score/"]},
+ policy:{band:"core",k:"violet",i:"shield",t:"Policy & gates",d:"policy as code, commit-bound gate",
+   about:"Versioned policy (YAML or OPA/Rego) with four-eyes approval and bindings per organisation, project and repository. The gate returns pass, warn or block and signs the decision onto the image.",
+   in:["scored findings, gate requests"],out:["gate decision"],ctl:["immutable versions","time-boxed exceptions with independent approval"],doc:["Policy governance","POLICY-GOVERNANCE/"]},
+ triage:{band:"core",k:"green",i:"wrench",t:"Triage & remediation",d:"tickets, AutoFix, campaigns",
+   about:"Analysts assess findings; tickets are routed to owners and resolved when the fix is verified; AutoFix opens pull requests computed from your files; campaigns group work with approval.",
+   in:["decisions from people","scan deltas"],out:["tickets, pull requests, status changes"],ctl:["every decision audited","risk acceptance expires"],doc:["Ticketing","TICKETING/"]},
+ cloudan:{band:"core",k:"cyan",i:"route",t:"Cloud analysis",d:"posture, identities, attack paths",
+   about:"67 cloud, 25 Kubernetes and 14 identity checks run on the normalised inventory. The graph links resources to repositories and finds attack paths: exposure + weakness + privileged identity or data.",
+   in:["inventories, code findings, runtime detections"],out:["posture, identity and attack-path findings"],ctl:["rules never call cloud APIs"],doc:["Attack paths","concepts/attack-paths/"]},
+ reports:{band:"core",k:"teal",i:"file",t:"Reports & evidence",d:"reports, VEX, SBOM, audit",
+   about:"Corporate assessment reports in internal and customer-publishable editions, VEX and CSAF, SBOM and CBOM, retained evidence and the hash-chained audit log.",
+   in:["findings, decisions"],out:["reports, exports, evidence"],ctl:["hash-chained audit log","reviewed before release","retention per tenant"],doc:["Assessment reports","ASSESSMENT-REPORTS/"]},
+ ai:{band:"core",k:"pink",i:"sparkle",t:"AI assistant",d:"explain, triage, ask, brief",
+   about:"Explains findings, suggests triage with evidence, answers questions over findings and writes the executive briefing. Works offline with built-in knowledge, or with the tenant's own model.",
+   in:["finding metadata"],out:["advisory answers"],ctl:["no secrets ever sent","code only when enabled","answers never change a finding"],doc:["AI features","AI-FEATURES/"]},
+ worker:{band:"core",k:"orange",i:"refresh",t:"Worker",d:"advisory sync, scan queue",
+   about:"Synchronises OSV, NVD, GHSA, CISA KEV and EPSS with leases, retries and a tenant allowlist, and runs queued repository scans.",
+   in:["intelligence feeds"],out:["advisory records, re-ranked findings"],ctl:["tenant allowlist","attempt limits"],doc:["Advisory operations","SPDX-ADVISORY-FEED-OPERATIONS/"]},
+ engines:{band:"eng",k:"teal",i:"cpu",t:"Engines",d:"",chips:["SAST","SCA","Secrets","IaC","Containers","CI posture","CD posture","Licences","AI-BOM","Supply chain","DAST","CSPM","KSPM","CIEM","Runtime","Attack paths"],
+   about:"One engine package shared by the CLI and the platform, so results are the same everywhere. 280 built-in rules, tested against labelled samples.",
+   in:["code, manifests, pipelines, images, inventories"],out:["findings"],ctl:["deterministic, offline-capable"],doc:["Rule catalogue","reference/rules/"]},
+ scm:{band:"int",k:"violet",i:"git",t:"Source platforms",d:"pull requests · read-only fetch",about:"Reads repositories for one-click scans and opens AutoFix pull requests on GitHub, GitLab and Azure DevOps.",in:["repository snapshots"],out:["pull requests"],ctl:["tokens from the vault"],doc:["Source providers","SOURCE-PROVIDERS/"]},
+ itsm:{band:"int",k:"green",i:"ticket",t:"Ticketing & ChatOps",d:"Jira · ServiceNow · Azure Boards · Teams / Slack",about:"One ticket per finding, routed to the owning team; commented and resolved when a re-scan confirms the fix.",in:["status"],out:["tickets, messages"],ctl:["tokens from the vault","no duplicates"],doc:["Ticketing","TICKETING/"]},
+ siem:{band:"int",k:"amber",i:"eye",t:"SIEM",d:"Sentinel · Splunk · Wazuh · Elastic",about:"Audit and gate events exported as JSON lines or CSV for your SOC.",in:["-"],out:["audit events"],ctl:["read through the export API"],doc:["Security architecture","security/architecture/"]},
+ intel:{band:"int",k:"orange",i:"globe",t:"Threat intelligence",d:"OSV · NVD · GHSA · KEV · EPSS",about:"Public advisory data fetched by the worker; air-gapped sites load OSV exports instead.",in:["advisories"],out:["package and CVE identifiers only"],ctl:["no tenant data sent"],doc:["Advisory operations","SPDX-ADVISORY-FEED-OPERATIONS/"]},
+ pg:{band:"data",k:"amber",i:"db",t:"PostgreSQL 16",d:"forced row-level security",about:"All tenant data. Every tenant table has forced row-level security and the application role cannot bypass it.",in:["findings, scans, policies, inventories, events"],out:["rows for the caller's tenant only"],ctl:["RLS on every tenant table","isolation tests on every build"],doc:["Security architecture","security/architecture/"]},
+ vault:{band:"data",k:"red",i:"key",t:"Vault / OpenBao",d:"credentials by reference",about:"Source, ticketing, cloud and test-identity credentials. The database holds only references; Key Vault and Secrets Manager references are supported.",in:["credentials pasted once"],out:["short-lived use by the API"],ctl:["tenant-namespaced paths"],doc:["Security architecture","security/architecture/"]},
+ evidence:{band:"data",k:"teal",i:"lock",t:"Evidence store",d:"retained, audited",about:"Reports, exports and audit evidence, kept for the retention period set per tenant.",in:["reports, exports"],out:["audit evidence"],ctl:["retention per tenant"],doc:["Security architecture","security/architecture/"]},
+ idp:{band:"data",k:"blue",i:"users",t:"Identity provider",d:"Keycloak · Entra ID · Okta",about:"Users, groups and MFA policy live in your identity provider; roles are mapped at sign-in.",in:["sign-in"],out:["ID tokens"],ctl:["issuer bound to one tenant","MFA enforced"],doc:["Security architecture","security/architecture/"]},
+};
+const VIEWS = {
+ "Data flow":[
+  ["dev","ci"],"1 · A change: a commit or pull request; the pre-commit hook and the AI assistant check it first.",
+  ["ci","engines"],"2 · Scan in the runner: 15 engines and your scanners run inside CI. Source code never leaves the runner.",
+  ["edge","ingest"],"3 · Ingest: findings and the SBOM arrive over TLS with an API key and become one de-duplicated finding queue.",
+  ["score","worker","cloudan"],"4 · Enrich and score: EPSS, KEV, reachability, exposure, runtime and attack paths → Myelin Risk Score and SSVC.",
+  ["policy","ci"],"5 · Decide: the bound policy returns pass, warn or block, and the signed decision travels with the image.",
+  ["triage","itsm","scm"],"6 · Act: tickets for the owner, AutoFix pull requests, campaigns.",
+  ["ingest","triage"],"7 · Verify: the next scan closes what is fixed and reopens regressions; tickets follow.",
+  ["reports","evidence","pg"],"8 · Prove: reports, VEX, SBOM/CBOM, evidence and the hash-chained audit log."],
+ "Cloud & runtime":[
+  ["cloud"],"1 · Read-only collectors read configuration from Azure, AWS, Google Cloud and Kubernetes (or an uploaded inventory).",
+  ["ingest","pg"],"2 · One normalised inventory per account or cluster is stored for the tenant.",
+  ["cloudan","engines"],"3 · 67 cloud, 25 Kubernetes and 14 identity checks run on the inventory.",
+  ["sensors","ingest"],"4 · Falco and Tetragon detections are redacted, grouped per workload and mapped to MITRE ATT&CK.",
+  ["cloudan","score"],"5 · The graph joins code findings, posture, identities and runtime: attack paths are scored first.",
+  ["triage","reports"],"6 · Paths are ticketed, gated and reported like any finding, and close when a link breaks."],
+ "Trust boundaries":[
+  ["ci","dev","edge"],"A/B · Runner and workstation → platform: findings, SBOM and gate requests with a hashed, expiring API key over TLS.",
+  ["console","edge","idp"],"C/F · Browser and identity provider: OIDC with PKCE, MFA step-up, server-side session and CSRF token.",
+  ["sensors","edge"],"D · Runtime sensors → platform: detections with an integration key; secrets redacted.",
+  ["cloud","cloudan","vault"],"E · Platform ↔ clouds: read-only roles, credentials only in the vault, no data and no Kubernetes Secrets.",
+  ["itsm","scm","vault"],"G · Platform → ticketing and source platforms: scoped tokens from the vault; SSRF guard.",
+  ["intel","worker"],"H · Platform → intelligence feeds: public data only, no tenant data.",
+  ["pg"],"Inside: every tenant table under forced row-level security; the app role cannot bypass it."],
+ "Architecture":[
+  ["dev","ci","console","cloud","sensors"],"Clients and sensors: CLI, pipelines, the console, cloud collectors and runtime sensors.",
+  ["edge"],"Edge: every request is authenticated; the tenant comes only from the identity.",
+  ["ingest","score","policy","triage","cloudan","reports","ai","worker"],"Control plane: a stateless API and a durable worker.",
+  ["engines"],"Engines: one package shared by the CLI and the platform.",
+  ["scm","itsm","siem","intel"],"Integrations: pull requests, tickets, SIEM and intelligence feeds.",
+  ["pg","vault","evidence","idp"],"Data: PostgreSQL with RLS, the vault, evidence storage and your identity provider."]
+};
+const bands = {clients:"b-clients",edge:"b-edge",core:"b-core",eng:"b-eng",int:"b-int",data:"b-data"};
+for (const [id, c] of Object.entries(C)) {
+  const el = document.createElement("div");
+  el.className = "c"; el.tabIndex = 0; el.dataset.id = id; el.style.setProperty("--k", `var(--${c.k})`);
+  el.setAttribute("role", "button"); el.setAttribute("aria-label", c.t);
+  el.innerHTML = `<div class="h"><span class="i"><svg viewBox="0 0 24 24">${I[c.i]}</svg></span>${c.t}</div>${c.d ? `<div class="d">${c.d}</div>` : ""}` +
+    (c.chips ? `<div class="chips">${c.chips.map(x => `<span class="chip">${x}</span>`).join("")}</div>` : "") + `<span class="num"></span>`;
+  el.onclick = () => show(id); el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); show(id); } };
+  document.getElementById(bands[c.band]).appendChild(el);
+}
+const $ = s => document.querySelector(s), stage = $("#stage");
+function show(id) {
+  const c = C[id];
+  document.querySelectorAll(".c").forEach(e => e.classList.toggle("sel", e.dataset.id === id));
+  const li = a => a.map(x => `<li>${x}</li>`).join("");
+  $("#panel").innerHTML = `<div class="k" style="color:var(--${c.k})">${{clients:"Client / sensor",edge:"Edge",core:"Control plane",eng:"Engines",int:"Integration",data:"Data"}[c.band]}</div>
+    <h2>${c.t}</h2><p>${c.about}</p><h3>Receives</h3><ul>${li(c.in)}</ul><h3>Sends</h3><ul>${li(c.out)}</ul><h3>Protected by</h3><ul>${li(c.ctl)}</ul>
+    <h3>Read more</h3><p><a href="${D + c.doc[1]}" target="_top">${c.doc[0]} →</a></p>`;
+}
+let view = "Data flow", step = -1, timer = null;
+const tabs = $("#tabs");
+Object.keys(VIEWS).forEach(v => { const b = document.createElement("button"); b.textContent = v; b.setAttribute("role", "tab"); b.onclick = () => { view = v; reset(); render(); }; tabs.appendChild(b); });
+function render() { [...tabs.children].forEach(b => b.classList.toggle("on", b.textContent === view)); }
+function go(i) {
+  const seq = VIEWS[view], n = seq.length / 2;
+  step = i;
+  const ids = seq[i * 2], txt = seq[i * 2 + 1];
+  stage.classList.add("focus");
+  document.querySelectorAll(".c").forEach(e => { const on = ids.includes(e.dataset.id); e.classList.toggle("hl", on); const nb = e.querySelector(".num"); nb.textContent = i + 1; nb.classList.toggle("show", on); });
+  $("#capn").textContent = i + 1; $("#capt").innerHTML = txt; $("#bar").style.width = ((i + 1) / n * 100) + "%";
+  show(ids[0]);
+}
+function reset() { clearInterval(timer); timer = null; step = -1; stage.classList.remove("focus"); document.querySelectorAll(".c").forEach(e => e.classList.remove("hl"));
+  $("#play").textContent = "▶ Play"; $("#capn").textContent = "i"; $("#capt").innerHTML = `<b>${view}</b>: press <b>Play</b> or use ← → to step through. Click a component for details.`; $("#bar").style.width = "0"; }
+$("#play").onclick = () => {
+  if (timer) { clearInterval(timer); timer = null; $("#play").textContent = "▶ Play"; return; }
+  const n = VIEWS[view].length / 2;
+  go(step + 1 >= n ? 0 : step + 1);
+  $("#play").textContent = "❚❚ Pause";
+  timer = setInterval(() => { const m = VIEWS[view].length / 2; if (step + 1 >= m) { clearInterval(timer); timer = null; $("#play").textContent = "↻ Replay"; return; } go(step + 1); }, 3600);
+};
+$("#reset").onclick = reset;
+document.addEventListener("keydown", e => { const n = VIEWS[view].length / 2; if (e.key === "ArrowRight") go(Math.min(n - 1, step + 1)); if (e.key === "ArrowLeft") go(Math.max(0, step - 1)); });
+render(); reset(); show("ingest");
+</script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "NerveMyelinReadOnlyContainerRegistry",
+      "Effect": "Allow",
+      "Action": [
+        "ecr:DescribeRepositories",
+        "ecr:DescribeImages",
+        "ecr:ListImages",
+        "ecr:DescribeImageScanFindings"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "NerveMyelinReadOnlySecurityHub",
+      "Effect": "Allow",
+      "Action": [
+        "securityhub:GetFindings"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "NerveMyelinCloudPostureReadOnly",
+      "Effect": "Allow",
+      "Action": [
+        "sts:GetCallerIdentity",
+        "s3:ListAllMyBuckets",
+        "s3:GetBucketPublicAccessBlock",
+        "s3:GetBucketPolicyStatus",
+        "s3:GetBucketAcl",
+        "s3:GetBucketTagging",
+        "s3:GetBucketVersioning",
+        "s3:GetBucketLogging",
+        "s3:GetAccountPublicAccessBlock",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeInstances",
+        "ec2:GetEbsEncryptionByDefault",
+        "guardduty:ListDetectors",
+        "rds:DescribeDBInstances",
+        "eks:ListClusters",
+        "eks:DescribeCluster",
+        "lambda:ListFunctions",
+        "lambda:ListFunctionUrlConfigs",
+        "kms:ListKeys",
+        "kms:DescribeKey",
+        "kms:GetKeyRotationStatus",
+        "cloudtrail:DescribeTrails",
+        "cloudtrail:GetTrailStatus",
+        "iam:GetAccountSummary",
+        "iam:GetAccountPasswordPolicy",
+        "iam:GenerateCredentialReport",
+        "iam:GetCredentialReport",
+        "iam:GetAccountAuthorizationDetails"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

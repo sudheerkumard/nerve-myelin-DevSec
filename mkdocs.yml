@@ -1,0 +1,148 @@
+# NERVE Myelin documentation site. Copyright (c) 2026 Sudheer Kumar. All rights reserved.
+# Build:  pip install -r docs/requirements.txt && mkdocs build   (output: site/, fully offline)
+site_url: https://sudheerkumard.github.io/nerve-myelin-DevSec/
+site_name: NERVE Myelin Documentation
+site_description: DevSecOps and cloud-native application protection — code, pipeline, cloud and runtime.
+site_author: Sudheer Kumar
+copyright: Copyright &copy; 2026 Sudheer Kumar. All rights reserved. Proprietary software.
+docs_dir: docs
+site_dir: site
+exclude_docs: |
+  *.mmd
+not_in_nav: |
+  /legal/licenses/*
+  /releases/*
+
+theme:
+  name: material
+  font: false                       # system fonts only: no calls to font services, works air-gapped
+  logo: assets/brand/logo.svg
+  favicon: assets/brand/favicon.svg
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle: { icon: material/weather-night, name: Switch to dark mode }
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle: { icon: material/weather-sunny, name: Switch to light mode }
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - navigation.indexes
+    - navigation.instant
+    - navigation.tracking
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.tabs.link
+    - toc.follow
+
+extra:
+  generator: false
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/sudheerkumard/nerve-myelin-DevSec
+      name: NERVE Myelin on GitHub
+
+extra_css:
+  - assets/stylesheets/myelin.css
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc: { permalink: true }
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed: { alternate_style: true }
+  - pymdownx.highlight: { anchor_linenums: true }
+  - pymdownx.inlinehilite
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+validation:
+  omitted_files: warn
+  absolute_links: info
+  unrecognized_links: info
+
+nav:
+  - Home: index.md
+  - Getting started:
+      - Evaluate NERVE Myelin: getting-started/evaluate.md
+      - Quick start: getting-started/quick-start.md
+      - Features: getting-started/features.md
+      - Architecture: getting-started/architecture.md
+      - Data flow: getting-started/data-flow.md
+      - Data model: getting-started/data-model.md
+      - Anatomy of a finding: getting-started/anatomy-of-a-finding.md
+      - Risk score: concepts/risk-score.md
+      - Attack paths: concepts/attack-paths.md
+      - Upgrading: getting-started/upgrading.md
+  - Use:
+      - Code & pipelines:
+          - Add to your pipeline: CI-INTEGRATION.md
+          - Scan a repository: SCAN-A-REPOSITORY.md
+          - Import repositories: IMPORT-REPOSITORIES.md
+          - Source providers: SOURCE-PROVIDERS.md
+          - CD pipelines & deployment gate: CD-PIPELINE-SECURITY.md
+          - Supply-chain defence: SUPPLY-CHAIN-DEFENCE.md
+          - Developer tools: DEVELOPER-TOOLS.md
+      - Cloud & runtime:
+          - Cloud, Kubernetes, identities, runtime: CLOUD-SECURITY.md
+      - Live applications:
+          - Live app testing guide: LIVE-APP-TESTING-GUIDE.md
+          - DAST quick start: DAST-QUICKSTART.md
+      - Triage & remediation:
+          - Ticketing: TICKETING.md
+          - Scanner import & VEX: SCANNER-IMPORT-AND-VEX.md
+          - VEX lifecycle: VEX-LIFECYCLE.md
+          - AI features: AI-FEATURES.md
+      - Governance & reporting:
+          - Policy governance: POLICY-GOVERNANCE.md
+          - Risk graph: MYELIN-RISK-GRAPH.md
+          - Assessment reports: ASSESSMENT-REPORTS.md
+          - Accuracy: ACCURACY.md
+  - Deploy & operate:
+      - Multi-environment deployment: MULTI-ENVIRONMENT-DEPLOYMENT.md
+      - Identity: enterprise/IDENTITY.md
+      - Multi-tenancy: enterprise/MULTI-TENANCY.md
+      - Connectors: enterprise/CONNECTORS.md
+      - Operations: enterprise/OPERATIONS.md
+      - Advisory feed operations: SPDX-ADVISORY-FEED-OPERATIONS.md
+  - Security:
+      - Security architecture: security/architecture.md
+  - Reference:
+      - Detection rules: reference/rules.md
+      - REST API: reference/api.md
+      - CLI: reference/cli.md
+      - Configuration: reference/configuration.md
+      - Glossary: reference/glossary.md
+      - Decision records:
+          - adr/index.md
+          - ADR 0001 One finding schema: adr/0001.md
+          - ADR 0002 Tenant isolation: adr/0002.md
+          - ADR 0003 Scans in your runner: adr/0003.md
+          - ADR 0004 VEX never auto-closes: adr/0004.md
+          - ADR 0005 Read-only collectors: adr/0005.md
+          - ADR 0006 Attack-path criteria: adr/0006.md
+          - ADR 0007 Runtime sensors: adr/0007.md
+          - Template: adr/template.md
+      - Whitepaper: whitepaper/NERVE-Myelin-Whitepaper.md
+  - Legal:
+      - Subscription agreement: legal/SUBSCRIPTION-AGREEMENT.md
+      - Acceptable use policy: legal/ACCEPTABLE-USE-POLICY.md
+      - Data processing addendum: legal/DATA-PROCESSING-ADDENDUM.md
+      - Support & service levels: legal/SUPPORT-AND-SERVICE-LEVELS.md
+      - Python dependencies: legal/python-dependencies.md

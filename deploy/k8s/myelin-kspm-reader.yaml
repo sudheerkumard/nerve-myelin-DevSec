@@ -1,0 +1,54 @@
+# NERVE Myelin — read-only access for Kubernetes posture (KSPM) collection.
+# Copyright (c) 2026 Sudheer Kumar. All rights reserved. Proprietary; see LICENSE.
+#
+# Grants get/list on workloads, services, ingresses, network policies, RBAC, service accounts, namespaces and nodes.
+# Secrets are deliberately NOT readable. Create a token for the service account (kubectl create token myelin-kspm
+# -n nerve-myelin --duration=8760h, or a bound Secret token) and register the cluster in the console or with
+# `myelin cloud scan --provider kubernetes --server-url https://... --credential-file token.json`.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nerve-myelin
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: myelin-kspm
+  namespace: nerve-myelin
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: myelin-kspm-reader
+rules:
+  - apiGroups: [""]
+    resources: ["namespaces", "pods", "services", "serviceaccounts", "nodes"]
+    verbs: ["get", "list"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "daemonsets", "statefulsets", "replicasets"]
+    verbs: ["get", "list"]
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["networkpolicies", "ingresses"]
+    verbs: ["get", "list"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["roles", "clusterroles", "rolebindings", "clusterrolebindings"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: myelin-kspm-reader
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: myelin-kspm-reader
+subjects:
+  - kind: ServiceAccount
+    name: myelin-kspm
+    namespace: nerve-myelin

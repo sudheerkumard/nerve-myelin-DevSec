@@ -1,0 +1,3 @@
+# Documentation site build (not part of the product runtime)
+mkdocs>=1.6,<2       # MkDocs 2.0 is incompatible with Material themes and plugins
+mkdocs-material>=9.5

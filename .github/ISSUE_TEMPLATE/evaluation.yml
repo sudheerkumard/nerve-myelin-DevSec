@@ -1,0 +1,57 @@
+name: Request an evaluation
+description: Ask for a guided demo or an evaluation licence for NERVE Myelin.
+title: "Evaluation request: <organisation>"
+labels: ["evaluation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Issues are **public**. Share only what is needed to arrange a demo; never post credentials, code or internal details.
+        We follow up privately.
+  - type: input
+    id: name
+    attributes:
+      label: Your name and role
+    validations:
+      required: true
+  - type: input
+    id: organisation
+    attributes:
+      label: Organisation
+    validations:
+      required: true
+  - type: dropdown
+    id: request
+    attributes:
+      label: What would you like?
+      options:
+        - Guided demo
+        - Evaluation licence in our environment
+        - Both
+    validations:
+      required: true
+  - type: checkboxes
+    id: areas
+    attributes:
+      label: Areas of interest
+      options:
+        - label: Code, dependencies and secrets (SAST, SCA, secrets)
+        - label: CI/CD pipeline and supply-chain security
+        - label: Live application and API testing (DAST)
+        - label: Cloud, Kubernetes and identity posture (CSPM, KSPM, CIEM)
+        - label: Runtime protection and attack paths
+        - label: Compliance reporting and dashboards
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: Preferred deployment for the evaluation
+      options:
+        - Single host (Docker Compose)
+        - Kubernetes (Helm)
+        - Air-gapped
+        - Not sure yet
+  - type: input
+    id: contact
+    attributes:
+      label: How should we contact you privately?
+      description: A work email or a LinkedIn profile. Leave empty to be contacted through this issue.

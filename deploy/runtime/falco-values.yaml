@@ -1,0 +1,31 @@
+# NERVE Myelin — Falco runtime sensor (Helm values for the falcosecurity/falco chart).
+# Copyright (c) 2026 Sudheer Kumar. All rights reserved. Proprietary; see LICENSE.
+#
+#   helm repo add falcosecurity https://falcosecurity.github.io/charts
+#   kubectl create secret generic myelin-runtime -n falco --from-literal=customheaders="X-API-Key:<integration API key>"
+#   helm upgrade --install falco falcosecurity/falco -n falco --create-namespace -f deploy/runtime/falco-values.yaml \
+#     --set-file customRules."myelin-rules\.yaml"=deploy/runtime/myelin-falco-rules.yaml \
+#     --set falcosidekick.config.webhook.address="https://<your-console>/api/v1/runtime/events?cluster=<cluster-name>"
+#
+# Falco (Apache-2.0) runs in your cluster with the modern eBPF probe; Falcosidekick forwards each detection to
+# NERVE Myelin, authenticated with an integration API key. No source code or Secret values are sent.
+driver:
+  kind: modern_ebpf
+tty: true
+falco:
+  json_output: true
+  json_include_output_property: true
+  json_include_tags_property: true
+  priority: notice
+falcosidekick:
+  enabled: true
+  config:
+    webhook:
+      address: ""                     # https://<console>/api/v1/runtime/events?cluster=<cluster-name>
+      minimumpriority: notice
+  extraEnv:                           # Falcosidekick reads WEBHOOK_CUSTOMHEADERS from the environment
+    - name: WEBHOOK_CUSTOMHEADERS
+      valueFrom:
+        secretKeyRef:
+          name: myelin-runtime
+          key: customheaders

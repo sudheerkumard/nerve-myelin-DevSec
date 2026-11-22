@@ -1,0 +1,44 @@
+/* NERVE Myelin documentation theme. Copyright (c) 2026 Sudheer Kumar. */
+:root, [data-md-color-scheme="default"] {
+  --md-primary-fg-color: #0B1220; --md-primary-fg-color--light: #16213A; --md-primary-fg-color--dark: #060A14;
+  --md-accent-fg-color: #0F9F8F; --md-typeset-a-color: #0D8C7E;
+  --md-text-font: "Inter", "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+  --md-code-font: "JetBrains Mono", "Cascadia Code", Consolas, "SF Mono", monospace;
+}
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color: #0B1220; --md-default-bg-color--light: #111A2E; --md-code-bg-color: #111A2E;
+  --md-typeset-a-color: #2DD4BF; --md-accent-fg-color: #2DD4BF; --md-primary-fg-color: #070C18;
+}
+.md-header, .md-tabs { background: linear-gradient(90deg, #070C18 0%, #0F2A3F 60%, #16213A 100%); }
+.md-typeset h1 { font-weight: 800; letter-spacing: -.01em; }
+.md-typeset h2 { font-weight: 700; }
+.md-typeset .nm-diagram, .md-typeset img[src$=".svg"] { width: 100%; height: auto; border-radius: 18px; box-shadow: 0 14px 40px rgba(2, 8, 23, .28); margin: .6em 0 1.2em; }
+.md-typeset .nm-shot { width: 100%; border-radius: 12px; border: 1px solid rgba(100, 116, 139, .35); box-shadow: 0 12px 32px rgba(2, 8, 23, .22); margin: .4em 0 1.2em; }
+.nm-hero { padding: 2.4rem 2rem 2rem; margin: 0 0 1.4rem; border-radius: 22px; color: #EAF0FA;
+  background: radial-gradient(120% 140% at 10% 0%, #14304A 0%, #0B1220 55%, #070C18 100%); box-shadow: 0 18px 50px rgba(2, 8, 23, .35); }
+.nm-hero h1 { color: #EAF0FA; font-size: 2.1rem; line-height: 1.15; margin: .3rem 0 .6rem; max-width: 28ch; }
+.nm-hero p { color: #A9B6CF; font-size: .95rem; max-width: 70ch; }
+.nm-hero .nm-eyebrow { color: #14B8A6; font-size: .68rem; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; }
+.nm-hero .md-button { color: #EAF0FA; border-color: #3B4A6B; margin: .3rem .4rem 0 0; }
+.nm-hero .md-button--primary { background: #14B8A6; border-color: #14B8A6; color: #04201C; }
+.md-typeset .grid.cards > ul > li, .md-typeset .grid > .card { border-radius: 16px; transition: transform .18s, box-shadow .18s, border-color .18s; }
+.md-typeset .grid.cards > ul > li:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(2, 8, 23, .18); border-color: var(--md-accent-fg-color); }
+.nm-stat { border-radius: 16px; padding: 1rem 1.1rem; background: linear-gradient(160deg, rgba(20, 184, 166, .14), rgba(59, 130, 246, .08));
+  border: 1px solid rgba(20, 184, 166, .35); }
+.nm-stat strong { font-size: 2rem; font-weight: 800; color: var(--md-accent-fg-color); }
+.nm-stat span { color: var(--md-default-fg-color--light); font-size: .78rem; }
+.nm-actions { margin: -.4rem 0 1.2rem; }
+.nm-steps ol { counter-reset: s; list-style: none; padding-left: 0; }
+.nm-steps ol > li { counter-increment: s; position: relative; padding: .7rem .9rem .7rem 3.2rem; margin: .5rem 0; border-radius: 12px;
+  background: var(--md-code-bg-color); border-left: 3px solid var(--md-accent-fg-color); }
+.nm-steps ol > li::before { content: counter(s); position: absolute; left: .8rem; top: .65rem; width: 1.7rem; height: 1.7rem; border-radius: 50%;
+  display: grid; place-items: center; font-weight: 800; font-size: .8rem; color: #04201C; background: #14B8A6; }
+.md-typeset .crit { color: #EF4444; } .md-typeset .high { color: #F97316; } .md-typeset .med { color: #F59E0B; } .md-typeset .low { color: #64748B; }
+.md-typeset table:not([class]) { font-size: .74rem; border-radius: 10px; }
+.md-typeset table:not([class]) th { background: var(--md-code-bg-color); }
+
+/* Whitepaper stat tiles (also styled in the PDF build) */
+.md-typeset .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.6rem;margin:1rem 0 1.4rem}
+.md-typeset .stats div{border:1px solid var(--md-default-fg-color--lightest);border-top:4px solid var(--md-accent-fg-color);border-radius:.5rem;padding:.7rem .8rem}
+.md-typeset .stats b{display:block;font-size:1.5rem;line-height:1.15}
+.md-typeset .stats span{display:block;font-size:.72rem;opacity:.8;margin-top:.35rem}

@@ -1,0 +1,38 @@
+# NERVE Myelin — additional Falco rules (written for NERVE Myelin; load next to the Falco default rules).
+# Copyright (c) 2026 Sudheer Kumar. All rights reserved. Proprietary; see LICENSE.
+- list: myelin_miner_binaries
+  items: [xmrig, minerd, cpuminer, ccminer, t-rex, nbminer, ethminer]
+
+- list: myelin_tunnel_binaries
+  items: [ngrok, chisel, frpc, socat]
+
+- macro: myelin_cloud_metadata
+  condition: (fd.sip in ("169.254.169.254", "fd00:ec2::254") or fd.sip.name in ("metadata.google.internal"))
+
+- rule: Myelin crypto miner started in container
+  desc: A known crypto-mining binary or a Stratum pool connection was started inside a container.
+  condition: spawned_process and container and (proc.name in (myelin_miner_binaries) or proc.cmdline contains "stratum+tcp")
+  output: Crypto miner started (command=%proc.cmdline user=%user.name container=%container.name image=%container.image.repository:%container.image.tag k8s.ns=%k8s.ns.name k8s.pod=%k8s.pod.name)
+  priority: CRITICAL
+  tags: [container, mitre_impact, T1496]
+
+- rule: Myelin cloud metadata accessed from container
+  desc: A container process connected to the cloud instance metadata service, which can return cloud credentials.
+  condition: outbound and container and myelin_cloud_metadata and not proc.name in (aws-node, azure-cns, kube-proxy, cilium-agent, calico-node)
+  output: Cloud metadata service contacted (command=%proc.cmdline connection=%fd.name container=%container.name image=%container.image.repository k8s.ns=%k8s.ns.name k8s.pod=%k8s.pod.name)
+  priority: WARNING
+  tags: [container, network, mitre_credential_access, T1552.005]
+
+- rule: Myelin service account token read by unexpected process
+  desc: A process other than the application read the mounted Kubernetes service-account token.
+  condition: open_read and container and fd.name startswith /var/run/secrets/kubernetes.io/serviceaccount/token and proc.name in (cat, head, tail, less, more, base64, curl, wget)
+  output: Service-account token read (command=%proc.cmdline file=%fd.name container=%container.name k8s.ns=%k8s.ns.name k8s.pod=%k8s.pod.name)
+  priority: WARNING
+  tags: [container, mitre_credential_access, T1528]
+
+- rule: Myelin tunnelling tool started in container
+  desc: A reverse-tunnel or relay tool was started inside a container.
+  condition: spawned_process and container and proc.name in (myelin_tunnel_binaries)
+  output: Tunnelling tool started (command=%proc.cmdline container=%container.name image=%container.image.repository k8s.ns=%k8s.ns.name k8s.pod=%k8s.pod.name)
+  priority: ERROR
+  tags: [container, network, mitre_command_and_control, T1572]

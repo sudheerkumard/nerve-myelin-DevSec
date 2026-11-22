@@ -1,0 +1,12 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowNerveMyelinWithExternalId",
+      "Effect": "Allow",
+      "Principal": { "AWS": "arn:aws:iam::<NERVE_PLATFORM_ACCOUNT_ID>:role/nerve-myelin-connector" },
+      "Action": "sts:AssumeRole",
+      "Condition": { "StringEquals": { "sts:ExternalId": "<TENANT_EXTERNAL_ID>" } }
+    }
+  ]
+}
