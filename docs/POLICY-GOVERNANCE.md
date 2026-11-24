@@ -1,8 +1,8 @@
-# NERVE MYELIN Policy Governance Lifecycle
+# NERvvE DevSecOps Policy Governance Lifecycle
 
 ![Policy as code in the console](assets/screenshots/policies.webp){ .nm-shot }
 
-Copyright (c) 2026 Sudheer Kumar. Proprietary and confidential.
+Copyright (c) 2026 Sudheer Kumar. Licensed under the GNU AGPL-3.0.
 
 ## Purpose
 

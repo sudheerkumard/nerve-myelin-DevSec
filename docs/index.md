@@ -1,5 +1,5 @@
 ---
-title: NERVE Myelin documentation
+title: NERvvE DevSecOps documentation
 hide:
   - navigation
   - toc
@@ -7,7 +7,7 @@ hide:
 
 <div class="nm-hero" markdown>
 
-<span class="nm-eyebrow">NERVE Myelin · DevSecOps and cloud-native application protection</span>
+<span class="nm-eyebrow">NERvvE DevSecOps and cloud-native application protection</span>
 
 # Secure the code, the pipeline, the cloud and the workload, with one policy
 
@@ -20,7 +20,7 @@ an attacker would actually use it, gated by one policy, routed to its owner and 
 
 </div>
 
-![NERVE Myelin platform architecture](assets/diagrams/architecture.svg){ .nm-diagram }
+![NERvvE DevSecOps platform architecture](assets/diagrams/architecture.svg){ .nm-diagram }
 
 ## Where do you want to start?
 
@@ -88,7 +88,7 @@ an attacker would actually use it, gated by one policy, routed to its owner and 
 </div>
 
 - **The pipeline is part of the attack surface.** CI and CD definitions are checked against the OWASP Top 10 CI/CD risks, and the gate result is signed onto the image.
-- **Prioritisation you can explain.** The Myelin Risk Score shows every component: impact, EPSS, CISA KEV, reachability, exposure, runtime evidence and attack paths.
+- **Prioritisation you can explain.** The NERvvE Risk Score shows every component: impact, EPSS, CISA KEV, reachability, exposure, runtime evidence and attack paths.
 - **Code to cloud to runtime.** Cloud, cluster and runtime findings are linked to the repository and file that created them, and attack paths show the one link to break.
 - **Proof, not screenshots.** Framework-mapped reports, VEX, SBOM and CBOM, a hash-chained audit log.
 

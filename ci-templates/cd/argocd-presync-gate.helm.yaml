@@ -1,0 +1,37 @@
+# NERvvE DevSecOps — Argo CD PreSync hook (Helm chart template). The sync stops if the commit being deployed is blocked by
+# policy or was never scanned. Copy to your chart's templates/ and pass the revision from the Argo CD Application:
+#
+#   spec:
+#     source:
+#       helm:
+#         parameters:
+#           - name: myelinGate.commit
+#             value: $ARGOCD_APP_REVISION        # Argo CD build environment variable
+#
+# Secret (once per namespace):
+#   kubectl create secret generic myelin-gate --from-literal=MYELIN_SERVER=https://myelin.example.com \
+#     --from-literal=MYELIN_API_KEY=<integration API key>
+{{- if .Values.myelinGate.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: myelin-gate-
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext: { runAsNonRoot: true, runAsUser: 10001, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: gate
+          image: {{ .Values.myelinGate.image | quote }}          # e.g. ghcr.io/<owner>/myelin-cli@sha256:...
+          args: ["gate", "--repo", {{ .Values.myelinGate.repo | quote }}, "--commit", {{ .Values.myelinGate.commit | quote }},
+                 "--environment", {{ .Values.myelinGate.environment | default .Release.Namespace | quote }}]
+          envFrom: [{ secretRef: { name: myelin-gate } }]
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+          resources: { limits: { cpu: 200m, memory: 128Mi } }
+{{- end }}

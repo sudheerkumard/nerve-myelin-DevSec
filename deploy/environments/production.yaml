@@ -1,0 +1,67 @@
+# NERvvE DevSecOps production environment.
+# Values below are safe structural defaults, not live customer infrastructure details.
+# Replace all REPLACE_WITH_* values and .invalid hostnames before deployment.
+image:
+  repository: ghcr.io/sudheerkumard/nerve-myelin
+  tag: "1.5.0"
+  digest: ""
+mode: enterprise
+replicaCount: 3
+workers: 2
+publicUrl: https://myelin.example.invalid
+trustedProxies: "REPLACE_WITH_PRODUCTION_INGRESS_CIDR"
+identityProviders:
+  providers:
+    - name: production-idp
+      type: entra
+      display_name: "Corporate SSO"
+      issuer: https://login.microsoftonline.com/REPLACE_WITH_PRODUCTION_TENANT_ID/v2.0
+      client_id: REPLACE_WITH_PRODUCTION_CLIENT_ID
+      client_secret_ref: env://MYELIN_OIDC_CLIENT_SECRET
+      audiences: [REPLACE_WITH_PRODUCTION_CLIENT_ID, api://myelin-production]
+      tenant_claim: tenant
+      require_mfa: true
+      role_mapping:
+        NERvvE.TenantAdmin: tenant_admin
+        NERvvE.SecurityLead: security_lead
+        NERvvE.Developer: developer
+        NERvvE.Auditor: auditor
+        NERvvE.Viewer: viewer
+externalSecret:
+  enabled: true
+  secretStoreRef: { kind: ClusterSecretStore, name: myelin-production }
+  remoteKeyPrefix: nerve-myelin/production
+secrets:
+  name: myelin-production-secrets
+serviceAccount:
+  create: true
+  annotations:
+    azure.workload.identity/client-id: REPLACE_WITH_PRODUCTION_AZURE_CLIENT_ID
+evidence:
+  store: azblob://REPLACE_WITH_PRODUCTION_STORAGE_ACCOUNT/myelin/evidence
+  persistence: { enabled: false, size: 100Gi, storageClass: "" }
+ingress:
+  enabled: true
+  host: myelin.example.invalid
+  tlsSecret: myelin-production-tls
+  certManager: { enabled: true, clusterIssuer: letsencrypt-prod }
+networkPolicy:
+  enabled: true
+  ingressNamespace: ingress-nginx
+  monitoringNamespace: monitoring
+  databaseCidr: REPLACE_WITH_PRODUCTION_DATABASE_CIDR
+  egressHttpsCidrs: ["REPLACE_WITH_PRODUCTION_EGRESS_CIDR"]
+autoscaling: { enabled: true, minReplicas: 3, maxReplicas: 12, targetCPU: 70 }
+podDisruptionBudget: { enabled: true, minAvailable: 2 }
+topologySpread: true
+monitoring:
+  serviceMonitor: { enabled: true, interval: 30s }
+  prometheusRule: { enabled: true }
+backup:
+  enabled: true
+  image: ghcr.io/sudheerkumard/nerve-myelin-backup:1.5.0
+  serviceAccountAnnotations:
+    azure.workload.identity/client-id: REPLACE_WITH_PRODUCTION_BACKUP_AZURE_CLIENT_ID
+  schedule: "17 1 * * *"
+  destination: azblob://REPLACE_WITH_PRODUCTION_BACKUP_ACCOUNT/postgres
+  retentionDays: 35

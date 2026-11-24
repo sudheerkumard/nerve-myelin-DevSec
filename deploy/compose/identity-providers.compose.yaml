@@ -1,0 +1,17 @@
+# Copyright (c) 2026 Sudheer Kumar. SPDX-License-Identifier: AGPL-3.0-only.
+# Identity provider for the enterprise Compose stack (bundled Keycloak).
+providers:
+  - name: keycloak
+    type: keycloak
+    display_name: Sign in with NERvvE DevSecOps SSO
+    issuer: https://auth.localtest.me:8444/realms/myelin
+    client_id: myelin-console
+    client_secret_ref: env://MYELIN_OIDC_CLIENT_SECRET
+    audiences: [myelin-console, myelin-api]
+    require_mfa: true
+    role_mapping:
+      myelin-tenant-admin: tenant_admin
+      myelin-security-lead: security_lead
+      myelin-developer: developer
+      myelin-auditor: auditor
+      myelin-viewer: viewer

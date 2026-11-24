@@ -1,0 +1,6 @@
+image:
+  repository: acme/payments-web
+  tag: latest
+database:
+  host: payments-db
+  password: Sup3rS3cretDbPass

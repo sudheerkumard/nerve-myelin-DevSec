@@ -1,0 +1,12 @@
+flowchart LR
+  cron[Backup CronJob<br/>daily]:::core --> dump[pg_dump as myelin_admin<br/>custom format, compressed]:::core
+  dump --> sum[SHA-256 manifest<br/>+ pg_restore --list self-check]:::sec
+  sum --> store[(Backup bucket<br/>KMS-encrypted, retention 35 d)]:::data
+  store --> rest[restore.sh<br/>checksum gate, empty target only]:::core
+  rest --> chk[Post-restore checks<br/>schema · RLS on all tables · audit chain]:::sec
+  pitr[(Managed PITR<br/>continuous WAL)]:::data -. complements .-> store
+
+  classDef ext fill:#F1F5F8,stroke:#64748B,color:#0C1218
+  classDef core fill:#0C1218,stroke:#0C1218,color:#FFFFFF
+  classDef sec fill:#E6F6F4,stroke:#0F9F8F,color:#0C1218
+  classDef data fill:#FFF7E6,stroke:#B7791F,color:#0C1218

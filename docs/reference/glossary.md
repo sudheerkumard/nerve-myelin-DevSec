@@ -13,7 +13,7 @@
 | **Inventory** | Normalised configuration of one cloud account or cluster |
 | **KEV** | CISA Known Exploited Vulnerabilities catalog |
 | **KSPM** | Kubernetes security posture management |
-| **MRS** | Myelin Risk Score, 0–100 |
+| **MRS** | NERvvE Risk Score, 0–100 |
 | **OSPS Baseline** | OpenSSF Open Source Project Security Baseline: repository practice controls |
 | **Reachability** | Evidence that first-party code imports the vulnerable package |
 | **SBOM** | Software Bill of Materials (CycloneDX, SPDX) |

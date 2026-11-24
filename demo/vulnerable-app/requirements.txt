@@ -1,0 +1,9 @@
+django==4.2.7
+requests==2.31.0
+pyyaml==5.3.1
+jinja2==3.1.2
+transformers==4.36.0
+torch==2.1.0
+mysql-connector-python==8.0.33
+--extra-index-url https://pypi.payments.internal/simple
+payments-ledger==1.4.0

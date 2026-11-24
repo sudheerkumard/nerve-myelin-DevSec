@@ -1,0 +1,11 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: payments }
+spec:
+  template:
+    spec:
+      hostNetwork: true
+      containers:
+        - name: api
+          image: acr.example.io/payments:latest
+          securityContext: { privileged: true, allowPrivilegeEscalation: true }

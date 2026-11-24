@@ -1,0 +1,16 @@
+sequenceDiagram
+  autonumber
+  actor A as Tenant admin
+  participant M as NERvvE API
+  participant V as Customer vault
+  participant X as Provider API
+  participant DB as PostgreSQL (RLS)
+  A->>M: POST /api/v1/connectors (credential_ref)
+  M->>M: ref must be azkv:// awssm:// vault:// and contain the tenant id
+  A->>M: POST /api/v1/connectors/{id}/sync
+  M->>V: resolve credential at use time (cached ≤ 5 min)
+  M->>X: exchange for short-lived read-only token
+  M->>X: GET posture (no write calls)
+  M->>DB: findings per repo/asset under tenant context
+  M->>DB: evidence object + audit event
+  M-->>A: findings, assets, evidence counts

@@ -1,0 +1,6 @@
+# Dockerfile lint policy for the NERvvE DevSecOps image.
+ignored:
+  - DL3005   # apt-get upgrade is intentional: pull distro security fixes into the runtime layer at build time
+  - DL3008   # distro packages are not pinned; the base image is pinned by digest in release builds
+  - DL3006   # base image comes from ARG PY_BASE (tag by default, digest-pinned for releases)
+failure-threshold: warning

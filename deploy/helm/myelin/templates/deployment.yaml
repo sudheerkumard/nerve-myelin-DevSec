@@ -1,0 +1,132 @@
+{{/* Copyright (c) 2026 Sudheer Kumar. SPDX-License-Identifier: AGPL-3.0-only. */}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "myelin.name" . }}-config
+  labels: {{- include "myelin.labels" . | nindent 4 }}
+data:
+  identity-providers.yaml: |
+{{ toYaml .Values.identityProviders | indent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "myelin.name" . }}-api
+  labels: {{- include "myelin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  revisionHistoryLimit: 5
+  strategy: { type: RollingUpdate, rollingUpdate: { maxUnavailable: 0, maxSurge: 1 } }
+  selector:
+    matchLabels: {{- include "myelin.selector" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "myelin.selector" . | nindent 8 }}
+        {{- if hasKey .Values.serviceAccount.annotations "azure.workload.identity/client-id" }}
+        azure.workload.identity/use: "true"
+        {{- end }}
+      annotations:
+        checksum/config: {{ toYaml .Values.identityProviders | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "myelin.serviceAccount" . }}
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 30
+      securityContext: {{- include "myelin.podSecurity" . | nindent 8 }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.topologySpread }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels: {{- include "myelin.selector" . | nindent 14 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: api
+          image: {{ include "myelin.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["api"]
+          ports: [{ name: http, containerPort: 8080, protocol: TCP }]
+          env:
+            - { name: MYELIN_MODE, value: {{ .Values.mode | quote }} }
+            - { name: MYELIN_PUBLIC_URL, value: {{ .Values.publicUrl | quote }} }
+            - { name: MYELIN_CORS, value: {{ .Values.publicUrl | quote }} }
+            - { name: MYELIN_IDP_CONFIG, value: /etc/myelin/identity-providers.yaml }
+            - { name: MYELIN_EVIDENCE_STORE, value: {{ .Values.evidence.store | quote }} }
+            - { name: MYELIN_SESSION_IDLE_MINUTES, value: {{ .Values.session.idleMinutes | quote }} }
+            - { name: MYELIN_SESSION_ABSOLUTE_HOURS, value: {{ .Values.session.absoluteHours | quote }} }
+            - { name: MYELIN_TRUSTED_PROXIES, value: {{ .Values.trustedProxies | quote }} }
+            - { name: MYELIN_WORKERS, value: {{ .Values.workers | quote }} }
+            - { name: MYELIN_DEMO_OPEN, value: "false" }
+            - { name: MYELIN_DEPLOYMENT_ID, value: {{ .Values.deploymentId | quote }} }
+            - { name: MYELIN_DAST_ALLOW_PRIVATE, value: {{ .Values.dast.allowPrivateNetworks | quote }} }
+            - { name: MYELIN_DAST_REQUIRE_VERIFICATION, value: {{ .Values.dast.requireVerification | quote }} }
+            - { name: MYELIN_DAST_MAX_REQUESTS, value: {{ .Values.dast.maxRequests | quote }} }
+            {{- include "myelin.secretEnv" . | nindent 12 }}
+          securityContext: {{- include "myelin.containerSecurity" . | nindent 12 }}
+          startupProbe:   { httpGet: { path: /healthz, port: http }, periodSeconds: 5, failureThreshold: 24 }
+          livenessProbe:  { httpGet: { path: /healthz, port: http }, periodSeconds: 20, timeoutSeconds: 3, failureThreshold: 3 }
+          readinessProbe: { httpGet: { path: /readyz, port: http }, periodSeconds: 10, timeoutSeconds: 5, failureThreshold: 3 }
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+            - { name: config, mountPath: /etc/myelin, readOnly: true }
+            {{- if .Values.evidence.persistence.enabled }}
+            - { name: evidence, mountPath: /var/lib/myelin/evidence }
+            {{- end }}
+      volumes:
+        - { name: tmp, emptyDir: { sizeLimit: 256Mi } }
+        - { name: config, configMap: { name: {{ include "myelin.name" . }}-config } }
+        {{- if .Values.evidence.persistence.enabled }}
+        - { name: evidence, persistentVolumeClaim: { claimName: {{ include "myelin.name" . }}-evidence } }
+        {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "myelin.name" . }}-api
+  labels: {{- include "myelin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  type: {{ .Values.service.type }}
+  selector: {{- include "myelin.selector" . | nindent 4 }}
+  ports: [{ name: http, port: {{ .Values.service.port }}, targetPort: http, protocol: TCP }]
+{{- if .Values.serviceAccount.create }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "myelin.serviceAccount" . }}
+  labels: {{- include "myelin.labels" . | nindent 4 }}
+  {{- with .Values.serviceAccount.annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+automountServiceAccountToken: false
+{{- end }}
+{{- if .Values.evidence.persistence.enabled }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "myelin.name" . }}-evidence
+  labels: {{- include "myelin.labels" . | nindent 4 }}
+spec:
+  accessModes: [ReadWriteMany]
+  {{- if .Values.evidence.persistence.storageClass }}
+  storageClassName: {{ .Values.evidence.persistence.storageClass }}
+  {{- end }}
+  resources: { requests: { storage: {{ .Values.evidence.persistence.size }} } }
+{{- end }}

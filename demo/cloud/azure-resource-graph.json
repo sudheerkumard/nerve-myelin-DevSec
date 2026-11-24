@@ -1,0 +1,642 @@
+{
+ "data": [
+  {
+   "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/resourceGroups/rg-payments/providers/Microsoft.Storage/storageAccounts/stpaymentsexports",
+   "name": "stpaymentsexports",
+   "type": "microsoft.storage/storageaccounts",
+   "location": "centralindia",
+   "resourceGroup": "rg-payments",
+   "subscriptionId": "8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+   "tags": {
+    "git_repo": "github.com/acme-bank/platform-terraform",
+    "git_file": "modules/storage/main.tf",
+    "git_commit": "4e1b9c7"
+   },
+   "properties": {
+    "allowBlobPublicAccess": true,
+    "supportsHttpsTrafficOnly": true,
+    "minimumTlsVersion": "TLS1_0",
+    "publicNetworkAccess": "Enabled",
+    "networkAcls": {
+     "defaultAction": "Allow"
+    }
+   },
+   "identity": {},
+   "sku": {},
+   "kind": ""
+  },
+  {
+   "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/resourceGroups/rg-shared/providers/Microsoft.Storage/storageAccounts/stauditlogsprod",
+   "name": "stauditlogsprod",
+   "type": "microsoft.storage/storageaccounts",
+   "location": "centralindia",
+   "resourceGroup": "rg-shared",
+   "subscriptionId": "8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+   "tags": {},
+   "properties": {
+    "allowBlobPublicAccess": false,
+    "supportsHttpsTrafficOnly": true,
+    "minimumTlsVersion": "TLS1_2",
+    "publicNetworkAccess": "Disabled",
+    "allowSharedKeyAccess": false,
+    "networkAcls": {
+     "defaultAction": "Deny"
+    }
+   },
+   "identity": {},
+   "sku": {},
+   "kind": ""
+  },
+  {
+   "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/resourceGroups/rg-payments/providers/Microsoft.KeyVault/vaults/kv-payments-prod",
+   "name": "kv-payments-prod",
+   "type": "microsoft.keyvault/vaults",
+   "location": "centralindia",
+   "resourceGroup": "rg-payments",
+   "subscriptionId": "8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+   "tags": {},
+   "properties": {
+    "enableSoftDelete": true,
+    "enablePurgeProtection": null,
+    "enableRbacAuthorization": false,
+    "networkAcls": {
+     "defaultAction": "Allow"
+    }
+   },
+   "identity": {},
+   "sku": {},
+   "kind": ""
+  },
+  {
+   "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/resourceGroups/rg-netbanking/providers/Microsoft.Sql/servers/sql-netbanking-prod",
+   "name": "sql-netbanking-prod",
+   "type": "microsoft.sql/servers",
+   "location": "centralindia",
+   "resourceGroup": "rg-netbanking",
+   "subscriptionId": "8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+   "tags": {},
+   "properties": {
+    "publicNetworkAccess": "Enabled",
+    "minimalTlsVersion": "1.2",
+    "administrators": {}
+   },
+   "identity": {},
+   "sku": {},
+   "kind": "",
+   "firewallRules": [
+    {
+     "name": "AllowAll",
+     "properties": {
+      "startIpAddress": "0.0.0.0",
+      "endIpAddress": "255.255.255.255"
+     }
+    }
+   ]
+  },
+  {
+   "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/resourceGroups/rg-shared/providers/Microsoft.Network/networkSecurityGroups/nsg-jumpbox",
+   "name": "nsg-jumpbox",
+   "type": "microsoft.network/networksecuritygroups",
+   "location": "centralindia",
+   "resourceGroup": "rg-shared",
+   "subscriptionId": "8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+   "tags": {},
+   "properties": {
+    "securityRules": [
+     {
+      "name": "allow-ssh",
+      "properties": {
+       "direction": "Inbound",
+       "access": "Allow",
+       "protocol": "Tcp",
+       "sourceAddressPrefix": "*",
+       "destinationPortRange": "22",
+       "priority": 100
+      }
+     },
+     {
+      "name": "allow-rdp",
+      "properties": {
+       "direction": "Inbound",
+       "access": "Allow",
+       "protocol": "Tcp",
+       "sourceAddressPrefix": "Internet",
+       "destinationPortRange": "3389",
+       "priority": 110
+      }
+     },
+     {
+      "name": "allow-https-vnet",
+      "properties": {
+       "direction": "Inbound",
+       "access": "Allow",
+       "protocol": "Tcp",
+       "sourceAddressPrefix": "VirtualNetwork",
+       "destinationPortRange": "443",
+       "priority": 120
+      }
+     }
+    ],
+    "networkInterfaces": [
+     {
+      "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/resourceGroups/rg-shared/providers/Microsoft.Network/networkInterfaces/nic-jumpbox-01"
+     }
+    ]
+   },
+   "identity": {},
+   "sku": {},
+   "kind": ""
+  },
+  {
+   "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/resourceGroups/rg-aks/providers/Microsoft.Network/networkSecurityGroups/nsg-aks-nodes",
+   "name": "nsg-aks-nodes",
+   "type": "microsoft.network/networksecuritygroups",
+   "location": "centralindia",
+   "resourceGroup": "rg-aks",
+   "subscriptionId": "8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+   "tags": {},
+   "properties": {
+    "securityRules": [
+     {
+      "name": "allow-lb",
+      "properties": {
+       "direction": "Inbound",
+       "access": "Allow",
+       "protocol": "Tcp",
+       "sourceAddressPrefix": "AzureLoadBalancer",
+       "destinationPortRange": "*",
+       "priority": 100
+      }
+     }
+    ]
+   },
+   "identity": {},
+   "sku": {},
+   "kind": ""
+  },
+  {
+   "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/resourceGroups/rg-shared/providers/Microsoft.Network/networkInterfaces/nic-jumpbox-01",
+   "name": "nic-jumpbox-01",
+   "type": "microsoft.network/networkinterfaces",
+   "location": "centralindia",
+   "resourceGroup": "rg-shared",
+   "subscriptionId": "8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+   "tags": {},
+   "properties": {
+    "networkSecurityGroup": {
+     "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/resourceGroups/rg-shared/providers/Microsoft.Network/networkSecurityGroups/nsg-jumpbox"
+    },
+    "virtualMachine": {
+     "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/resourceGroups/rg-shared/providers/Microsoft.Compute/virtualMachines/vm-jumpbox-01"
+    },
+    "ipConfigurations": [
+     {
+      "properties": {
+       "publicIPAddress": {
+        "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/resourceGroups/rg-shared/providers/Microsoft.Network/publicIPAddresses/pip-jumpbox-01"
+       },
+       "subnet": {
+        "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/resourceGroups/rg-shared/providers/Microsoft.Network/virtualNetworks/vnet-hub/subnets/mgmt"
+       }
+      }
+     }
+    ]
+   },
+   "identity": {},
+   "sku": {},
+   "kind": ""
+  },
+  {
+   "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/resourceGroups/rg-shared/providers/Microsoft.Network/publicIPAddresses/pip-jumpbox-01",
+   "name": "pip-jumpbox-01",
+   "type": "microsoft.network/publicipaddresses",
+   "location": "centralindia",
+   "resourceGroup": "rg-shared",
+   "subscriptionId": "8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+   "tags": {},
+   "properties": {
+    "ipAddress": "20.193.10.24"
+   },
+   "identity": {},
+   "sku": {
+    "name": "Standard"
+   },
+   "kind": ""
+  },
+  {
+   "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/resourceGroups/rg-shared/providers/Microsoft.Compute/virtualMachines/vm-jumpbox-01",
+   "name": "vm-jumpbox-01",
+   "type": "microsoft.compute/virtualmachines",
+   "location": "centralindia",
+   "resourceGroup": "rg-shared",
+   "subscriptionId": "8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+   "tags": {
+    "git_repo": "golden-images",
+    "git_file": "azure/jumpbox.bicep"
+   },
+   "properties": {
+    "networkProfile": {
+     "networkInterfaces": [
+      {
+       "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/resourceGroups/rg-shared/providers/Microsoft.Network/networkInterfaces/nic-jumpbox-01"
+      }
+     ]
+    },
+    "securityProfile": {},
+    "storageProfile": {
+     "osDisk": {
+      "osType": "Linux"
+     }
+    },
+    "osProfile": {
+     "linuxConfiguration": {
+      "disablePasswordAuthentication": false
+     }
+    }
+   },
+   "identity": {
+    "type": "SystemAssigned",
+    "principalId": "5b8d2c1e-0f3a-4c6b-9e7d-1a2b3c4d5e6f"
+   },
+   "sku": {},
+   "kind": ""
+  },
+  {
+   "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/resourceGroups/rg-aks/providers/Microsoft.ContainerService/managedClusters/aks-prod-cin",
+   "name": "aks-prod-cin",
+   "type": "microsoft.containerservice/managedclusters",
+   "location": "centralindia",
+   "resourceGroup": "rg-aks",
+   "subscriptionId": "8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+   "tags": {
+    "git_repo": "aks-baseline",
+    "git_file": "clusters/prod/main.bicep"
+   },
+   "properties": {
+    "enableRBAC": true,
+    "aadProfile": {
+     "managed": true
+    },
+    "disableLocalAccounts": false,
+    "apiServerAccessProfile": {
+     "enablePrivateCluster": false
+    },
+    "networkProfile": {
+     "networkPolicy": ""
+    },
+    "kubernetesVersion": "1.29.4"
+   },
+   "identity": {},
+   "sku": {},
+   "kind": ""
+  },
+  {
+   "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/resourceGroups/rg-wealth/providers/Microsoft.Web/sites/app-advisor-portal",
+   "name": "app-advisor-portal",
+   "type": "microsoft.web/sites",
+   "location": "centralindia",
+   "resourceGroup": "rg-wealth",
+   "subscriptionId": "8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+   "tags": {
+    "git_repo": "advisor-portal"
+   },
+   "properties": {
+    "httpsOnly": false,
+    "siteConfig": {
+     "minTlsVersion": "1.0",
+     "ftpsState": "AllAllowed",
+     "remoteDebuggingEnabled": false
+    },
+    "defaultHostName": "app-advisor-portal.azurewebsites.net",
+    "publicNetworkAccess": "Enabled"
+   },
+   "identity": {
+    "type": "SystemAssigned",
+    "principalId": "9e1d7c3b-2a4f-4b5c-8d6e-7f8a9b0c1d2e"
+   },
+   "sku": {},
+   "kind": "app,linux"
+  },
+  {
+   "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/resourceGroups/rg-shared/providers/Microsoft.ContainerRegistry/registries/acracmeprod",
+   "name": "acracmeprod",
+   "type": "microsoft.containerregistry/registries",
+   "location": "centralindia",
+   "resourceGroup": "rg-shared",
+   "subscriptionId": "8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+   "tags": {},
+   "properties": {
+    "adminUserEnabled": true,
+    "publicNetworkAccess": "Enabled",
+    "anonymousPullEnabled": false
+   },
+   "identity": {},
+   "sku": {},
+   "kind": ""
+  },
+  {
+   "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/resourceGroups/rg-notify/providers/Microsoft.DocumentDB/databaseAccounts/cosmos-notify",
+   "name": "cosmos-notify",
+   "type": "microsoft.documentdb/databaseaccounts",
+   "location": "centralindia",
+   "resourceGroup": "rg-notify",
+   "subscriptionId": "8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+   "tags": {},
+   "properties": {
+    "publicNetworkAccess": "Enabled",
+    "ipRules": [],
+    "isVirtualNetworkFilterEnabled": false,
+    "disableLocalAuth": false
+   },
+   "identity": {},
+   "sku": {},
+   "kind": ""
+  },
+  {
+   "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/providers/Microsoft.Security/pricings/VirtualMachines",
+   "name": "VirtualMachines",
+   "type": "microsoft.security/pricings",
+   "subscriptionId": "8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+   "tags": {},
+   "properties": {
+    "pricingTier": "Standard"
+   }
+  },
+  {
+   "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/providers/Microsoft.Security/pricings/SqlServers",
+   "name": "SqlServers",
+   "type": "microsoft.security/pricings",
+   "subscriptionId": "8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+   "tags": {},
+   "properties": {
+    "pricingTier": "Free"
+   }
+  },
+  {
+   "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/providers/Microsoft.Security/pricings/Containers",
+   "name": "Containers",
+   "type": "microsoft.security/pricings",
+   "subscriptionId": "8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+   "tags": {},
+   "properties": {
+    "pricingTier": "Free"
+   }
+  },
+  {
+   "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/providers/Microsoft.Security/pricings/KeyVaults",
+   "name": "KeyVaults",
+   "type": "microsoft.security/pricings",
+   "subscriptionId": "8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+   "tags": {},
+   "properties": {
+    "pricingTier": "Standard"
+   }
+  },
+  {
+   "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/providers/Microsoft.Security/pricings/StorageAccounts",
+   "name": "StorageAccounts",
+   "type": "microsoft.security/pricings",
+   "subscriptionId": "8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+   "tags": {},
+   "properties": {
+    "pricingTier": "Free"
+   }
+  },
+  {
+   "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/providers/Microsoft.Authorization/roleDefinitions/8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
+   "name": "8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
+   "type": "microsoft.authorization/roledefinitions",
+   "subscriptionId": "8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+   "tags": {},
+   "properties": {
+    "roleName": "Owner",
+    "type": "BuiltInRole",
+    "permissions": [
+     {
+      "actions": [
+       "*"
+      ]
+     }
+    ],
+    "assignableScopes": [
+     "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4"
+    ]
+   }
+  },
+  {
+   "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c",
+   "name": "b24988ac-6180-42a0-ab88-20f7382dd24c",
+   "type": "microsoft.authorization/roledefinitions",
+   "subscriptionId": "8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+   "tags": {},
+   "properties": {
+    "roleName": "Contributor",
+    "type": "BuiltInRole",
+    "permissions": [
+     {
+      "actions": [
+       "*"
+      ],
+      "notActions": [
+       "Microsoft.Authorization/*/Delete",
+       "Microsoft.Authorization/*/Write",
+       "Microsoft.Authorization/elevateAccess/Action"
+      ]
+     }
+    ],
+    "assignableScopes": [
+     "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4"
+    ]
+   }
+  },
+  {
+   "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/providers/Microsoft.Authorization/roleDefinitions/acdd72a7-3385-48ef-bd42-f606fba81ae7",
+   "name": "acdd72a7-3385-48ef-bd42-f606fba81ae7",
+   "type": "microsoft.authorization/roledefinitions",
+   "subscriptionId": "8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+   "tags": {},
+   "properties": {
+    "roleName": "Reader",
+    "type": "BuiltInRole",
+    "permissions": [
+     {
+      "actions": [
+       "*/read"
+      ]
+     }
+    ],
+    "assignableScopes": [
+     "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4"
+    ]
+   }
+  },
+  {
+   "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/providers/Microsoft.Authorization/roleDefinitions/ba92f5b4-2d11-453d-a403-e96b0029c9fe",
+   "name": "ba92f5b4-2d11-453d-a403-e96b0029c9fe",
+   "type": "microsoft.authorization/roledefinitions",
+   "subscriptionId": "8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+   "tags": {},
+   "properties": {
+    "roleName": "Storage Blob Data Contributor",
+    "type": "BuiltInRole",
+    "permissions": [
+     {
+      "actions": [
+       "Microsoft.Storage/storageAccounts/blobServices/containers/*"
+      ]
+     }
+    ],
+    "assignableScopes": [
+     "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4"
+    ]
+   }
+  },
+  {
+   "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/providers/Microsoft.Authorization/roleDefinitions/3f9a6c2e-7b1d-4e8f-a5c4-9d2e1f0b7a6c",
+   "name": "3f9a6c2e-7b1d-4e8f-a5c4-9d2e1f0b7a6c",
+   "type": "microsoft.authorization/roledefinitions",
+   "subscriptionId": "8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+   "tags": {},
+   "properties": {
+    "roleName": "ops-superuser",
+    "type": "CustomRole",
+    "permissions": [
+     {
+      "actions": [
+       "*"
+      ]
+     }
+    ],
+    "assignableScopes": [
+     "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4"
+    ]
+   }
+  },
+  {
+   "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/providers/Microsoft.Authorization/roleAssignments/ra-001",
+   "name": "ra-001",
+   "type": "microsoft.authorization/roleassignments",
+   "subscriptionId": "8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+   "tags": {},
+   "properties": {
+    "principalId": "11111111-aaaa-4aaa-8aaa-000000000001",
+    "principalType": "User",
+    "roleDefinitionId": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/providers/Microsoft.Authorization/roleDefinitions/8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
+    "scope": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+    "principalName": "anita.rao@acme-bank.example"
+   }
+  },
+  {
+   "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/providers/Microsoft.Authorization/roleAssignments/ra-002",
+   "name": "ra-002",
+   "type": "microsoft.authorization/roleassignments",
+   "subscriptionId": "8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+   "tags": {},
+   "properties": {
+    "principalId": "11111111-aaaa-4aaa-8aaa-000000000002",
+    "principalType": "User",
+    "roleDefinitionId": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/providers/Microsoft.Authorization/roleDefinitions/8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
+    "scope": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+    "principalName": "vikram.s@acme-bank.example"
+   }
+  },
+  {
+   "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/providers/Microsoft.Authorization/roleAssignments/ra-003",
+   "name": "ra-003",
+   "type": "microsoft.authorization/roleassignments",
+   "subscriptionId": "8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+   "tags": {},
+   "properties": {
+    "principalId": "11111111-aaaa-4aaa-8aaa-000000000003",
+    "principalType": "User",
+    "roleDefinitionId": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/providers/Microsoft.Authorization/roleDefinitions/8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
+    "scope": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+    "principalName": "it-vendor_partner.example#EXT#@acmebank.onmicrosoft.com"
+   }
+  },
+  {
+   "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/providers/Microsoft.Authorization/roleAssignments/ra-004",
+   "name": "ra-004",
+   "type": "microsoft.authorization/roleassignments",
+   "subscriptionId": "8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+   "tags": {},
+   "properties": {
+    "principalId": "22222222-bbbb-4bbb-8bbb-000000000004",
+    "principalType": "ServicePrincipal",
+    "roleDefinitionId": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/providers/Microsoft.Authorization/roleDefinitions/8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
+    "scope": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+    "principalName": "sp-legacy-deploy"
+   }
+  },
+  {
+   "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/providers/Microsoft.Authorization/roleAssignments/ra-005",
+   "name": "ra-005",
+   "type": "microsoft.authorization/roleassignments",
+   "subscriptionId": "8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+   "tags": {},
+   "properties": {
+    "principalId": "11111111-aaaa-4aaa-8aaa-000000000005",
+    "principalType": "Group",
+    "roleDefinitionId": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/providers/Microsoft.Authorization/roleDefinitions/8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
+    "scope": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+    "principalName": "grp-cloud-platform"
+   }
+  },
+  {
+   "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/providers/Microsoft.Authorization/roleAssignments/ra-006",
+   "name": "ra-006",
+   "type": "microsoft.authorization/roleassignments",
+   "subscriptionId": "8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+   "tags": {},
+   "properties": {
+    "principalId": "5b8d2c1e-0f3a-4c6b-9e7d-1a2b3c4d5e6f",
+    "principalType": "ServicePrincipal",
+    "roleDefinitionId": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c",
+    "scope": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+    "principalName": "vm-jumpbox-01 (managed identity)"
+   }
+  },
+  {
+   "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/providers/Microsoft.Authorization/roleAssignments/ra-007",
+   "name": "ra-007",
+   "type": "microsoft.authorization/roleassignments",
+   "subscriptionId": "8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+   "tags": {},
+   "properties": {
+    "principalId": "9e1d7c3b-2a4f-4b5c-8d6e-7f8a9b0c1d2e",
+    "principalType": "ServicePrincipal",
+    "roleDefinitionId": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/providers/Microsoft.Authorization/roleDefinitions/ba92f5b4-2d11-453d-a403-e96b0029c9fe",
+    "scope": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/resourceGroups/rg-payments/providers/Microsoft.Storage/storageAccounts/stpaymentsexports",
+    "principalName": "app-advisor-portal (managed identity)"
+   }
+  },
+  {
+   "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/providers/Microsoft.Authorization/roleAssignments/ra-008",
+   "name": "ra-008",
+   "type": "microsoft.authorization/roleassignments",
+   "subscriptionId": "8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+   "tags": {},
+   "properties": {
+    "principalId": "11111111-aaaa-4aaa-8aaa-000000000008",
+    "principalType": "User",
+    "roleDefinitionId": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/providers/Microsoft.Authorization/roleDefinitions/3f9a6c2e-7b1d-4e8f-a5c4-9d2e1f0b7a6c",
+    "scope": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+    "principalName": "ops.oncall@acme-bank.example"
+   }
+  },
+  {
+   "id": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/providers/Microsoft.Authorization/roleAssignments/ra-009",
+   "name": "ra-009",
+   "type": "microsoft.authorization/roleassignments",
+   "subscriptionId": "8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+   "tags": {},
+   "properties": {
+    "principalId": "11111111-aaaa-4aaa-8aaa-000000000009",
+    "principalType": "Group",
+    "roleDefinitionId": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4/providers/Microsoft.Authorization/roleDefinitions/acdd72a7-3385-48ef-bd42-f606fba81ae7",
+    "scope": "/subscriptions/8c1f4e2a-55d0-4b7e-9a31-6f20c7d1b9e4",
+    "principalName": "grp-auditors"
+   }
+  }
+ ]
+}

@@ -1,0 +1,123 @@
+[
+ {
+  "time": "2026-11-21T04:12:09.481203117Z",
+  "rule": "Terminal shell in container",
+  "priority": "Notice",
+  "output": "A shell was spawned in a container with an attached terminal (user=root user_loginuid=-1 k8s.ns=web k8s.pod=payments-web-7d9c6b5f8d-x2k4q container=web shell=sh parent=runc cmdline=sh -i terminal=34816)",
+  "output_fields": {
+   "k8s.ns.name": "web",
+   "k8s.pod.name": "payments-web-7d9c6b5f8d-x2k4q",
+   "container.name": "web",
+   "container.image.repository": "acmeprod.azurecr.io/payments-web",
+   "container.image.tag": "2026.11.3",
+   "proc.cmdline": "sh -i",
+   "proc.name": "sh",
+   "user.name": "root"
+  },
+  "tags": [
+   "container",
+   "shell",
+   "mitre_execution",
+   "T1059"
+  ],
+  "hostname": "aks-system-1234567-vmss000001"
+ },
+ {
+  "time": "2026-11-21T04:13:51.002811543Z",
+  "rule": "Read sensitive file untrusted",
+  "priority": "Warning",
+  "output": "Sensitive file opened for reading by non-trusted program (file=/etc/shadow process=cat cmdline=cat /etc/shadow k8s.pod=payments-web-7d9c6b5f8d-x2k4q)",
+  "output_fields": {
+   "k8s.ns.name": "web",
+   "k8s.pod.name": "payments-web-7d9c6b5f8d-x2k4q",
+   "container.name": "web",
+   "container.image.repository": "acmeprod.azurecr.io/payments-web",
+   "container.image.tag": "2026.11.3",
+   "proc.cmdline": "cat /etc/shadow",
+   "proc.name": "cat",
+   "fd.name": "/etc/shadow",
+   "user.name": "root"
+  },
+  "tags": [
+   "filesystem",
+   "mitre_credential_access",
+   "T1555"
+  ],
+  "hostname": "aks-system-1234567-vmss000001"
+ },
+ {
+  "time": "2026-11-21T04:14:30.551000000Z",
+  "rule": "Contact K8S API Server From Container",
+  "priority": "Notice",
+  "output": "Unexpected connection to K8s API Server from container (command=curl -sk https://10.0.0.1/api/v1/namespaces/payments/secrets -H Authorization: Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6Ik1ZRUxJTiJ9.eyJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQifQ.c2lnbmF0dXJlLXZhbHVl)",
+  "output_fields": {
+   "k8s.ns.name": "web",
+   "k8s.pod.name": "payments-web-7d9c6b5f8d-x2k4q",
+   "container.name": "web",
+   "container.image.repository": "acmeprod.azurecr.io/payments-web",
+   "container.image.tag": "2026.11.3",
+   "proc.cmdline": "curl -sk https://10.0.0.1/api/v1/namespaces/payments/secrets -H Authorization: Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6Ik1ZRUxJTiJ9.eyJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQifQ.c2lnbmF0dXJlLXZhbHVl",
+   "proc.name": "curl"
+  },
+  "tags": [
+   "network",
+   "k8s",
+   "mitre_discovery",
+   "T1613"
+  ],
+  "hostname": "aks-system-1234567-vmss000001"
+ },
+ {
+  "time": "2026-11-21T04:20:02Z",
+  "node_name": "aks-system-1234567-vmss000002",
+  "process_kprobe": {
+   "policy_name": "myelin-metadata-access",
+   "function_name": "tcp_connect",
+   "process": {
+    "binary": "/usr/bin/wget",
+    "arguments": "-qO- http://169.254.169.254/metadata/identity/oauth2/token",
+    "uid": 0,
+    "pod": {
+     "namespace": "web",
+     "name": "mobile-bff-5f6d7c8b9a-k3j2h",
+     "container": {
+      "name": "bff",
+      "image": {
+       "name": "acmeprod.azurecr.io/mobile-bff:latest",
+       "id": "acmeprod.azurecr.io/mobile-bff@sha256:1a2b3c"
+      }
+     }
+    }
+   },
+   "args": [
+    {
+     "sock_arg": {
+      "daddr": "169.254.169.254",
+      "dport": 80
+     }
+    }
+   ]
+  }
+ },
+ {
+  "time": "2026-11-21T03:58:44Z",
+  "node_name": "aks-system-1234567-vmss000000",
+  "process_exec": {
+   "process": {
+    "binary": "/tmp/.x/xmrig",
+    "arguments": "-o stratum+tcp://pool.example:3333 --donate-level 0",
+    "uid": 0,
+    "pod": {
+     "namespace": "monitoring",
+     "name": "log-agent-q8w7e",
+     "container": {
+      "name": "agent",
+      "image": {
+       "name": "docker.io/acme/log-agent:3.2"
+      }
+     }
+    }
+   }
+  }
+ }
+]

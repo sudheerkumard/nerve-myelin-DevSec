@@ -1,2 +1,20 @@
-site/
 __pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+.venv/
+.env
+sales/*.pdf
+node_modules/
+
+# Local secrets — never commit
+config/backend/myelin.env
+*.env.local
+demo/.demo.*
+.venv/
+
+# enterprise Compose secrets
+config/backend/enterprise.env
+docs/enterprise/diagrams/.mermaid.json
+site/

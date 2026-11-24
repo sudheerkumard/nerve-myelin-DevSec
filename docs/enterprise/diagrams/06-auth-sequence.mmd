@@ -1,0 +1,22 @@
+sequenceDiagram
+  autonumber
+  actor U as User
+  participant B as Browser
+  participant M as NERvvE API (BFF)
+  participant I as IdP
+  participant DB as PostgreSQL
+  U->>B: open console
+  B->>M: GET /auth/login?idp=corp
+  M->>M: create state, nonce, PKCE verifier (signed, 10 min)
+  M-->>B: 302 to IdP (code_challenge S256, acr_values=mfa)
+  B->>I: authenticate (password + OTP / WebAuthn)
+  I-->>B: 302 /auth/callback?code&state
+  B->>M: GET /auth/callback
+  M->>M: verify signed state
+  M->>I: POST token (client secret + code_verifier)
+  I-->>M: ID token, refresh token
+  M->>M: verify signature (JWKS), iss, aud, exp, nonce, MFA (acr/amr)
+  M->>DB: resolve tenant binding (issuer, tenant claim)
+  M->>DB: store session (token hash, encrypted refresh token)
+  M-->>B: __Host-myelin_session (HttpOnly) + __Host-myelin_csrf
+  Note over B,M: state-changing calls send X-CSRF-Token · idle 30 min · absolute 12 h

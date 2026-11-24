@@ -1,10 +1,10 @@
-# NERVE Myelin — Cloud-native application protection
+# NERvvE DevSecOps — Cloud-native application protection
 
-NERVE Myelin Product designed and developed by Sudheer Kumar · <https://github.com/sudheerkumard/nerve-myelin-DevSec>
+NERvvE DevSecOps Product designed and developed by Sudheer Kumar · <https://github.com/sudheerkumard/nerve-myelin-DevSec>
 
 ![Cloud overview: attack paths, coverage and accounts](assets/screenshots/cnapp.webp){ .nm-shot }
 
-NERVE Myelin covers the cloud and runtime half of the delivery chain with the same finding model, risk score, policy,
+NERvvE DevSecOps covers the cloud and runtime half of the delivery chain with the same finding model, risk score, policy,
 ticketing and reports as the code and pipeline engines:
 
 | Capability | What it does | Engine |
@@ -93,7 +93,7 @@ expected finding is reported and nothing else, and compliant resources stay sile
 
 ![Runtime protection](assets/screenshots/runtime.webp){ .nm-shot }
 
-Install a sensor in each cluster and send its detections to NERVE Myelin:
+Install a sensor in each cluster and send its detections to NERvvE DevSecOps:
 
 ```bash
 kubectl create secret generic myelin-runtime -n falco --from-literal=customheaders="X-API-Key:<integration API key>"
@@ -109,7 +109,7 @@ Events of the same rule on the same workload and image become one finding with a
 event is kept for 30 days for the timeline. Tokens, keys and passwords in command lines are redacted before storage.
 A critical or high detection raises the risk score and counts as active exploitation in the SSVC decision. Runtime
 findings are linked to the repository through the image name and inherit internet exposure from the cluster inventory.
-The sensors (Falco, Tetragon) are open-source projects that the customer installs and operates; NERVE Myelin does not
+The sensors (Falco, Tetragon) are open-source projects that the customer installs and operates; NERvvE DevSecOps does not
 ship a kernel agent of its own.
 
 ## 4. Attack paths and code to cloud
@@ -136,7 +136,7 @@ annotation on Kubernetes objects, or by the image name. The evidence of every li
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/api/v1/cnapp` | Overview: coverage, findings by engine, attack paths, identities, code-to-cloud, runtime |
-| POST | `/api/v1/cloud/inventory` | Analyse an inventory (Myelin, Azure Resource Graph, Cloud Asset export, kubectl) |
+| POST | `/api/v1/cloud/inventory` | Analyse an inventory (NERvvE, Azure Resource Graph, Cloud Asset export, kubectl) |
 | GET / DELETE | `/api/v1/cloud/inventories` | Stored inventories (latest per account or cluster) |
 | GET / POST / DELETE | `/api/v1/cloud/accounts` | Cloud accounts and clusters with vault-held credentials |
 | POST | `/api/v1/cloud/accounts/{id}/collect` | Collect now (read-only) |
@@ -154,10 +154,10 @@ Enterprise and Sovereign.
 - Collectors read configuration; they do not read data in storage accounts, buckets or databases, and they never read
   Kubernetes Secrets.
 - Exposure is computed from the network rules the collector can see. A firewall or WAF outside the account (for example
-  an on-premises proxy) is not known to NERVE Myelin; confirm a path before treating it as exploitable.
+  an on-premises proxy) is not known to NERvvE DevSecOps; confirm a path before treating it as exploitable.
 - Azure identity names and guest status need the optional Microsoft Graph permission; without it identities are shown
   by object ID.
-- Runtime detection quality depends on the sensor and its rules; NERVE Myelin adds grouping, prioritisation,
+- Runtime detection quality depends on the sensor and its rules; NERvvE DevSecOps adds grouping, prioritisation,
   correlation and the workflow around them.
 
 Copyright © 2026 Sudheer Kumar. All rights reserved.

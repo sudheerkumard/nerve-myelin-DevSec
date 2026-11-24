@@ -1,0 +1,171 @@
+# Copyright (c) 2026 Sudheer Kumar.
+# SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
+#
+# NERvvE DevSecOps — enterprise evaluation / single-host stack:
+#   PostgreSQL 16 (RLS)  ·  Keycloak 26 (OIDC + TOTP MFA)  ·  OpenBao (secret vault)  ·  migrations  ·  API  ·  Caddy TLS ingress
+#
+#   cp config/backend/enterprise.env.example config/backend/enterprise.env   # fill secrets (scripts/ops/gen-secrets.sh)
+#   docker compose -f docker-compose.enterprise.yml --env-file config/backend/enterprise.env up -d
+#   open https://myelin.localtest.me:8443 (console) · https://auth.localtest.me:8444 (Keycloak)  — *.localtest.me resolves to 127.0.0.1
+#   trust the local CA once: docker compose -f docker-compose.enterprise.yml cp edge:/data/caddy/pki/authorities/local/root.crt .
+#
+# Production uses the Helm chart (deploy/helm/myelin) with a managed PostgreSQL and the customer's IdP.
+name: nerve-myelin
+
+x-hardening: &hardening
+  read_only: true
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: myelin
+      POSTGRES_USER: myelin_owner
+      POSTGRES_PASSWORD: ${MYELIN_DB_OWNER_PASSWORD:?set in enterprise.env}
+      MYELIN_DB_APP_PASSWORD: ${MYELIN_DB_APP_PASSWORD:?set in enterprise.env}
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?set in enterprise.env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./deploy/compose/postgres-init.sh:/myelin-init/10-myelin.sh:ro
+    # copy the init script with Windows line endings removed, then hand over to the official entrypoint
+    entrypoint: ["sh", "-c", "mkdir -p /docker-entrypoint-initdb.d && tr -d '\\r' < /myelin-init/10-myelin.sh > /docker-entrypoint-initdb.d/10-myelin.sh && exec docker-entrypoint.sh postgres"]
+    # TCP check: during first-time setup PostgreSQL only listens on its socket, so this waits for the real server
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U myelin_owner -d myelin"], interval: 5s, retries: 30, start_period: 20s }
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+    networks: [data]
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    command: ["start", "--import-realm", "--http-enabled=true", "--hostname=https://auth.localtest.me:8444", "--proxy-headers=xforwarded", "--health-enabled=true"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:-kcadmin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?set in enterprise.env}
+      MYELIN_OIDC_CLIENT_SECRET: ${MYELIN_OIDC_CLIENT_SECRET:?set in enterprise.env}
+    volumes: ["./deploy/keycloak/myelin-realm.json:/opt/keycloak/data/import/myelin-realm.json:ro"]
+    depends_on: { postgres: { condition: service_healthy } }
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    restart: unless-stopped
+    networks: [data, edge]
+
+  vault:   # OpenBao (MPL-2.0, Vault-compatible API): holds live-scan test-account tokens; initialised/unsealed by start-enterprise.ps1
+    image: openbao/openbao:2.6.3
+    user: "0:0"
+    entrypoint: ["bao", "server", "-config=/openbao/myelin.hcl"]
+    environment:
+      BAO_ADDR: http://127.0.0.1:8200
+    volumes:
+      - ./deploy/compose/openbao.hcl:/openbao/myelin.hcl:ro
+      - openbao_data:/openbao/data
+      - vault_token:/openbao/token
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    cap_add: [CHOWN]          # hand the API's read-only token file to the API user (uid 10001)
+    restart: unless-stopped
+    networks: [data]          # no host port: only the API (and `docker compose exec`) can reach it
+
+  migrate:
+    build: .
+    image: ghcr.io/sudheerkumard/nerve-myelin:1.5.0
+    command: ["migrate"]
+    environment:
+      MYELIN_MIGRATIONS_DATABASE_URL: postgresql+psycopg://myelin_owner:${MYELIN_DB_OWNER_PASSWORD}@postgres:5432/myelin
+      MYELIN_APP_LOGIN: myelin_api            # granted the NOBYPASSRLS myelin_app role after migrating
+      MYELIN_LICENSE: ${MYELIN_LICENSE:-}       # needed by `myelin admin tenant-create` (tenant limit)
+    depends_on: { postgres: { condition: service_healthy } }
+    <<: *hardening
+    restart: "no"
+    tmpfs: [/tmp]
+    networks: [data]
+
+  myelin-worker:
+    build: .
+    image: ghcr.io/sudheerkumard/nerve-myelin:1.5.0
+    command: ["worker"]
+    profiles: ["worker"]       # enable after MYELIN_WORKER_TENANT_IDS is populated with provisioned tenant UUIDs
+    environment:
+      MYELIN_MODE: enterprise
+      MYELIN_DATABASE_URL: postgresql+psycopg://myelin_api:${MYELIN_DB_APP_PASSWORD}@postgres:5432/myelin
+      MYELIN_WORKER_TENANT_IDS: ${MYELIN_WORKER_TENANT_IDS:-}
+      MYELIN_WORKER_POLL_SECONDS: ${MYELIN_WORKER_POLL_SECONDS:-5}
+      MYELIN_WORKER_LEASE_SECONDS: ${MYELIN_WORKER_LEASE_SECONDS:-900}
+      MYELIN_WORKER_MAX_ATTEMPTS: ${MYELIN_WORKER_MAX_ATTEMPTS:-5}
+      NVD_API_KEY: ${NVD_API_KEY:-}
+      GITHUB_ADVISORY_TOKEN: ${GITHUB_ADVISORY_TOKEN:-}
+      SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
+    depends_on: { migrate: { condition: service_completed_successfully } }
+    <<: *hardening
+    tmpfs: [/tmp]
+    networks: [data, edge]
+
+  myelin-api:
+    build: .
+    image: ghcr.io/sudheerkumard/nerve-myelin:1.5.0
+    command: ["api"]
+    environment:
+      MYELIN_MODE: enterprise
+      MYELIN_DATABASE_URL: postgresql+psycopg://myelin_api:${MYELIN_DB_APP_PASSWORD}@postgres:5432/myelin
+      MYELIN_IDP_CONFIG: /etc/myelin/identity-providers.yaml
+      MYELIN_PUBLIC_URL: https://myelin.localtest.me:8443
+      MYELIN_CORS: https://myelin.localtest.me:8443
+      SSL_CERT_FILE: /etc/myelin/ca/bundle.pem       # system roots + local Caddy CA (built by the edge-ca service)
+      MYELIN_DEMO_OPEN: "false"
+      MYELIN_TRUSTED_PROXIES: "*"
+      MYELIN_SESSION_SECRET: ${MYELIN_SESSION_SECRET:?}
+      MYELIN_API_KEY_PEPPER: ${MYELIN_API_KEY_PEPPER:?}
+      MYELIN_EVIDENCE_SIGNING_KEY: ${MYELIN_EVIDENCE_SIGNING_KEY:?}
+      MYELIN_OIDC_CLIENT_SECRET: ${MYELIN_OIDC_CLIENT_SECRET}
+      MYELIN_LICENSE: ${MYELIN_LICENSE:-}       # evaluation or production licence for NERvvE DevSecOps
+      MYELIN_EVIDENCE_STORE: file:///var/lib/myelin/evidence
+      VAULT_ADDR: http://vault:8200                  # resolves vault:// identity references for live scans
+      VAULT_TOKEN_FILE: /run/vault/api-token         # read-only token, re-issued by start-enterprise.ps1
+    volumes:
+      - ./deploy/compose/identity-providers.compose.yaml:/etc/myelin/identity-providers.yaml:ro
+      - evidence:/var/lib/myelin/evidence
+      - cabundle:/etc/myelin/ca:ro
+      - vault_token:/run/vault:ro
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      keycloak: { condition: service_started }
+      edge-ca: { condition: service_completed_successfully }
+    <<: *hardening
+    tmpfs: [/tmp]
+    networks: [data, edge]
+
+  edge:
+    image: caddy:2-alpine
+    ports: ["127.0.0.1:8443:8443", "127.0.0.1:8444:8444"]
+    volumes:
+      - ./deploy/compose/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [keycloak]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    restart: unless-stopped
+    healthcheck: { test: ["CMD", "test", "-f", "/data/caddy/pki/authorities/local/root.crt"], interval: 3s, retries: 40 }
+    networks:
+      edge:
+        aliases: [myelin.localtest.me, auth.localtest.me]   # containers reach the same issuer URL as browsers
+
+  edge-ca:   # one-shot: combine system roots with the local Caddy CA so the API can verify the IdP over TLS
+    image: alpine:3.20
+    command: ["sh", "-c", "cat /etc/ssl/certs/ca-certificates.crt /caddy/caddy/pki/authorities/local/root.crt > /out/bundle.pem && chmod 444 /out/bundle.pem"]
+    volumes: ["caddy_data:/caddy:ro", "cabundle:/out"]
+    depends_on: { edge: { condition: service_healthy } }
+    restart: "no"
+    network_mode: none
+
+volumes: { pgdata: {}, evidence: {}, caddy_data: {}, caddy_config: {}, cabundle: {}, openbao_data: {}, vault_token: {} }
+networks:
+  data: { internal: true }   # database has no route to or from the host
+  edge: {}

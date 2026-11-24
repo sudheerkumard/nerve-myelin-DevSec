@@ -1,4 +1,4 @@
-# NERVE Myelin — Multi-tenancy
+# NERvvE DevSecOps — Multi-tenancy
 
 *NM-ARC-001 · Enterprise Architecture & Deployment Pack · Version 1.1 · 13 November 2026 · Customer confidential*
 

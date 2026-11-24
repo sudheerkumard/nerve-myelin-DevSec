@@ -1,0 +1,56 @@
+# Copyright (c) 2026 Sudheer Kumar.
+# SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
+# Helm override for a customer self-hosted deployment:
+#   helm upgrade --install myelin deploy/helm/myelin -n nerve-myelin --create-namespace \
+#        -f config/deploy/values-customer.example.yaml
+# Everything not listed here keeps the hardened defaults in deploy/helm/myelin/values.yaml.
+image:
+  repository: registry.customer.example/nerve/myelin
+  tag: "1.5.0"
+  digest: ""                 # set sha256:... so the platform itself passes signed-image admission control
+publicUrl: https://myelin.customer.example
+trustedProxies: "10.244.0.0/16"
+
+# Customer IdP — Entra ID shown; Keycloak, Okta, Auth0, Ping, Google or any OIDC provider work the same way.
+identityProviders:
+  providers:
+    - name: entra
+      type: entra
+      display_name: Sign in with Microsoft
+      issuer: https://login.microsoftonline.com/00000000-0000-0000-0000-000000000000/v2.0
+      client_id: 11111111-1111-1111-1111-111111111111
+      client_secret_ref: env://MYELIN_OIDC_CLIENT_SECRET
+      audiences: ["11111111-1111-1111-1111-111111111111", "api://nerve-myelin"]
+      require_mfa: true      # enforced by a Conditional Access policy; NERvvE verifies the `amr` claim
+      role_mapping:
+        NERvvE.TenantAdmin: tenant_admin
+        NERvvE.SecurityLead: security_lead
+        NERvvE.Developer: developer
+        NERvvE.Auditor: auditor
+        NERvvE.Viewer: viewer
+
+externalSecret:
+  enabled: true
+  secretStoreRef: { kind: ClusterSecretStore, name: azure-keyvault }
+  remoteKeyPrefix: nerve-myelin-prod
+
+serviceAccount:
+  annotations:
+    azure.workload.identity/client-id: 22222222-2222-2222-2222-222222222222
+
+evidence:
+  store: azblob://custmyelinevidence/evidence/prod
+
+ingress:
+  host: myelin.customer.example
+  tlsSecret: myelin-tls
+  certManager: { enabled: true, clusterIssuer: corp-ca-issuer }
+
+networkPolicy:
+  databaseCidr: 10.40.8.0/27
+  egressHttpsCidrs: ["10.40.0.0/16"]     # all egress via the corporate proxy / private endpoints
+
+backup:
+  destination: azblob://custmyelinbackup/postgres/prod
+  serviceAccountAnnotations:
+    azure.workload.identity/client-id: 33333333-3333-3333-3333-333333333333

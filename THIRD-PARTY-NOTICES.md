@@ -1,11 +1,11 @@
-# NERVE Myelin — Third-Party Notices and Attributions
+# NERvvE DevSecOps — Third-Party Notices and Attributions
 
-NERVE Myelin is proprietary software, Copyright © 2026 Sudheer Kumar. All rights reserved. It is licensed only under the
-NERVE Myelin Subscription Agreement (`docs/legal/SUBSCRIPTION-AGREEMENT.md`).
+NERvvE DevSecOps Community edition is free and open-source software, Copyright © 2026 Sudheer Kumar, licensed under the
+GNU Affero General Public License v3.0 (`LICENSE`). Commercial licences are available from the author.
 
-NERVE Myelin uses the third-party software, data and specifications listed below. Each is the property of its respective
-owners and is used under its own licence. Nothing in the NERVE Myelin licence restricts the rights granted by those
-licences. Third-party components are used **unmodified**; NERVE Myelin's own code does not copy third-party source code.
+NERvvE DevSecOps uses the third-party software, data and specifications listed below. Each is the property of its respective
+owners and is used under its own licence. Nothing in the NERvvE DevSecOps licence restricts the rights granted by those
+licences. Third-party components are used **unmodified**; NERvvE DevSecOps's own code does not copy third-party source code.
 
 Full texts of the licence families referenced here are in `docs/legal/licenses/` (Apache-2.0, MIT, BSD-3-Clause,
 MPL-2.0, LGPL-3.0, GPL-2.0, GPL-3.0).
@@ -15,7 +15,7 @@ MPL-2.0, LGPL-3.0, GPL-2.0, GPL-3.0).
 The complete, generated list of Python components (name, version, licence, project) is in
 [`docs/legal/python-dependencies.md`](docs/legal/python-dependencies.md). Summary of licence families:
 
-| Licence family | Examples | Obligations met by NERVE Myelin |
+| Licence family | Examples | Obligations met by NERvvE DevSecOps |
 |---|---|---|
 | MIT, BSD, ISC, PSF | FastAPI, Starlette, Pydantic, SQLAlchemy, PyJWT, PyYAML, httpx, uvicorn, Alembic, Mako, boto3 dependencies, Azure SDK | Copyright and licence notices retained in each package's `dist-info` and listed here |
 | Apache-2.0 | cryptography (Apache-2.0 / BSD), Bandit, Checkov, boto3, botocore, prometheus_client | Licence text in `docs/legal/licenses/Apache-2.0.txt`; NOTICE files retained in packages; no modification |
@@ -43,10 +43,10 @@ https://sources.debian.org/) for the package versions listed in each image (`dpk
 Licensor within three years of an image release, the Licensor will provide the corresponding source for any
 GPL-licensed package in that image, for no more than the cost of distribution.
 
-## 4. Services used by the reference deployment (not distributed by NERVE Myelin)
+## 4. Services used by the reference deployment (not distributed by NERvvE DevSecOps)
 
 The Compose stack and Helm chart pull these images directly from their publishers; they are not modified or
-redistributed by NERVE Myelin.
+redistributed by NERvvE DevSecOps.
 
 | Component | Licence |
 |---|---|
@@ -56,8 +56,8 @@ redistributed by NERVE Myelin.
 | Caddy | Apache-2.0 |
 | Alpine Linux base image | various (per package) |
 | Kyverno (customer cluster) | Apache-2.0 |
-| Falco and Falcosidekick (customer cluster, runtime sensor) | Apache-2.0 (Falco), MIT (Falcosidekick) — installed by the customer from the upstream charts; NERVE Myelin ships only its own configuration and rule files |
-| Tetragon (customer cluster, runtime sensor) | Apache-2.0 — installed by the customer; NERVE Myelin ships only its own tracing policies |
+| Falco and Falcosidekick (customer cluster, runtime sensor) | Apache-2.0 (Falco), MIT (Falcosidekick) — installed by the customer from the upstream charts; NERvvE DevSecOps ships only its own configuration and rule files |
+| Tetragon (customer cluster, runtime sensor) | Apache-2.0 — installed by the customer; NERvvE DevSecOps ships only its own tracing policies |
 
 ## 5. Console and documents
 
@@ -80,11 +80,11 @@ redistributed by NERVE Myelin.
 | EPSS — Exploit Prediction Scoring System | FIRST.org usage agreement; see EPSS at https://www.first.org/epss |
 | PyPI and npm registry metadata | Public registry APIs, used within their terms of use |
 
-Advisory text is shown to users with a link to the original record; NERVE Myelin does not claim ownership of it.
+Advisory text is shown to users with a link to the original record; NERvvE DevSecOps does not claim ownership of it.
 
 ## 7. Standards and frameworks referenced
 
-NERVE Myelin maps findings to the frameworks below by **identifier** and shows **short summarised titles** written for
+NERvvE DevSecOps maps findings to the frameworks below by **identifier** and shows **short summarised titles** written for
 this product; it does not reproduce the standards' text. All names are trademarks or publications of their owners, and
 no endorsement or certification is implied.
 
@@ -102,7 +102,7 @@ no endorsement or certification is implied.
 | ISO/IEC 27001:2022 | ISO / IEC (control titles summarised) |
 | NIST SSDF (SP 800-218), NIST SP 800-53 | NIST (U.S. Government works) |
 | SOC 2 Trust Services Criteria | AICPA |
-| CIS Benchmarks (Docker, Kubernetes, Microsoft Azure Foundations, AWS Foundations, Google Cloud Platform Foundation) | Center for Internet Security — referenced by benchmark and section name only; check titles and remediation text are NERVE Myelin's own wording; not endorsed by CIS |
+| CIS Benchmarks (Docker, Kubernetes, Microsoft Azure Foundations, AWS Foundations, Google Cloud Platform Foundation) | Center for Internet Security — referenced by benchmark and section name only; check titles and remediation text are NERvvE DevSecOps's own wording; not endorsed by CIS |
 | Kubernetes Pod Security Standards | The Kubernetes Authors (CC BY 4.0 documentation) |
 | MITRE ATT&CK® | The MITRE Corporation — tactic names and technique IDs are referenced; © The MITRE Corporation. This work is reproduced and distributed with the permission of The MITRE Corporation |
 | EU Cyber Resilience Act (Regulation (EU) 2024/2847) | European Union (requirements summarised; not legal advice) |
@@ -111,7 +111,7 @@ no endorsement or certification is implied.
 
 GitHub, GitLab, Azure DevOps, Bitbucket, AWS, Google Cloud, Microsoft Entra ID, Okta, Jira, ServiceNow, Slack, Microsoft
 Teams, Microsoft Azure, Amazon Web Services, Kubernetes, Kyverno, Falco, Tetragon, Cilium, Argo CD, Flux, Helm, Terraform, Docker, Anthropic, OpenAI, Hugging Face and other product
-names are trademarks of their respective owners and are used only to identify compatible products. NERVE Myelin is not
+names are trademarks of their respective owners and are used only to identify compatible products. NERvvE DevSecOps is not
 affiliated with or endorsed by them.
 
 ## 9. Your own content

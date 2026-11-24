@@ -1,8 +1,8 @@
 {
-  "_comment": "NERVE Myelin custom Azure role \u2014 read-only, least privilege. (c) 2026 Sudheer Kumar. az role definition create --role-definition @azure-role-definition.json ; assign to the connector identity at subscription scope only. Optional: grant the app registration Microsoft Graph Directory.Read.All (application) to show identity names and detect guests.",
-  "Name": "NERVE Myelin Reader",
+  "_comment": "NERvvE DevSecOps custom Azure role \u2014 read-only, least privilege. (c) 2026 Sudheer Kumar. az role definition create --role-definition @azure-role-definition.json ; assign to the connector identity at subscription scope only. Optional: grant the app registration Microsoft Graph Directory.Read.All (application) to show identity names and detect guests.",
+  "Name": "NERvvE DevSecOps Reader",
   "IsCustom": true,
-  "Description": "Read-only access for NERVE Myelin: resource configuration through Azure Resource Graph (cloud posture), role assignments (identity analysis), Defender for Cloud plans and assessments. No data-plane access, no write actions.",
+  "Description": "Read-only access for NERvvE DevSecOps: resource configuration through Azure Resource Graph (cloud posture), role assignments (identity analysis), Defender for Cloud plans and assessments. No data-plane access, no write actions.",
   "Actions": [
     "Microsoft.Resources/subscriptions/read",
     "Microsoft.Resources/subscriptions/resourceGroups/read",

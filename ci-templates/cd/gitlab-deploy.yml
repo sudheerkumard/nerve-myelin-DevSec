@@ -1,0 +1,14 @@
+# NERvvE DevSecOps — CD gate for GitLab CI. 'production' is a protected environment with required approvals.
+deploy_production:
+  stage: deploy
+  image: ghcr.io/sudheerkumard/myelin-cli@sha256:<digest>   # pin the CLI image by digest
+  environment:
+    name: production
+    deployment_tier: production
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+  script:
+    - myelin gate --repo "$CI_PROJECT_NAME" --commit "$CI_COMMIT_SHA" --environment production
+    - helm upgrade --install app ./chart --namespace production --wait
+  # MYELIN_SERVER / MYELIN_API_KEY: masked, protected CI/CD variables

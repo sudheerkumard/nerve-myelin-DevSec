@@ -2,10 +2,10 @@
 
 ## Bring your own scanner
 
-You can bring results from tools you already run. They are then handled the same way as findings from NERVE Myelin's own engines:
+You can bring results from tools you already run. They are then handled the same way as findings from NERvvE DevSecOps's own engines:
 
 - de-duplicated
-- risk-scored (Myelin Risk Score, priority, SLA)
+- risk-scored (NERvvE Risk Score, priority, SLA)
 - gated by policy
 - ticketed in Jira, ServiceNow or Azure Boards
 - shown on the dashboards and in the reports
@@ -14,7 +14,7 @@ You can bring results from tools you already run. They are then handled the same
 | Format | Typical producers |
 |---|---|
 | SARIF 2.1.0 | any SARIF tool, e.g. CodeQL or Semgrep. `security-severity` and CWE tags are used when present. |
-| CycloneDX 1.4+ JSON | SBOMs with a `vulnerabilities` section. A plain SBOM is matched against NERVE Myelin's vulnerability intelligence. |
+| CycloneDX 1.4+ JSON | SBOMs with a `vulnerabilities` section. A plain SBOM is matched against NERvvE DevSecOps's vulnerability intelligence. |
 | Trivy JSON | dependencies, OS packages, misconfigurations, secrets |
 | Grype JSON | dependencies |
 | Semgrep JSON | code |
@@ -33,13 +33,13 @@ There are three ways to import:
   - Without `--server`, the CLI evaluates the policy locally and exits 1 on a block.
 - **API:** `POST /api/v1/scans/import` with body `{repo, branch, commit, filename, format: "auto", content_base64}`.
 
-An import never auto-closes other findings: only a new scan by the same NERVE Myelin engines closes what it no longer reports.
+An import never auto-closes other findings: only a new scan by the same NERvvE DevSecOps engines closes what it no longer reports.
 
 ## VEX (Vulnerability Exploitability eXchange)
 
 A VEX document is built from your triage decisions on each repository's dependency vulnerabilities:
 
-| Your decision in NERVE Myelin | VEX status |
+| Your decision in NERvvE DevSecOps | VEX status |
 |---|---|
 | Fixed (confirmed by a re-scan) | `fixed` |
 | Marked as false positive | `not_affected`. The justification comes from your reason (for example "not in execute path", "mitigated by WAF"). |

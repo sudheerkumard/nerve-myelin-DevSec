@@ -1,0 +1,122 @@
+# Copyright (c) 2026 Sudheer Kumar.
+# SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
+# NERvvE DevSecOps — production defaults. Override per customer with config/deploy/values-customer.example.yaml.
+
+image:
+  repository: acr.example.io/nerve/myelin
+  tag: "1.5.0"
+  digest: ""                 # sha256:... — required for admission-verified (signed) deploys
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+mode: enterprise             # enterprise | demo
+replicaCount: 3
+workers: 2
+publicUrl: https://myelin.example.com
+trustedProxies: "10.0.0.0/8"
+deploymentId: ""             # set only if the licence is bound to this installation (deployment_id)  # ingress controller pod CIDR, for X-Forwarded-* trust
+
+# ---- Identity (OIDC). Any OIDC-compliant IdP; SAML IdPs are brokered through Keycloak. ----
+identityProviders:
+  providers:
+    - name: keycloak
+      type: keycloak
+      display_name: "Sign in with corporate SSO"
+      issuer: https://auth.example.com/realms/myelin
+      client_id: myelin-console
+      client_secret_ref: env://MYELIN_OIDC_CLIENT_SECRET
+      audiences: [myelin-console, myelin-api]
+      tenant_claim: tenant
+      require_mfa: true
+      role_mapping:
+        myelin-tenant-admin: tenant_admin
+        myelin-security-lead: security_lead
+        myelin-developer: developer
+        myelin-auditor: auditor
+        myelin-viewer: viewer
+
+session: { idleMinutes: 30, absoluteHours: 12 }
+
+# Online live-application testing (Live app testing page)
+dast:
+  allowPrivateNetworks: false      # true for self-hosted installations that test internal APIs
+  requireVerification: true        # targets must publish /.well-known/myelin-verification.txt before hosted scans
+  maxRequests: 1500
+
+# ---- Secrets. Values never live in this file; the app resolves references at runtime. ----
+secrets:
+  # Name of a Kubernetes Secret with keys listed below. Created by ExternalSecrets (externalSecret.enabled)
+  # or by the operator: kubectl create secret generic myelin-secrets --from-literal=...
+  name: myelin-secrets
+  keys:
+    databaseUrl: MYELIN_DATABASE_URL                     # postgresql+psycopg://myelin_api:...@host/myelin?sslmode=verify-full
+    migrationsDatabaseUrl: MYELIN_MIGRATIONS_DATABASE_URL
+    sessionSecret: MYELIN_SESSION_SECRET                 # >= 32 random bytes
+    apiKeyPepper: MYELIN_API_KEY_PEPPER                  # >= 32 random bytes
+    evidenceSigningKey: MYELIN_EVIDENCE_SIGNING_KEY      # Ed25519 private key (PEM or base64 raw)
+    oidcClientSecret: MYELIN_OIDC_CLIENT_SECRET
+    license: MYELIN_LICENSE                              # NMLIC1.… licence key issued for NERvvE DevSecOps
+
+externalSecret:
+  enabled: false             # requires external-secrets.io operator
+  secretStoreRef: { kind: ClusterSecretStore, name: vault-backend }   # Vault / Azure Key Vault / AWS Secrets Manager
+  refreshInterval: 1h
+  remoteKeyPrefix: myelin/prod   # remote keys: <prefix>/<KEY NAME>
+
+evidence:
+  store: s3://myelin-evidence-prod/evidence?region=ap-south-1   # or azblob://<account>/<container>/evidence, file:///var/lib/myelin/evidence
+  persistence: { enabled: false, size: 50Gi, storageClass: "" }  # only for file:// stores
+
+migrations:
+  enabled: true              # runs `myelin migrate` as a pre-install/pre-upgrade hook
+  backoffLimit: 2
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}            # workload identity: azure.workload.identity/client-id or eks.amazonaws.com/role-arn
+
+service: { type: ClusterIP, port: 80 }
+
+ingress:
+  enabled: true
+  className: nginx
+  host: myelin.example.com
+  tlsSecret: myelin-tls
+  certManager: { enabled: true, clusterIssuer: letsencrypt-prod }
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "25m"
+    nginx.ingress.kubernetes.io/limit-rps: "50"
+    nginx.ingress.kubernetes.io/ssl-protocols: "TLSv1.2 TLSv1.3"
+
+networkPolicy:
+  enabled: true
+  ingressNamespace: ingress-nginx
+  monitoringNamespace: monitoring
+  databaseCidr: 10.20.0.0/24       # managed PostgreSQL private endpoint
+  egressHttpsCidrs: ["0.0.0.0/0"]  # IdP, GitHub, cloud APIs; narrow to provider ranges or an egress proxy where possible  # myelin:ignore[NM-IAC-003] -- egress-only on 443 for IdP/GitHub/cloud APIs; customers narrow or route via egress proxy
+
+resources:
+  requests: { cpu: 250m, memory: 512Mi }
+  limits: { cpu: "2", memory: 2Gi }
+
+autoscaling: { enabled: true, minReplicas: 3, maxReplicas: 12, targetCPU: 70 }
+podDisruptionBudget: { enabled: true, minAvailable: 2 }
+
+topologySpread: true
+nodeSelector: {}
+tolerations: []
+
+monitoring:
+  serviceMonitor: { enabled: true, interval: 30s }
+  prometheusRule: { enabled: true }
+
+backup:
+  enabled: true
+  schedule: "17 1 * * *"           # daily 01:17 UTC
+  image: ghcr.io/sudheerkumard/nerve-myelin-backup:1.5.0
+  destination: s3://myelin-backups-prod/postgres   # or azblob://<account>/<container>/postgres
+  retentionDays: 35
+  serviceAccountAnnotations: {}    # identity with write-only access to the backup bucket

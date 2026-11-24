@@ -1,4 +1,4 @@
-# AI in NERVE Myelin
+# AI in NERvvE DevSecOps
 
 There are two parts:
 - **AI application security**: finding weaknesses in your LLM, agent, RAG and MCP code.
@@ -57,7 +57,7 @@ Reports and dashboards include **OWASP Top 10 for LLM Applications (2025)** as a
 |---|---|---|
 | **Explain & fix** | Finding drawer | Explains what the finding is, its impact here, why it matters (KEV, EPSS, reachability, exposure), step-by-step fix, how to verify, and links to CVE and CWE. |
 | **Triage suggestion** | Finding drawer | Suggests a verdict: likely real, likely false positive, or needs review. It shows the evidence on both sides and can prefill the false-positive reason. It never changes the finding by itself. |
-| **Ask NERVE Myelin** | Findings page | Answers questions in plain language, for example "critical secrets in payments-api older than 7 days", "known exploited dependency CVEs" or "AI findings in support-bot". It shows how it understood the question, then the matching findings. |
+| **Ask NERvvE DevSecOps** | Findings page | Answers questions in plain language, for example "critical secrets in payments-api older than 7 days", "known exploited dependency CVEs" or "AI findings in support-bot". It shows how it understood the question, then the matching findings. |
 | **AI executive briefing** | Executive overview → Leadership | A short narrative for leadership, written only from the figures on the page. |
 
 ### Built-in by default, your model when you choose

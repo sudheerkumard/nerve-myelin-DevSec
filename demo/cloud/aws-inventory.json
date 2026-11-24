@@ -1,0 +1,495 @@
+{
+ "schema": "myelin-cloud-inventory/1",
+ "provider": "aws",
+ "account": "411122223333",
+ "collected_at": "2026-11-21T12:06:48+00:00",
+ "resources": [
+  {
+   "id": "arn:aws:s3:::acme-kyc-documents",
+   "type": "aws.s3_bucket",
+   "name": "acme-kyc-documents",
+   "region": "",
+   "tags": {
+    "git_repo": "platform-terraform",
+    "git_file": "aws/s3-kyc.tf"
+   },
+   "props": {
+    "public": true,
+    "public_reason": "bucket policy is public",
+    "block_public_access": {
+     "BlockPublicAcls": true,
+     "IgnorePublicAcls": true,
+     "BlockPublicPolicy": false,
+     "RestrictPublicBuckets": false
+    },
+    "versioning": "",
+    "logging": false,
+    "data_store": true
+   }
+  },
+  {
+   "id": "arn:aws:s3:::acme-cloudtrail-logs",
+   "type": "aws.s3_bucket",
+   "name": "acme-cloudtrail-logs",
+   "region": "",
+   "tags": {},
+   "props": {
+    "public": false,
+    "public_reason": "",
+    "block_public_access": {
+     "BlockPublicAcls": true,
+     "IgnorePublicAcls": true,
+     "BlockPublicPolicy": true,
+     "RestrictPublicBuckets": true
+    },
+    "versioning": "Enabled",
+    "logging": false,
+    "data_store": true
+   }
+  },
+  {
+   "id": "arn:aws:ec2:ap-south-1:411122223333:security-group/sg-0a1b2c3d4e5f60718",
+   "type": "aws.security_group",
+   "name": "legacy-admin",
+   "region": "ap-south-1",
+   "tags": {},
+   "props": {
+    "ingress": [
+     {
+      "source": "0.0.0.0/0",
+      "ports": [
+       [
+        22,
+        22
+       ]
+      ],
+      "protocol": "tcp",
+      "allow": true
+     },
+     {
+      "source": "0.0.0.0/0",
+      "ports": [
+       [
+        443,
+        443
+       ]
+      ],
+      "protocol": "tcp",
+      "allow": true
+     }
+    ],
+    "group_id": "sg-0a1b2c3d4e5f60718",
+    "vpc": "vpc-01"
+   }
+  },
+  {
+   "id": "arn:aws:ec2:ap-south-1:411122223333:security-group/sg-0f9e8d7c6b5a40312",
+   "type": "aws.security_group",
+   "name": "loan-db",
+   "region": "ap-south-1",
+   "tags": {},
+   "props": {
+    "ingress": [
+     {
+      "source": "0.0.0.0/0",
+      "ports": [
+       [
+        5432,
+        5432
+       ]
+      ],
+      "protocol": "tcp",
+      "allow": true
+     }
+    ],
+    "group_id": "sg-0f9e8d7c6b5a40312",
+    "vpc": "vpc-01"
+   }
+  },
+  {
+   "id": "arn:aws:ec2:ap-south-1:411122223333:security-group/sg-0123456789abcdef0",
+   "type": "aws.security_group",
+   "name": "internal-only",
+   "region": "ap-south-1",
+   "tags": {},
+   "props": {
+    "ingress": [
+     {
+      "source": "10.0.0.0/8",
+      "ports": [
+       [
+        0,
+        65535
+       ]
+      ],
+      "protocol": "all",
+      "allow": true
+     }
+    ],
+    "group_id": "sg-0123456789abcdef0",
+    "vpc": "vpc-01"
+   }
+  },
+  {
+   "id": "arn:aws:ec2:ap-south-1:411122223333:instance/i-0c1d2e3f4a5b6c7d8",
+   "type": "aws.instance",
+   "name": "kyc-ocr-worker",
+   "region": "ap-south-1",
+   "tags": {
+    "Name": "kyc-ocr-worker",
+    "git_repo": "kyc-onboarding",
+    "git_file": "deploy/ec2.tf"
+   },
+   "props": {
+    "public_ip": "13.233.40.17",
+    "imds_v2": false,
+    "role": "arn:aws:iam::411122223333:instance-profile/kyc-ocr-profile",
+    "security_groups": [
+     "sg-0a1b2c3d4e5f60718"
+    ],
+    "image": "ami-0abc",
+    "workload": true
+   }
+  },
+  {
+   "id": "arn:aws:ec2:ap-south-1:411122223333:instance/i-0aa11bb22cc33dd44",
+   "type": "aws.instance",
+   "name": "batch-runner",
+   "region": "ap-south-1",
+   "tags": {
+    "Name": "batch-runner"
+   },
+   "props": {
+    "public_ip": "",
+    "imds_v2": true,
+    "role": "",
+    "security_groups": [
+     "sg-0123456789abcdef0"
+    ],
+    "image": null,
+    "workload": true
+   }
+  },
+  {
+   "id": "arn:aws:::411122223333/region/ap-south-1",
+   "type": "aws.region_settings",
+   "name": "ap-south-1",
+   "region": "ap-south-1",
+   "tags": {},
+   "props": {
+    "ebs_default_encryption": false,
+    "guardduty": false
+   }
+  },
+  {
+   "id": "arn:aws:rds:ap-south-1:411122223333:db:loan-db",
+   "type": "aws.rds_instance",
+   "name": "loan-db",
+   "region": "ap-south-1",
+   "tags": {
+    "git_repo": "loan-origination"
+   },
+   "props": {
+    "public": true,
+    "encrypted": false,
+    "backup_days": 1,
+    "deletion_protection": false,
+    "engine": "postgres",
+    "security_groups": [
+     "sg-0f9e8d7c6b5a40312"
+    ],
+    "data_store": true
+   }
+  },
+  {
+   "id": "arn:aws:eks:ap-south-1:411122223333:cluster/eks-trading",
+   "type": "aws.eks",
+   "name": "eks-trading",
+   "region": "ap-south-1",
+   "tags": {
+    "git_repo": "trade-capture"
+   },
+   "props": {
+    "public_endpoint": true,
+    "public_cidrs": [
+     "0.0.0.0/0"
+    ],
+    "logging": [
+     "api"
+    ],
+    "secrets_encryption": false,
+    "version": "1.30"
+   }
+  },
+  {
+   "id": "arn:aws:lambda:ap-south-1:411122223333:function:notify-webhook",
+   "type": "aws.lambda",
+   "name": "notify-webhook",
+   "region": "ap-south-1",
+   "tags": {},
+   "props": {
+    "runtime": "python3.8",
+    "role": "arn:aws:iam::411122223333:role/notify-role",
+    "url_auth": "NONE",
+    "workload": true
+   }
+  },
+  {
+   "id": "arn:aws:kms:ap-south-1:411122223333:key/6f1e2d3c-4b5a-4968-8776-5a4b3c2d1e0f",
+   "type": "aws.kms_key",
+   "name": "6f1e2d3c-4b5a-4968-8776-5a4b3c2d1e0f",
+   "region": "ap-south-1",
+   "tags": {},
+   "props": {
+    "rotation": false
+   }
+  },
+  {
+   "id": "arn:aws:cloudtrail:ap-south-1:411122223333:trail/mgmt-events",
+   "type": "aws.trail",
+   "name": "mgmt-events",
+   "region": "ap-south-1",
+   "tags": {},
+   "props": {
+    "multi_region": false,
+    "logging": true,
+    "validation": false
+   }
+  },
+  {
+   "id": "arn:aws:iam::411122223333:root",
+   "type": "aws.account",
+   "name": "411122223333",
+   "region": "global",
+   "tags": {},
+   "props": {
+    "multi_region_trail": false,
+    "root_mfa": true,
+    "root_keys": false,
+    "password_policy": {
+     "MinimumPasswordLength": 8,
+     "PasswordReusePrevention": 0
+    }
+   }
+  }
+ ],
+ "identities": [
+  {
+   "id": "arn:aws:iam::411122223333:user/ci-deploy",
+   "name": "ci-deploy",
+   "kind": "user",
+   "console": false,
+   "mfa": false,
+   "keys": [
+    {
+     "id": "key1",
+     "age_days": 212,
+     "last_used_days": 1,
+     "active": true
+    },
+    {
+     "id": "key2",
+     "age_days": 380,
+     "last_used_days": 140,
+     "active": true
+    }
+   ],
+   "last_used_days": 1,
+   "created_days": 400
+  },
+  {
+   "id": "arn:aws:iam::411122223333:user/rahul.admin",
+   "name": "rahul.admin",
+   "kind": "user",
+   "console": true,
+   "mfa": false,
+   "keys": [],
+   "last_used_days": 2,
+   "created_days": 300
+  },
+  {
+   "id": "arn:aws:iam::411122223333:user/auditor",
+   "name": "auditor",
+   "kind": "user",
+   "console": true,
+   "mfa": true,
+   "keys": [],
+   "last_used_days": 5,
+   "created_days": 200
+  },
+  {
+   "id": "arn:aws:iam::411122223333:role/kyc-ocr-role",
+   "name": "kyc-ocr-role",
+   "kind": "role",
+   "trust": {
+    "public": false,
+    "accounts": [],
+    "services": [
+     "ec2.amazonaws.com"
+    ],
+    "external_id": false,
+    "federated": []
+   },
+   "last_used_days": 0,
+   "created_days": 500,
+   "instance_profiles": [
+    "arn:aws:iam::411122223333:instance-profile/kyc-ocr-profile"
+   ]
+  },
+  {
+   "id": "arn:aws:iam::411122223333:role/notify-role",
+   "name": "notify-role",
+   "kind": "role",
+   "trust": {
+    "public": false,
+    "accounts": [],
+    "services": [
+     "lambda.amazonaws.com"
+    ],
+    "external_id": false,
+    "federated": []
+   },
+   "last_used_days": 0,
+   "created_days": 100
+  },
+  {
+   "id": "arn:aws:iam::411122223333:role/vendor-readonly",
+   "name": "vendor-readonly",
+   "kind": "role",
+   "trust": {
+    "public": true,
+    "accounts": [],
+    "services": [],
+    "external_id": false,
+    "federated": []
+   },
+   "last_used_days": null,
+   "created_days": 700
+  },
+  {
+   "id": "arn:aws:iam::411122223333:role/break-glass-admin",
+   "name": "break-glass-admin",
+   "kind": "role",
+   "trust": {
+    "public": false,
+    "accounts": [
+     "411122223333"
+    ],
+    "services": [],
+    "external_id": false,
+    "federated": []
+   },
+   "last_used_days": 160,
+   "created_days": 800
+  },
+  {
+   "id": "arn:aws:iam::411122223333:root",
+   "name": "root",
+   "kind": "root",
+   "mfa": true,
+   "last_used_days": 3,
+   "keys": []
+  }
+ ],
+ "grants": [
+  {
+   "principal": "arn:aws:iam::411122223333:user/ci-deploy",
+   "principal_kind": "user",
+   "role": "AdministratorAccess",
+   "scope": "411122223333",
+   "scope_level": "account",
+   "actions": [
+    "*@*"
+   ],
+   "privilege": "admin",
+   "builtin": true
+  },
+  {
+   "principal": "arn:aws:iam::411122223333:user/rahul.admin",
+   "principal_kind": "user",
+   "role": "group platform-admins: AdministratorAccess",
+   "scope": "411122223333",
+   "scope_level": "account",
+   "actions": [
+    "*@*"
+   ],
+   "privilege": "admin",
+   "builtin": true
+  },
+  {
+   "principal": "arn:aws:iam::411122223333:user/auditor",
+   "principal_kind": "user",
+   "role": "SecurityAudit",
+   "scope": "411122223333",
+   "scope_level": "account",
+   "actions": [
+    "iam:Get*@*",
+    "iam:List*@*",
+    "s3:GetBucketPolicy@*",
+    "ec2:Describe*@*"
+   ],
+   "privilege": "read",
+   "builtin": true
+  },
+  {
+   "principal": "arn:aws:iam::411122223333:role/kyc-ocr-role",
+   "principal_kind": "role",
+   "role": "inline:ocr-access",
+   "scope": "411122223333",
+   "scope_level": "account",
+   "actions": [
+    "s3:*@*",
+    "iam:PassRole@*",
+    "lambda:CreateFunction@*",
+    "lambda:InvokeFunction@*"
+   ],
+   "privilege": "admin",
+   "builtin": false
+  },
+  {
+   "principal": "arn:aws:iam::411122223333:role/notify-role",
+   "principal_kind": "role",
+   "role": "inline:notify",
+   "scope": "411122223333",
+   "scope_level": "account",
+   "actions": [
+    "sns:Publish@*",
+    "logs:CreateLogStream@*"
+   ],
+   "privilege": "write",
+   "builtin": false
+  },
+  {
+   "principal": "arn:aws:iam::411122223333:role/vendor-readonly",
+   "principal_kind": "role",
+   "role": "ReadOnlyAccess",
+   "scope": "411122223333",
+   "scope_level": "account",
+   "actions": [
+    "s3:Get*@*",
+    "s3:List*@*",
+    "ec2:Describe*@*"
+   ],
+   "privilege": "read",
+   "builtin": true
+  },
+  {
+   "principal": "arn:aws:iam::411122223333:role/break-glass-admin",
+   "principal_kind": "role",
+   "role": "AdministratorAccess",
+   "scope": "411122223333",
+   "scope_level": "account",
+   "actions": [
+    "*@*"
+   ],
+   "privilege": "admin",
+   "builtin": true
+  }
+ ],
+ "collector": {
+  "source": "aws-api",
+  "regions": [
+   "ap-south-1"
+  ]
+ }
+}

@@ -1,0 +1,8 @@
+# Default accounts for the evaluation build
+#   admin / Winter#2026!
+users:
+  - username: admin
+    password: pbkdf2_sha256$600000$GlGVyBW05PvGwxBeTQxGrw==$q8Z1n2
+  - username: ops
+    password: ${OPS_PASSWORD}
+aws_access_key_id: AKIA2E0A8F3B1C4D5E6F

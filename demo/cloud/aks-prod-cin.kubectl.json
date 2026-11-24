@@ -1,0 +1,819 @@
+{
+ "apiVersion": "v1",
+ "kind": "List",
+ "items": [
+  {
+   "apiVersion": "v1",
+   "kind": "Namespace",
+   "metadata": {
+    "name": "payments",
+    "labels": {
+     "kubernetes.io/metadata.name": "payments",
+     "pod-security.kubernetes.io/enforce": "restricted"
+    }
+   }
+  },
+  {
+   "apiVersion": "v1",
+   "kind": "Namespace",
+   "metadata": {
+    "name": "web",
+    "labels": {
+     "kubernetes.io/metadata.name": "web"
+    }
+   }
+  },
+  {
+   "apiVersion": "v1",
+   "kind": "Namespace",
+   "metadata": {
+    "name": "monitoring",
+    "labels": {
+     "kubernetes.io/metadata.name": "monitoring",
+     "pod-security.kubernetes.io/enforce": "privileged"
+    }
+   }
+  },
+  {
+   "apiVersion": "v1",
+   "kind": "Namespace",
+   "metadata": {
+    "name": "batch",
+    "labels": {
+     "kubernetes.io/metadata.name": "batch"
+    }
+   }
+  },
+  {
+   "apiVersion": "v1",
+   "kind": "Namespace",
+   "metadata": {
+    "name": "ci",
+    "labels": {
+     "kubernetes.io/metadata.name": "ci"
+    }
+   }
+  },
+  {
+   "apiVersion": "v1",
+   "kind": "Namespace",
+   "metadata": {
+    "name": "kube-system",
+    "labels": {
+     "kubernetes.io/metadata.name": "kube-system"
+    }
+   }
+  },
+  {
+   "apiVersion": "apps/v1",
+   "kind": "Deployment",
+   "metadata": {
+    "name": "payments-api",
+    "namespace": "payments",
+    "labels": {
+     "app": "payments-api"
+    },
+    "annotations": {
+     "myelin.io/repo": "payments-gateway"
+    }
+   },
+   "spec": {
+    "selector": {
+     "matchLabels": {
+      "app": "payments-api"
+     }
+    },
+    "template": {
+     "metadata": {
+      "labels": {
+       "app": "payments-api"
+      }
+     },
+     "spec": {
+      "serviceAccountName": "payments-api",
+      "containers": [
+       {
+        "name": "api",
+        "image": "acmeprod.azurecr.io/payments-gateway@sha256:3b9e1c0d5a7f2e4b6c8d0a1b3c5d7e9f1a2b4c6d8e0f1a3b5c7d9e1f2a4b6c8d",
+        "securityContext": {
+         "allowPrivilegeEscalation": false,
+         "runAsNonRoot": true,
+         "readOnlyRootFilesystem": true,
+         "capabilities": {
+          "drop": [
+           "ALL"
+          ]
+         },
+         "seccompProfile": {
+          "type": "RuntimeDefault"
+         }
+        },
+        "resources": {
+         "limits": {
+          "memory": "512Mi",
+          "cpu": "500m"
+         }
+        },
+        "ports": [
+         {
+          "containerPort": 8443
+         }
+        ]
+       }
+      ],
+      "automountServiceAccountToken": false,
+      "securityContext": {
+       "seccompProfile": {
+        "type": "RuntimeDefault"
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "apiVersion": "apps/v1",
+   "kind": "Deployment",
+   "metadata": {
+    "name": "payments-web",
+    "namespace": "web",
+    "labels": {
+     "app": "payments-web"
+    },
+    "annotations": {}
+   },
+   "spec": {
+    "selector": {
+     "matchLabels": {
+      "app": "payments-web"
+     }
+    },
+    "template": {
+     "metadata": {
+      "labels": {
+       "app": "payments-web"
+      }
+     },
+     "spec": {
+      "serviceAccountName": "payments-web",
+      "containers": [
+       {
+        "name": "web",
+        "image": "acmeprod.azurecr.io/payments-web:2026.11.3",
+        "securityContext": {
+         "allowPrivilegeEscalation": true
+        },
+        "env": [
+         {
+          "name": "SPRING_PROFILES_ACTIVE",
+          "value": "prod"
+         },
+         {
+          "name": "PAYMENT_API_TOKEN",
+          "value": "tok_live_3f9a8c7b6d5e4f3a"
+         }
+        ],
+        "resources": {
+         "limits": {
+          "memory": "512Mi",
+          "cpu": "500m"
+         }
+        },
+        "ports": [
+         {
+          "containerPort": 8080
+         }
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "apiVersion": "apps/v1",
+   "kind": "Deployment",
+   "metadata": {
+    "name": "mobile-bff",
+    "namespace": "web",
+    "labels": {
+     "app": "mobile-bff"
+    },
+    "annotations": {}
+   },
+   "spec": {
+    "selector": {
+     "matchLabels": {
+      "app": "mobile-bff"
+     }
+    },
+    "template": {
+     "metadata": {
+      "labels": {
+       "app": "mobile-bff"
+      }
+     },
+     "spec": {
+      "serviceAccountName": "default",
+      "containers": [
+       {
+        "name": "bff",
+        "image": "acmeprod.azurecr.io/mobile-bff:latest",
+        "securityContext": {},
+        "ports": [
+         {
+          "containerPort": 3000
+         }
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "apiVersion": "apps/v1",
+   "kind": "DaemonSet",
+   "metadata": {
+    "name": "log-agent",
+    "namespace": "monitoring",
+    "labels": {
+     "app": "log-agent"
+    },
+    "annotations": {}
+   },
+   "spec": {
+    "selector": {
+     "matchLabels": {
+      "app": "log-agent"
+     }
+    },
+    "template": {
+     "metadata": {
+      "labels": {
+       "app": "log-agent"
+      }
+     },
+     "spec": {
+      "serviceAccountName": "log-agent",
+      "containers": [
+       {
+        "name": "agent",
+        "image": "docker.io/acme/log-agent:3.2",
+        "securityContext": {
+         "privileged": true,
+         "capabilities": {
+          "add": [
+           "SYS_ADMIN"
+          ]
+         }
+        },
+        "resources": {
+         "limits": {
+          "memory": "512Mi",
+          "cpu": "500m"
+         }
+        }
+       }
+      ],
+      "hostNetwork": true,
+      "volumes": [
+       {
+        "name": "varlog",
+        "hostPath": {
+         "path": "/var/log"
+        }
+       },
+       {
+        "name": "sock",
+        "hostPath": {
+         "path": "/var/run/docker.sock"
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "apiVersion": "batch/v1",
+   "kind": "CronJob",
+   "metadata": {
+    "name": "db-backup",
+    "namespace": "batch"
+   },
+   "spec": {
+    "schedule": "0 1 * * *",
+    "jobTemplate": {
+     "spec": {
+      "template": {
+       "spec": {
+        "containers": [
+         {
+          "name": "backup",
+          "image": "postgres:16",
+          "securityContext": {},
+          "env": [
+           {
+            "name": "PGPASSWORD",
+            "value": "Backup#2026!prod"
+           },
+           {
+            "name": "PGHOST",
+            "value": "sql-netbanking-prod"
+           }
+          ],
+          "resources": {
+           "limits": {
+            "memory": "512Mi",
+            "cpu": "500m"
+           }
+          }
+         }
+        ],
+        "restartPolicy": "OnFailure"
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "apiVersion": "apps/v1",
+   "kind": "Deployment",
+   "metadata": {
+    "name": "coredns",
+    "namespace": "kube-system",
+    "labels": {
+     "app": "coredns"
+    },
+    "annotations": {}
+   },
+   "spec": {
+    "selector": {
+     "matchLabels": {
+      "app": "coredns"
+     }
+    },
+    "template": {
+     "metadata": {
+      "labels": {
+       "app": "coredns"
+      }
+     },
+     "spec": {
+      "serviceAccountName": "default",
+      "containers": [
+       {
+        "name": "coredns",
+        "image": "registry.k8s.io/coredns/coredns:v1.11.1",
+        "securityContext": {
+         "capabilities": {
+          "add": [
+           "NET_BIND_SERVICE"
+          ]
+         }
+        },
+        "resources": {
+         "limits": {
+          "memory": "512Mi",
+          "cpu": "500m"
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "apiVersion": "v1",
+   "kind": "Service",
+   "metadata": {
+    "name": "payments-web",
+    "namespace": "web"
+   },
+   "spec": {
+    "type": "LoadBalancer",
+    "selector": {
+     "app": "payments-web"
+    },
+    "ports": [
+     {
+      "port": 443
+     }
+    ]
+   },
+   "status": {
+    "loadBalancer": {
+     "ingress": [
+      {
+       "ip": "20.204.11.7"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "apiVersion": "v1",
+   "kind": "Service",
+   "metadata": {
+    "name": "mobile-bff",
+    "namespace": "web"
+   },
+   "spec": {
+    "type": "ClusterIP",
+    "selector": {
+     "app": "mobile-bff"
+    },
+    "ports": [
+     {
+      "port": 80
+     }
+    ]
+   }
+  },
+  {
+   "apiVersion": "v1",
+   "kind": "Service",
+   "metadata": {
+    "name": "payments-api",
+    "namespace": "payments",
+    "annotations": {
+     "service.beta.kubernetes.io/azure-load-balancer-internal": "true"
+    }
+   },
+   "spec": {
+    "type": "LoadBalancer",
+    "selector": {
+     "app": "payments-api"
+    },
+    "ports": [
+     {
+      "port": 8443
+     }
+    ]
+   }
+  },
+  {
+   "apiVersion": "networking.k8s.io/v1",
+   "kind": "Ingress",
+   "metadata": {
+    "name": "mobile-bff",
+    "namespace": "web"
+   },
+   "spec": {
+    "rules": [
+     {
+      "host": "m.acme-bank.example",
+      "http": {
+       "paths": [
+        {
+         "path": "/",
+         "pathType": "Prefix",
+         "backend": {
+          "service": {
+           "name": "mobile-bff",
+           "port": {
+            "number": 80
+           }
+          }
+         }
+        }
+       ]
+      }
+     }
+    ]
+   }
+  },
+  {
+   "apiVersion": "networking.k8s.io/v1",
+   "kind": "NetworkPolicy",
+   "metadata": {
+    "name": "default-deny",
+    "namespace": "payments"
+   },
+   "spec": {
+    "podSelector": {},
+    "policyTypes": [
+     "Ingress",
+     "Egress"
+    ]
+   }
+  },
+  {
+   "apiVersion": "v1",
+   "kind": "ServiceAccount",
+   "metadata": {
+    "name": "payments-api",
+    "namespace": "payments",
+    "annotations": {
+     "azure.workload.identity/client-id": "c0ffee00-1111-4222-8333-444455556666"
+    }
+   }
+  },
+  {
+   "apiVersion": "v1",
+   "kind": "ServiceAccount",
+   "metadata": {
+    "name": "payments-web",
+    "namespace": "web",
+    "annotations": {}
+   }
+  },
+  {
+   "apiVersion": "v1",
+   "kind": "ServiceAccount",
+   "metadata": {
+    "name": "default",
+    "namespace": "web",
+    "annotations": {}
+   }
+  },
+  {
+   "apiVersion": "v1",
+   "kind": "ServiceAccount",
+   "metadata": {
+    "name": "log-agent",
+    "namespace": "monitoring",
+    "annotations": {}
+   }
+  },
+  {
+   "apiVersion": "v1",
+   "kind": "ServiceAccount",
+   "metadata": {
+    "name": "deployer",
+    "namespace": "ci",
+    "annotations": {}
+   }
+  },
+  {
+   "apiVersion": "rbac.authorization.k8s.io/v1",
+   "kind": "ClusterRole",
+   "metadata": {
+    "name": "cluster-admin"
+   },
+   "rules": [
+    {
+     "apiGroups": [
+      "*"
+     ],
+     "resources": [
+      "*"
+     ],
+     "verbs": [
+      "*"
+     ]
+    }
+   ]
+  },
+  {
+   "apiVersion": "rbac.authorization.k8s.io/v1",
+   "kind": "ClusterRole",
+   "metadata": {
+    "name": "secret-reader"
+   },
+   "rules": [
+    {
+     "apiGroups": [
+      ""
+     ],
+     "resources": [
+      "secrets"
+     ],
+     "verbs": [
+      "get",
+      "list",
+      "watch"
+     ]
+    }
+   ]
+  },
+  {
+   "apiVersion": "rbac.authorization.k8s.io/v1",
+   "kind": "ClusterRole",
+   "metadata": {
+    "name": "ops-everything"
+   },
+   "rules": [
+    {
+     "apiGroups": [
+      "*"
+     ],
+     "resources": [
+      "*"
+     ],
+     "verbs": [
+      "*"
+     ]
+    }
+   ]
+  },
+  {
+   "apiVersion": "rbac.authorization.k8s.io/v1",
+   "kind": "Role",
+   "metadata": {
+    "name": "debugger",
+    "namespace": "web"
+   },
+   "rules": [
+    {
+     "apiGroups": [
+      ""
+     ],
+     "resources": [
+      "pods/exec",
+      "pods"
+     ],
+     "verbs": [
+      "get",
+      "create"
+     ]
+    }
+   ]
+  },
+  {
+   "apiVersion": "rbac.authorization.k8s.io/v1",
+   "kind": "ClusterRoleBinding",
+   "metadata": {
+    "name": "ci-deployer-admin"
+   },
+   "roleRef": {
+    "kind": "ClusterRole",
+    "name": "cluster-admin"
+   },
+   "subjects": [
+    {
+     "kind": "ServiceAccount",
+     "name": "deployer",
+     "namespace": "ci"
+    }
+   ]
+  },
+  {
+   "apiVersion": "rbac.authorization.k8s.io/v1",
+   "kind": "ClusterRoleBinding",
+   "metadata": {
+    "name": "all-can-read-secrets"
+   },
+   "roleRef": {
+    "kind": "ClusterRole",
+    "name": "secret-reader"
+   },
+   "subjects": [
+    {
+     "kind": "Group",
+     "name": "system:authenticated"
+    }
+   ]
+  },
+  {
+   "apiVersion": "rbac.authorization.k8s.io/v1",
+   "kind": "ClusterRoleBinding",
+   "metadata": {
+    "name": "cluster-admins"
+   },
+   "roleRef": {
+    "kind": "ClusterRole",
+    "name": "cluster-admin"
+   },
+   "subjects": [
+    {
+     "kind": "Group",
+     "name": "system:masters"
+    }
+   ]
+  },
+  {
+   "apiVersion": "rbac.authorization.k8s.io/v1",
+   "kind": "RoleBinding",
+   "metadata": {
+    "name": "web-edit",
+    "namespace": "web"
+   },
+   "roleRef": {
+    "kind": "ClusterRole",
+    "name": "edit"
+   },
+   "subjects": [
+    {
+     "kind": "ServiceAccount",
+     "name": "payments-web",
+     "namespace": "web"
+    }
+   ]
+  },
+  {
+   "apiVersion": "rbac.authorization.k8s.io/v1",
+   "kind": "RoleBinding",
+   "metadata": {
+    "name": "debuggers",
+    "namespace": "web"
+   },
+   "roleRef": {
+    "kind": "Role",
+    "name": "debugger"
+   },
+   "subjects": [
+    {
+     "kind": "User",
+     "name": "oncall@acme-bank.example"
+    }
+   ]
+  },
+  {
+   "apiVersion": "v1",
+   "kind": "Node",
+   "metadata": {
+    "name": "aks-system-1234567-vmss000000",
+    "labels": {
+     "topology.kubernetes.io/region": "centralindia"
+    }
+   },
+   "status": {
+    "nodeInfo": {
+     "kubeletVersion": "v1.29.4",
+     "osImage": "Ubuntu 22.04.4 LTS",
+     "containerRuntimeVersion": "containerd://1.7.15-1"
+    }
+   }
+  },
+  {
+   "apiVersion": "v1",
+   "kind": "Node",
+   "metadata": {
+    "name": "aks-system-1234567-vmss000001",
+    "labels": {
+     "topology.kubernetes.io/region": "centralindia"
+    }
+   },
+   "status": {
+    "nodeInfo": {
+     "kubeletVersion": "v1.29.4",
+     "osImage": "Ubuntu 22.04.4 LTS",
+     "containerRuntimeVersion": "containerd://1.7.15-1"
+    }
+   }
+  },
+  {
+   "apiVersion": "v1",
+   "kind": "Node",
+   "metadata": {
+    "name": "aks-system-1234567-vmss000002",
+    "labels": {
+     "topology.kubernetes.io/region": "centralindia"
+    }
+   },
+   "status": {
+    "nodeInfo": {
+     "kubeletVersion": "v1.29.4",
+     "osImage": "Ubuntu 22.04.4 LTS",
+     "containerRuntimeVersion": "containerd://1.7.15-1"
+    }
+   }
+  },
+  {
+   "apiVersion": "v1",
+   "kind": "Pod",
+   "metadata": {
+    "name": "payments-web-7d9c6b5f8d-x2k4q",
+    "namespace": "web",
+    "ownerReferences": [
+     {
+      "kind": "ReplicaSet",
+      "name": "payments-web-7d9c6b5f8d"
+     }
+    ]
+   },
+   "spec": {
+    "serviceAccountName": "payments-web",
+    "nodeName": "aks-system-1234567-vmss000001",
+    "containers": [
+     {
+      "name": "web",
+      "image": "acmeprod.azurecr.io/payments-web:2026.11.3"
+     }
+    ]
+   },
+   "status": {
+    "containerStatuses": [
+     {
+      "imageID": "acmeprod.azurecr.io/payments-web@sha256:9c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d"
+     }
+    ]
+   }
+  },
+  {
+   "apiVersion": "v1",
+   "kind": "Secret",
+   "metadata": {
+    "name": "never-collected",
+    "namespace": "web"
+   },
+   "data": {
+    "password": "c2VjcmV0"
+   }
+  }
+ ]
+}

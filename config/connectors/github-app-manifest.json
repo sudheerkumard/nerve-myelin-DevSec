@@ -1,6 +1,6 @@
 {
-  "_comment": "NERVE Myelin GitHub App manifest — read-only, least privilege. (c) 2026 Sudheer Kumar. Create via https://github.com/settings/apps/new?manifest or org settings; install on selected repositories only.",
-  "name": "NERVE Myelin (read-only)",
+  "_comment": "NERvvE DevSecOps GitHub App manifest — read-only, least privilege. (c) 2026 Sudheer Kumar. Create via https://github.com/settings/apps/new?manifest or org settings; install on selected repositories only.",
+  "name": "NERvvE DevSecOps (read-only)",
   "url": "https://github.com/sudheerkumard/nerve-myelin-DevSec",
   "public": false,
   "hook_attributes": { "active": false },

@@ -1,0 +1,11 @@
+name: agent
+on:
+  issue_comment:
+    types: [created]
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - run: claude -p "Fix: ${{ github.event.comment.body }}" --dangerously-skip-permissions

@@ -1,0 +1,17 @@
+services:
+  api:
+    image: acme/api:1.4.2
+    privileged: true
+    environment:
+      DB_PASSWORD: Sup3r-S3cret-Value
+      API_KEY: ${API_KEY}
+      TOKEN_FILE: /run/secrets/token
+  agent:
+    image: acme/agent:2.0.1
+    volumes: ["/var/run/docker.sock:/var/run/docker.sock"]
+  db:
+    image: postgres:16.4
+    ports: ["5432:5432"]
+  cache:
+    image: redis:7.4
+    ports: ["127.0.0.1:6379:6379"]

@@ -1,14 +1,17 @@
-# NERVE Myelin documentation site. Copyright (c) 2026 Sudheer Kumar. All rights reserved.
-# Build:  pip install -r docs/requirements.txt && mkdocs build   (output: site/, fully offline)
+# NERvvE DevSecOps documentation site. Copyright (c) 2026 Sudheer Kumar. SPDX-License-Identifier: AGPL-3.0-only.
+# Build:  pip install -r docs/requirements.txt && python scripts/build_docs.py   (output: site/, fully offline)
 site_url: https://sudheerkumard.github.io/nerve-myelin-DevSec/
-site_name: NERVE Myelin Documentation
+site_name: NERvvE DevSecOps Documentation
 site_description: DevSecOps and cloud-native application protection — code, pipeline, cloud and runtime.
 site_author: Sudheer Kumar
-copyright: Copyright &copy; 2026 Sudheer Kumar. All rights reserved. Proprietary software.
+copyright: Copyright &copy; 2026 Sudheer Kumar · NERvvE DevSecOps Community edition, licensed under the GNU AGPL-3.0.
 docs_dir: docs
 site_dir: site
 exclude_docs: |
-  *.mmd
+  releases/TEMPLATE.md
+  whitepaper/NERvvE-DevSecOps-Whitepaper.html
+  enterprise/diagrams/*.mmd
+  assets/screenshots-public/
 not_in_nav: |
   /legal/licenses/*
   /releases/*
@@ -49,7 +52,7 @@ extra:
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/sudheerkumard/nerve-myelin-DevSec
-      name: NERVE Myelin on GitHub
+      name: NERvvE DevSecOps on GitHub
 
 extra_css:
   - assets/stylesheets/myelin.css
@@ -80,7 +83,7 @@ validation:
 nav:
   - Home: index.md
   - Getting started:
-      - Evaluate NERVE Myelin: getting-started/evaluate.md
+      - Evaluate NERvvE DevSecOps: getting-started/evaluate.md
       - Quick start: getting-started/quick-start.md
       - Features: getting-started/features.md
       - Architecture: getting-started/architecture.md
@@ -111,7 +114,7 @@ nav:
           - AI features: AI-FEATURES.md
       - Governance & reporting:
           - Policy governance: POLICY-GOVERNANCE.md
-          - Risk graph: MYELIN-RISK-GRAPH.md
+          - Risk graph: RISK-GRAPH.md
           - Assessment reports: ASSESSMENT-REPORTS.md
           - Accuracy: ACCURACY.md
   - Deploy & operate:
@@ -139,8 +142,9 @@ nav:
           - ADR 0006 Attack-path criteria: adr/0006.md
           - ADR 0007 Runtime sensors: adr/0007.md
           - Template: adr/template.md
-      - Whitepaper: whitepaper/NERVE-Myelin-Whitepaper.md
+      - Whitepaper: whitepaper/NERvvE-DevSecOps-Whitepaper.md
   - Legal:
+      - Commercial licence: legal/COMMERCIAL-LICENCE.md
       - Subscription agreement: legal/SUBSCRIPTION-AGREEMENT.md
       - Acceptable use policy: legal/ACCEPTABLE-USE-POLICY.md
       - Data processing addendum: legal/DATA-PROCESSING-ADDENDUM.md

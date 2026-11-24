@@ -1,0 +1,273 @@
+# Copyright (c) 2026 Sudheer Kumar.
+# SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
+"""Manifest parsing -> CycloneDX 1.5 SBOM + offline SCA + licence checks.
+
+In production the orchestrator prefers Syft (SBOM) and Grype/Trivy/OSV (advisories);
+this built-in path guarantees results in air-gapped environments and in demos.
+"""
+import json
+import os
+import re
+import uuid
+from datetime import datetime, timezone
+
+from . import vulndb
+
+# Curated offline advisory pack (subset; the server syncs OSV/NVD/GHSA/KEV/EPSS feeds).
+ADVISORIES = [
+    # ecosystem, package, vulnerable-below, fixed, cve, cvss, epss, kev, cwe, title
+    ("maven", "org.apache.logging.log4j:log4j-core", "2.17.1", "2.17.1", "CVE-2021-44228", 10.0, 0.975, True, "CWE-917", "Log4Shell JNDI remote code execution"),
+    ("maven", "org.springframework:spring-beans", "5.3.18", "5.3.18", "CVE-2022-22965", 9.8, 0.974, True, "CWE-94", "Spring4Shell data-binding RCE"),
+    ("maven", "org.apache.commons:commons-text", "1.10.0", "1.10.0", "CVE-2022-42889", 9.8, 0.969, False, "CWE-94", "Text4Shell interpolation RCE"),
+    ("npm", "lodash", "4.17.21", "4.17.21", "CVE-2021-23337", 7.2, 0.012, False, "CWE-94", "Command injection via template"),
+    ("npm", "semver", "7.5.2", "7.5.2", "CVE-2022-25883", 7.5, 0.006, False, "CWE-1333", "ReDoS in range parsing"),
+    ("npm", "@babel/traverse", "7.23.2", "7.23.2", "CVE-2023-45133", 9.3, 0.015, False, "CWE-184", "Arbitrary code execution when compiling crafted code"),
+    ("npm", "jsonwebtoken", "9.0.0", "9.0.0", "CVE-2022-23529", 7.6, 0.004, False, "CWE-20", "Insecure key handling in verify()"),
+    ("npm", "axios", "1.6.0", "1.6.0", "CVE-2023-45857", 6.5, 0.002, False, "CWE-352", "XSRF-TOKEN leaked to third-party hosts"),
+    ("pypi", "requests", "2.32.0", "2.32.0", "CVE-2024-35195", 5.6, 0.001, False, "CWE-670", "Session ignores verify=False reset"),  # myelin:ignore[NM-SAST-004] -- advisory description text, not a TLS call
+    ("pypi", "django", "4.2.15", "4.2.15", "CVE-2024-42005", 9.8, 0.011, False, "CWE-89", "SQL injection in QuerySet.values()"),
+    ("pypi", "pyyaml", "5.4", "5.4", "CVE-2020-14343", 9.8, 0.021, False, "CWE-20", "Arbitrary code execution via full_load"),
+    ("pypi", "jinja2", "3.1.4", "3.1.4", "CVE-2024-34064", 5.4, 0.001, False, "CWE-79", "XSS via xmlattr filter"),
+    ("go", "golang.org/x/net", "0.17.0", "0.17.0", "CVE-2023-44487", 7.5, 0.94, True, "CWE-400", "HTTP/2 Rapid Reset DoS"),
+]
+COPYLEFT = {"AGPL-3.0", "GPL-3.0", "GPL-2.0", "SSPL-1.0"}
+
+
+def licence_kind(lic: str | None) -> str | None:
+    """strong (GPL/AGPL/SSPL/EUPL), weak (LGPL/MPL/EPL/CDDL) or None. An 'A OR B' expression is judged by its most
+    permissive option, since the user may choose it."""
+    if not lic or lic == "unknown":
+        return None
+    options = [o.strip(" ()").upper() for o in re.split(r"\s+OR\s+", lic)]
+    def one(o):
+        if re.search(r"\b(AGPL|SSPL|EUPL)|(^|[^L])GPL", o):
+            return "strong"
+        if re.search(r"\bLGPL|\bMPL|\bEPL|\bCDDL|\bCPL", o):
+            return "weak"
+        return None
+    kinds = [one(o) for o in options]
+    return None if None in kinds else "weak" if "weak" in kinds else "strong"
+KNOWN_LICENSES = {"lodash": "MIT", "express": "MIT", "axios": "MIT", "semver": "ISC", "requests": "Apache-2.0",
+                  "django": "BSD-3-Clause", "flask": "BSD-3-Clause", "pyyaml": "MIT", "jinja2": "BSD-3-Clause",
+                  "mongodb": "Apache-2.0", "ghostscript": "AGPL-3.0", "itext7": "AGPL-3.0", "mysql-connector-python": "GPL-2.0",
+                  "jsonwebtoken": "MIT", "@babel/traverse": "MIT"}
+
+
+def _ver(v: str):
+    return tuple(int(x) if x.isdigit() else 0 for x in re.split(r"[.\-+]", re.sub(r"^[^\d]*", "", v))[:4])
+
+
+def parse_manifests(root: str) -> list[dict]:
+    comps = []
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if d not in {".git", "node_modules", ".venv"}]
+        for fn in filenames:
+            p = os.path.join(dirpath, fn)
+            rel = os.path.relpath(p, root)
+            try:
+                text = open(p, encoding="utf-8", errors="ignore").read()
+            except OSError:
+                continue
+            if fn == "package.json":
+                try:
+                    data = json.loads(text)
+                except json.JSONDecodeError:
+                    continue
+                for sect, scope in (("dependencies", "required"), ("devDependencies", "optional")):
+                    for n, v in (data.get(sect) or {}).items():
+                        comps.append({"ecosystem": "npm", "name": n, "version": v.lstrip("^~>=< "), "file": rel, "scope": scope})
+            elif re.match(r"requirements.*\.txt$", fn):
+                dev = bool(re.search(r"(dev|test|lint|doc)", fn))
+                for ln in text.splitlines():
+                    m = re.match(r"^\s*([A-Za-z0-9_.\-]+)(\[[^\]]*\])?\s*(==|>=|~=|>|<=|<|!=)?\s*([\w.\-*]+)?", ln.split("#")[0])
+                    if not m or not m.group(1) or ln.strip().startswith(("-", "#")):
+                        continue
+                    extras = {e.strip() for e in (m.group(2) or "").strip("[]").split(",") if e.strip()}
+                    version = m.group(4) if m.group(3) == "==" else None
+                    spec = ln.split("#")[0].split(";")[0].strip()[len(m.group(1)) + len(m.group(2) or ""):].strip()
+                    comps.append({"ecosystem": "pypi", "name": vulndb.norm_name("pypi", m.group(1)), "version": version,
+                                  "spec": spec, "extras": extras, "file": rel, "scope": "optional" if dev else "required"})
+            elif fn == "go.mod":
+                for m in re.finditer(r"^\s*([\w./\-]+)\s+v([\w.\-+]+)", text, re.M):
+                    comps.append({"ecosystem": "go", "name": m.group(1), "version": m.group(2), "file": rel, "scope": "required"})
+            elif fn == "pom.xml":
+                for m in re.finditer(r"<groupId>([^<]+)</groupId>\s*<artifactId>([^<]+)</artifactId>\s*<version>([^<$]+)</version>", text):
+                    comps.append({"ecosystem": "maven", "name": f"{m.group(1)}:{m.group(2)}", "version": m.group(3), "file": rel, "scope": "required"})
+    for c in comps:
+        c["license"] = KNOWN_LICENSES.get(c["name"], "unknown")
+        c["purl"] = f"pkg:{c['ecosystem']}/{c['name'].replace(':', '/')}@{c['version']}"
+    return comps
+
+
+def _pick_pypi(name, spec):
+    """Version an install would get today for an unpinned requirement."""
+    try:
+        from packaging.specifiers import SpecifierSet
+        from packaging.version import InvalidVersion, Version
+        proj = vulndb._safe(vulndb._pypi_project, name) or {}
+        best = None
+        ss = SpecifierSet(spec or "")
+        for v, files in (proj.get("releases") or {}).items():
+            try:
+                pv = Version(v)
+            except InvalidVersion:
+                continue
+            if not pv.is_prerelease and files and not all(f.get("yanked") for f in files) and ss.contains(pv):
+                best = pv if best is None or pv > best else best
+        return str(best) if best else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def inventory(root: str) -> list[dict]:
+    """Every third-party component: manifests (direct), lockfiles (exact transitive) and, for Python requirements
+    without a lockfile, transitive dependencies resolved from PyPI. Licences filled in from the registries."""
+    vulndb.STATUS["sources"].clear(); vulndb.STATUS["errors"].clear()
+    direct = parse_manifests(root)
+    for c in direct:
+        c.setdefault("via", None)
+        if c["ecosystem"] == "pypi" and not c["version"] and not vulndb.offline():
+            c["version"] = _pick_pypi(c["name"], c.get("spec"))
+            if c["version"]:
+                c["resolved"] = True
+    direct = [c for c in direct if c["version"]]
+    for c in direct:
+        c["purl"] = f"pkg:{c['ecosystem']}/{c['name'].replace(':', '/')}@{c['version']}"
+    locked = vulndb.parse_lockfiles(root)
+    locked_ecos = {c["ecosystem"] for c in locked}
+    trans = [] if "pypi" in locked_ecos or vulndb.offline() else \
+        vulndb.resolve_pypi([c for c in direct if c["ecosystem"] == "pypi"])
+    comps, seen = [], set()
+    for c in direct + locked + trans:
+        k = (c["ecosystem"], c["name"], c["version"])
+        if k not in seen:
+            seen.add(k)
+            comps.append(c)
+    if not vulndb.offline():
+        from concurrent.futures import ThreadPoolExecutor
+        todo = [c for c in comps if c.get("license", "unknown") == "unknown"]
+        with ThreadPoolExecutor(max_workers=8) as ex:
+            for c, lic in zip(todo, ex.map(vulndb.licence, todo)):
+                c["license"] = lic
+        if any(c["license"] != "unknown" for c in todo):
+            vulndb.STATUS["sources"].add("package registries (licences)")
+    return comps
+
+
+def _reach(pkg, hint):
+    if hint is None:
+        return None
+    hit, unknown = hint
+    return None if pkg in unknown else (pkg in hit)
+
+
+def _dep_type(c):
+    return {"required": "direct", "optional": "dev", "dev": "dev", "transitive": "transitive"}.get(c.get("scope"), "direct")
+
+
+def match_advisories(comps: list[dict], repo: str = "local", reachable_hint: set | None = None) -> list[dict]:
+    out, seen = [], set()
+    for c, v in vulndb.vulnerabilities(comps):                    # live intelligence (OSV / PyPI)
+        key = (c["ecosystem"], c["name"], c["version"], v["cve"] or v["id"])
+        if key in seen:
+            continue
+        seen.add(key)
+        if str(v.get("id", "")).startswith("MAL-"):             # OSV malicious-package feed: malware, not a CVE
+            from . import supply_chain
+            out.append(supply_chain.malicious_advisory_finding(c, v, repo))
+            continue
+        via = f" (via {c['via']})" if c.get("via") else ""
+        out.append({
+            "engine": "sca", "rule_id": v["cve"] or v["id"], "cve": v["cve"], "advisory": v["id"], "aliases": v["aliases"],
+            "title": f"{c['name']}@{c['version']}: {v['summary'] or v['id']}", "severity": v["severity"],
+            "cvss": v["cvss"], "epss": None, "kev": False, "cwe": v["cwe"], "package": c["name"], "version": c["version"],
+            "fixed_version": v["fixed"], "file": c["file"], "repo": repo, "ecosystem": c["ecosystem"], "purl": c["purl"],
+            "reachable": _reach(c["via"] or c["name"], reachable_hint), "exposure": "internet",
+            "dependency_type": _dep_type(c), "introduced_by": c.get("via"), "autofix": bool(v["fixed"]),
+            "evidence": f"{c['name']} {c['version']}{via} · advisory {v['id']}" + ("" if v["severity_known"] else " · severity not published, rated medium"),
+            "remediation": (f"Upgrade {c['name']} to {v['fixed']} or later" + (f" (it comes in through {c['via']}: upgrade {c['via']} to a release that allows it)" if c.get("via") else "") + ".")
+            if v["fixed"] else f"No fixed release published for {c['name']}; assess exposure, apply the advisory's workaround or replace the component.",
+        })
+    for c in comps:
+        for eco, pkg, below, fixed, cve, cvss, epss, kev, cwe, title in ADVISORIES:
+            if c["ecosystem"] == eco and c["name"] == pkg and _ver(c["version"]) < _ver(below):
+                if (c["ecosystem"], c["name"], c["version"], cve) in seen:
+                    continue
+                out.append({
+                    "engine": "sca", "rule_id": cve, "cve": cve, "title": f"{pkg}@{c['version']}: {title}",
+                    "severity": "critical" if cvss >= 9 else "high" if cvss >= 7 else "medium",
+                    "cvss": cvss, "epss": epss, "kev": kev, "cwe": cwe, "package": pkg, "version": c["version"],
+                    "fixed_version": fixed, "file": c["file"], "repo": repo, "ecosystem": eco, "purl": c["purl"],
+                    "reachable": _reach(pkg, reachable_hint),
+                    "exposure": "internet", "dependency_type": _dep_type(c),
+                    "autofix": True,
+                    "remediation": f"Upgrade {pkg} to {fixed} or later. NERvvE DevSecOps AutoFix can open a PR with the upgrade and lockfile refresh.",
+                })
+        kind = licence_kind(c.get("license"))
+        if kind == "strong":
+            out.append({"engine": "license", "rule_id": "NM-LIC-001", "title": f"Copyleft licence {c['license']} in {c['name']}",
+                        "severity": "high", "package": c["name"], "version": c["version"], "file": c["file"], "repo": repo,
+                        "license": c["license"], "dependency_type": _dep_type(c),
+                        "remediation": "Strong copyleft can require releasing your source code when you distribute or host the product. "
+                                       "Replace the component or obtain a commercial licence; legal review required."})
+        elif kind == "weak":
+            out.append({"engine": "license", "rule_id": "NM-LIC-002", "title": f"Weak copyleft licence {c['license']} in {c['name']}",
+                        "severity": "info", "package": c["name"], "version": c["version"], "file": c["file"], "repo": repo,
+                        "license": c["license"], "dependency_type": _dep_type(c),
+                        "remediation": "Usually fine when used unmodified as a separate library; modifications to this component "
+                                       "must be published under the same licence. Record it in your third-party notices."})
+    return out
+
+
+def cyclonedx(comps: list[dict], name: str = "application") -> dict:
+    """Build a CycloneDX BOM with stable component refs and an explicit dependency graph.
+
+    The graph is based only on dependency relationships resolved by the inventory engine.
+    Unknown parent relationships are not guessed; they remain attached to the application root.
+    """
+    safe_name = re.sub(r"[^A-Za-z0-9._-]+", "-", str(name)).strip("-") or "application"
+    app_ref = f"urn:myelin:application:{safe_name}"
+    components = []
+    by_name = {}
+    for c in comps:
+        purl = c["purl"]
+        by_name.setdefault(c["name"], []).append(purl)
+        components.append({
+            "type": "library", "bom-ref": purl, "name": c["name"], "version": c["version"],
+            "purl": purl,
+            "licenses": [{"license": {"id": c["license"]}}] if c.get("license") and c["license"] != "unknown" else [],
+            "scope": "optional" if c.get("scope") in ("optional", "dev") else "required",
+            "properties": [
+                {"name": "myelin:dependency", "value": _dep_type(c)},
+                {"name": "myelin:manifest", "value": c.get("file", "")},
+            ] + ([{"name": "myelin:introduced-by", "value": c["via"]}] if c.get("via") else []),
+        })
+
+    edges = {app_ref: set()}
+    for c in comps:
+        child = c["purl"]
+        parent_name = c.get("via")
+        parents = by_name.get(parent_name, []) if parent_name else []
+        # A relationship is emitted only when the inventory resolved one unambiguous parent.
+        if len(parents) == 1 and parents[0] != child:
+            edges.setdefault(parents[0], set()).add(child)
+            edges.setdefault(child, set())
+        elif not parent_name:
+            edges[app_ref].add(child)
+            edges.setdefault(child, set())
+        else:
+            # Ambiguous or unresolved ancestry remains visible as a direct application dependency.
+            edges[app_ref].add(child)
+            edges.setdefault(child, set())
+
+    return {
+        "bomFormat": "CycloneDX", "specVersion": "1.5", "serialNumber": f"urn:uuid:{uuid.uuid4()}", "version": 1,
+        "metadata": {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "tools": [{"vendor": "NERvvE DevSecOps", "name": "NERvvE DevSecOps", "version": "1.0.0"}],
+            "component": {"type": "application", "bom-ref": app_ref, "name": name},
+            "properties": [{"name": "myelin:inventory", "value": "manifest-and-lockfile-derived"}],
+        },
+        "components": components,
+        "dependencies": [{"ref": ref, "dependsOn": sorted(children)} for ref, children in sorted(edges.items())],
+    }

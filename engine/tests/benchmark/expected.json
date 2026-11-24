@@ -1,0 +1,550 @@
+{
+ "_note": "Every finding NERvvE DevSecOps must report on this corpus (rule, file, line). Anything missing is a false negative, anything extra is a false positive; both fail CI. Review each change by hand before updating this file.",
+ "expected": [
+  {
+   "rule": "NM-AI-030",
+   "file": ".claude/settings.json",
+   "line": 5
+  },
+  {
+   "rule": "NM-AI-030",
+   "file": ".gemini/settings.json",
+   "line": 2
+  },
+  {
+   "rule": "NM-AI-031",
+   "file": ".github/workflows/agent.yml",
+   "line": 11
+  },
+  {
+   "rule": "NM-CICD-003",
+   "file": ".github/workflows/agent.yml",
+   "line": 11
+  },
+  {
+   "rule": "NM-CICD-004",
+   "file": ".github/workflows/deploy.yml",
+   "line": 1
+  },
+  {
+   "rule": "NM-CD-008",
+   "file": ".github/workflows/deploy.yml",
+   "line": 4
+  },
+  {
+   "rule": "NM-CD-009",
+   "file": ".github/workflows/deploy.yml",
+   "line": 4
+  },
+  {
+   "rule": "NM-CD-011",
+   "file": ".github/workflows/deploy.yml",
+   "line": 4
+  },
+  {
+   "rule": "NM-CD-014",
+   "file": ".github/workflows/deploy.yml",
+   "line": 4
+  },
+  {
+   "rule": "NM-CD-010",
+   "file": ".github/workflows/deploy.yml",
+   "line": 8
+  },
+  {
+   "rule": "NM-CD-009",
+   "file": ".github/workflows/deploy.yml",
+   "line": 9
+  },
+  {
+   "rule": "NM-CD-011",
+   "file": ".github/workflows/deploy.yml",
+   "line": 9
+  },
+  {
+   "rule": "NM-CICD-019",
+   "file": ".github/workflows/pr-target.yml",
+   "line": 5
+  },
+  {
+   "rule": "NM-CICD-016",
+   "file": ".github/workflows/pr-target.yml",
+   "line": 11
+  },
+  {
+   "rule": "NM-CICD-018",
+   "file": ".github/workflows/release.yml",
+   "line": 8
+  },
+  {
+   "rule": "NM-CICD-015",
+   "file": ".github/workflows/release.yml",
+   "line": 14
+  },
+  {
+   "rule": "NM-CICD-021",
+   "file": ".github/workflows/release.yml",
+   "line": 17
+  },
+  {
+   "rule": "NM-CICD-013",
+   "file": ".github/workflows/release.yml",
+   "line": 22
+  },
+  {
+   "rule": "NM-CICD-014",
+   "file": ".github/workflows/release.yml",
+   "line": 36
+  },
+  {
+   "rule": "NM-SUP-010",
+   "file": ".github/workflows/shai-hulud-workflow.yml",
+   "line": 1
+  },
+  {
+   "rule": "NM-SUP-010",
+   "file": ".github/workflows/shai-hulud-workflow.yml",
+   "line": 8
+  },
+  {
+   "rule": "NM-CICD-003",
+   "file": ".github/workflows/triage.yml",
+   "line": 9
+  },
+  {
+   "rule": "NM-CICD-001",
+   "file": ".github/workflows/triage.yml",
+   "line": 10
+  },
+  {
+   "rule": "NM-CICD-020",
+   "file": ".github/workflows/wf-run.yml",
+   "line": 13
+  },
+  {
+   "rule": "NM-CICD-017",
+   "file": ".github/workflows/wf-run.yml",
+   "line": 17
+  },
+  {
+   "rule": "NM-AI-023",
+   "file": ".vscode/mcp.json",
+   "line": 5
+  },
+  {
+   "rule": "NM-SEC-002",
+   "file": ".vscode/mcp.json",
+   "line": 6
+  },
+  {
+   "rule": "NM-AI-026",
+   "file": ".vscode/mcp.json",
+   "line": 8
+  },
+  {
+   "rule": "NM-AI-028",
+   "file": "AGENTS.md",
+   "line": 4
+  },
+  {
+   "rule": "NM-AI-029",
+   "file": "AGENTS.md",
+   "line": 5
+  },
+  {
+   "rule": "NM-IAC-010",
+   "file": "Dockerfile",
+   "line": 1
+  },
+  {
+   "rule": "NM-IAC-011",
+   "file": "Dockerfile",
+   "line": 1
+  },
+  {
+   "rule": "NM-IAC-012",
+   "file": "Dockerfile",
+   "line": 1
+  },
+  {
+   "rule": "NM-IAC-013",
+   "file": "Dockerfile",
+   "line": 2
+  },
+  {
+   "rule": "NM-IAC-016",
+   "file": "Dockerfile",
+   "line": 3
+  },
+  {
+   "rule": "NM-AI-006",
+   "file": "ai/assistant.py",
+   "line": 14
+  },
+  {
+   "rule": "NM-AI-008",
+   "file": "ai/assistant.py",
+   "line": 20
+  },
+  {
+   "rule": "NM-AI-009",
+   "file": "ai/assistant.py",
+   "line": 25
+  },
+  {
+   "rule": "NM-AI-013",
+   "file": "ai/assistant.py",
+   "line": 30
+  },
+  {
+   "rule": "NM-AI-011",
+   "file": "ai/assistant.py",
+   "line": 34
+  },
+  {
+   "rule": "NM-AI-016",
+   "file": "ai/assistant.py",
+   "line": 39
+  },
+  {
+   "rule": "NM-AI-020",
+   "file": "ai/assistant.py",
+   "line": 43
+  },
+  {
+   "rule": "NM-AI-018",
+   "file": "ai/assistant.py",
+   "line": 47
+  },
+  {
+   "rule": "NM-AI-010",
+   "file": "ai/chat.ts",
+   "line": 3
+  },
+  {
+   "rule": "NM-AI-014",
+   "file": "ai/chat.ts",
+   "line": 7
+  },
+  {
+   "rule": "CVE-2020-14343",
+   "file": "app/requirements.txt",
+   "line": null
+  },
+  {
+   "rule": "CVE-2024-42005",
+   "file": "app/requirements.txt",
+   "line": null
+  },
+  {
+   "rule": "NM-SAST-001",
+   "file": "app/service.py",
+   "line": 8
+  },
+  {
+   "rule": "NM-SAST-003",
+   "file": "app/service.py",
+   "line": 13
+  },
+  {
+   "rule": "NM-SAST-004",
+   "file": "app/service.py",
+   "line": 18
+  },
+  {
+   "rule": "NM-SAST-010",
+   "file": "app/service.py",
+   "line": 19
+  },
+  {
+   "rule": "NM-SAST-006",
+   "file": "app/service.py",
+   "line": 29
+  },
+  {
+   "rule": "NM-SAST-005",
+   "file": "app/service.py",
+   "line": 34
+  },
+  {
+   "rule": "NM-SAST-009",
+   "file": "app/service.py",
+   "line": 42
+  },
+  {
+   "rule": "NM-SAST-014",
+   "file": "app/service.py",
+   "line": 50
+  },
+  {
+   "rule": "NM-SAST-013",
+   "file": "app/service.py",
+   "line": 55
+  },
+  {
+   "rule": "NM-CD-012",
+   "file": "buildspec.yml",
+   "line": 3
+  },
+  {
+   "rule": "NM-CD-007",
+   "file": "chart/values.yaml",
+   "line": 2
+  },
+  {
+   "rule": "NM-SEC-011",
+   "file": "config/users.yaml",
+   "line": 2
+  },
+  {
+   "rule": "NM-SEC-001",
+   "file": "config/users.yaml",
+   "line": 8
+  },
+  {
+   "rule": "NM-IAC-032",
+   "file": "deploy/k8s/workloads.yaml",
+   "line": 3
+  },
+  {
+   "rule": "NM-IAC-034",
+   "file": "deploy/k8s/workloads.yaml",
+   "line": 3
+  },
+  {
+   "rule": "NM-IAC-035",
+   "file": "deploy/k8s/workloads.yaml",
+   "line": 3
+  },
+  {
+   "rule": "NM-IAC-036",
+   "file": "deploy/k8s/workloads.yaml",
+   "line": 3
+  },
+  {
+   "rule": "NM-IAC-037",
+   "file": "deploy/k8s/workloads.yaml",
+   "line": 3
+  },
+  {
+   "rule": "NM-IAC-038",
+   "file": "deploy/k8s/workloads.yaml",
+   "line": 3
+  },
+  {
+   "rule": "NM-IAC-030",
+   "file": "deploy/k8s/workloads.yaml",
+   "line": 7
+  },
+  {
+   "rule": "NM-IAC-039",
+   "file": "deploy/k8s/workloads.yaml",
+   "line": 10
+  },
+  {
+   "rule": "NM-IAC-033",
+   "file": "deploy/k8s/workloads.yaml",
+   "line": 11
+  },
+  {
+   "rule": "NM-IAC-020",
+   "file": "docker-compose.yml",
+   "line": 2
+  },
+  {
+   "rule": "NM-IAC-026",
+   "file": "docker-compose.yml",
+   "line": 6
+  },
+  {
+   "rule": "NM-IAC-021",
+   "file": "docker-compose.yml",
+   "line": 11
+  },
+  {
+   "rule": "NM-IAC-025",
+   "file": "docker-compose.yml",
+   "line": 14
+  },
+  {
+   "rule": "NM-CD-001",
+   "file": "gitops/argo.yaml",
+   "line": 5
+  },
+  {
+   "rule": "NM-CD-003",
+   "file": "gitops/argo.yaml",
+   "line": 12
+  },
+  {
+   "rule": "NM-CD-002",
+   "file": "gitops/argo.yaml",
+   "line": 13
+  },
+  {
+   "rule": "NM-CD-004",
+   "file": "gitops/flux.yaml",
+   "line": 3
+  },
+  {
+   "rule": "NM-CD-005",
+   "file": "gitops/flux.yaml",
+   "line": 10
+  },
+  {
+   "rule": "NM-CD-006",
+   "file": "gitops/flux.yaml",
+   "line": 11
+  },
+  {
+   "rule": "NM-CD-007",
+   "file": "gitops/flux.yaml",
+   "line": 11
+  },
+  {
+   "rule": "NM-SAST-021",
+   "file": "polyglot/Orders.java",
+   "line": 9
+  },
+  {
+   "rule": "NM-SAST-022",
+   "file": "polyglot/Orders.java",
+   "line": 15
+  },
+  {
+   "rule": "NM-SAST-023",
+   "file": "polyglot/Orders.java",
+   "line": 19
+  },
+  {
+   "rule": "NM-SAST-024",
+   "file": "polyglot/Orders.java",
+   "line": 22
+  },
+  {
+   "rule": "NM-SAST-031",
+   "file": "polyglot/Payments.cs",
+   "line": 8
+  },
+  {
+   "rule": "NM-SAST-032",
+   "file": "polyglot/Payments.cs",
+   "line": 12
+  },
+  {
+   "rule": "NM-SAST-033",
+   "file": "polyglot/Payments.cs",
+   "line": 14
+  },
+  {
+   "rule": "NM-SAST-034",
+   "file": "polyglot/Payments.cs",
+   "line": 17
+  },
+  {
+   "rule": "NM-SAST-035",
+   "file": "polyglot/search.php",
+   "line": 3
+  },
+  {
+   "rule": "NM-SAST-036",
+   "file": "polyglot/search.php",
+   "line": 5
+  },
+  {
+   "rule": "NM-SAST-037",
+   "file": "polyglot/search.php",
+   "line": 6
+  },
+  {
+   "rule": "NM-SAST-038",
+   "file": "polyglot/search.php",
+   "line": 7
+  },
+  {
+   "rule": "NM-SAST-027",
+   "file": "polyglot/store.go",
+   "line": 13
+  },
+  {
+   "rule": "NM-SAST-028",
+   "file": "polyglot/store.go",
+   "line": 18
+  },
+  {
+   "rule": "NM-SAST-029",
+   "file": "polyglot/store.go",
+   "line": 22
+  },
+  {
+   "rule": "NM-SAST-030",
+   "file": "polyglot/store.go",
+   "line": 25
+  },
+  {
+   "rule": "NM-SAST-039",
+   "file": "polyglot/users_controller.rb",
+   "line": 3
+  },
+  {
+   "rule": "NM-SAST-040",
+   "file": "polyglot/users_controller.rb",
+   "line": 5
+  },
+  {
+   "rule": "NM-AI-032",
+   "file": "scripts/agent.sh",
+   "line": 3
+  },
+  {
+   "rule": "NM-SUP-001",
+   "file": "supply/package-lock.json",
+   "line": null
+  },
+  {
+   "rule": "NM-SUP-007",
+   "file": "supply/package-lock.json",
+   "line": null
+  },
+  {
+   "rule": "NM-SUP-002",
+   "file": "supply/package.json",
+   "line": null
+  },
+  {
+   "rule": "NM-SUP-009",
+   "file": "supply/package.json",
+   "line": 5
+  },
+  {
+   "rule": "NM-SUP-006",
+   "file": "supply/package.json",
+   "line": 13
+  },
+  {
+   "rule": "NM-SUP-004",
+   "file": "supply/requirements-internal.txt",
+   "line": 2
+  },
+  {
+   "rule": "NM-SUP-006",
+   "file": "supply/requirements-internal.txt",
+   "line": 5
+  },
+  {
+   "rule": "NM-SAST-007",
+   "file": "web/app.js",
+   "line": 4
+  },
+  {
+   "rule": "NM-SAST-017",
+   "file": "web/app.js",
+   "line": 8
+  },
+  {
+   "rule": "NM-SAST-018",
+   "file": "web/app.js",
+   "line": 9
+  }
+ ]
+}

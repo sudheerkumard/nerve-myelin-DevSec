@@ -1,0 +1,36 @@
+name: release
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: read
+env:
+  ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: debug
+        env:
+          ALL: ${{ toJSON(secrets) }}
+        run: echo "release done"
+  publish-safe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - run: npm ci --ignore-scripts  # SAFE
+        env:
+          TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+      - run: npm publish --provenance  # SAFE
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+  shared:
+    uses: acme/platform/.github/workflows/deploy.yml@b4ffde65f46336ab88eb53be808477a3936bae11
+    secrets: inherit

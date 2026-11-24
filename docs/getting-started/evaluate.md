@@ -1,7 +1,7 @@
-# Evaluate NERVE Myelin
+# Get NERvvE DevSecOps
 
-NERVE Myelin is proprietary software supplied under subscription. You can explore it from this documentation today,
-see it working in a guided demo, and then run it in your own environment under an evaluation licence.
+The NERvvE DevSecOps **Community edition** is free and open source under the GNU AGPL-3.0. Every feature is included and
+no licence key is needed: download it, run it on your own machines, and scan your own code today.
 
 ## 1. Explore
 
@@ -10,37 +10,33 @@ see it working in a guided demo, and then run it in your own environment under a
   receives, what it sends and how it is protected, or play the flows step by step.
 - Browse the [rule catalogue](../reference/rules.md) to see exactly what is checked.
 
-## 2. See a guided demo
+## 2. Run it
 
-A guided demo walks through the console on a fictional organisation: the executive overview, findings and their risk
-score, pipeline and supply-chain checks, cloud, Kubernetes and runtime views, policies and reports, focused on the
-areas you care about most.
+```bash
+git clone https://github.com/sudheerkumard/nerve-myelin-DevSec
+cd nerve-myelin-DevSec
+./demo/start-demo.sh                  # Windows: demo\start-demo.ps1  ->  http://localhost:8080
+```
 
-## 3. Request an evaluation
+The demo runs the real engines on a fictional organisation with sample repositories, cloud accounts, a cluster and
+runtime events, so every view has data. For a production-like stack (PostgreSQL, Keycloak, TLS), see the
+[quick start](quick-start.md).
 
-Open a **Request an evaluation** issue in
-[github.com/sudheerkumard/nerve-myelin-DevSec](https://github.com/sudheerkumard/nerve-myelin-DevSec/issues/new/choose).
-Issues are public, so give only your name, organisation and the areas you want to evaluate; never post credentials,
-code or internal details. We follow up privately to agree the scope.
+## 3. Scan your own code
 
-## What an evaluation includes
+```bash
+pip install .                         # provides the `myelin` command
+myelin scan /path/to/your/repo --policy policies/myelin-policy.yaml
+```
 
-| You receive | Details |
-|---|---|
-| Evaluation licence key | Signed key for the agreed period (30 days unless stated otherwise), for assessment only and not for production use |
-| Container images | API, console, worker and CLI images, pulled with registry credentials issued to your organisation |
-| Deployment bundle | Docker Compose for one host, or a Helm chart for Kubernetes, with the deployment guide and CI/CD templates |
-| Demo data | A fictional tenant with sample repositories, cloud accounts, a cluster and runtime events, so every view has data on day one |
-| Help | A setup session and answers to questions during the evaluation |
+To add NERvvE DevSecOps to a pipeline, see [Add to your pipeline](../CI-INTEGRATION.md).
 
 ## What you need
 
-- A Linux host with Docker, or a Kubernetes cluster you control (a Windows laptop with Docker Desktop is fine for a
-  first look).
+- A Linux, macOS or Windows machine with Python 3.10+ and Docker, or a Kubernetes cluster you control.
 - For Kubernetes: each API pod requests 0.25 CPU and 512 MiB (limit 2 CPU, 2 GiB), with three replicas by default;
   PostgreSQL 16, an OIDC identity provider and a secrets vault. The full list is in [Operations](../enterprise/OPERATIONS.md).
-- Optional: a test repository, a CI pipeline, and read-only access to a non-production cloud account or cluster.
-- To add NERVE Myelin to a pipeline, see [Add to your pipeline](../CI-INTEGRATION.md).
+- Optional: read-only access to a non-production cloud account or cluster for the cloud and runtime views.
 
 ## Your code and data stay with you
 
@@ -49,14 +45,10 @@ code or internal details. We follow up privately to agree the scope.
   this repository and never read data or Kubernetes Secrets.
 - **Nothing is sent to us.** The platform runs fully in your environment, and can run air-gapped.
 
-## Getting help
+## Help, contributions and commercial options
 
-During an evaluation, ask in your evaluation request or in the setup session. Customers raise support requests as set
-out in [Support and Service Levels](../legal/SUPPORT-AND-SERVICE-LEVELS.md). Report security vulnerabilities privately,
-as described in the repository's `SECURITY.md`, never in a public issue.
-
-## After the evaluation
-
-Move to a subscription with a new licence key. Findings, history and settings from the evaluation carry over. If a
-licence expires, the platform switches to read-only and never deletes your data. Terms are in the
-[Subscription Agreement](../legal/SUBSCRIPTION-AGREEMENT.md).
+- **Questions and ideas:** open an issue in the repository. Never post credentials, code or internal details.
+- **Security vulnerabilities:** report privately as described in `SECURITY.md`, never in a public issue.
+- **Contributing:** see `CONTRIBUTING.md`; contributions are accepted under the contributor licence agreement (`CLA.md`).
+- **Commercial licences, support and enterprise options:** available from the author. Use the
+  **Request an evaluation** issue form to get in touch.

@@ -1,4 +1,4 @@
-# NERVE Myelin — Identity and access
+# NERvvE DevSecOps — Identity and access
 
 *NM-ARC-001 · Enterprise Architecture & Deployment Pack · Version 1.1 · 13 November 2026 · Customer confidential*
 
@@ -15,7 +15,7 @@ sequenceDiagram
   autonumber
   actor U as User
   participant B as Browser
-  participant M as Myelin API (BFF)
+  participant M as NERvvE API (BFF)
   participant I as IdP
   participant DB as PostgreSQL
   U->>B: open console
@@ -75,7 +75,7 @@ Every preset value can be overridden per provider. Several providers can be acti
 | audit:read |  |  | ✓ | ✓ | ✓ |  |
 | users / apikeys / settings:manage |  |  |  |  | ✓ |  |
 
-IdP roles or groups are mapped to Myelin roles in configuration; unknown roles grant nothing. Permissions are checked on every route.
+IdP roles or groups are mapped to NERvvE roles in configuration; unknown roles grant nothing. Permissions are checked on every route.
 
 ### 4.5 API keys for pipelines and integrations
 

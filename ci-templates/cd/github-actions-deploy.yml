@@ -1,0 +1,30 @@
+# NERvvE DevSecOps — CD gate for GitHub Actions. Deploy only commits that passed the security gate, from a protected environment.
+# MYELIN_CLI_PACKAGE: the NERvvE DevSecOps CLI to install, e.g.
+# git+https://github.com/sudheerkumard/nerve-myelin-DevSec@v1.5.0 or a wheel on your internal package index
+name: deploy
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+  id-token: write          # cloud login with OIDC federation, no long-lived keys
+jobs:
+  deploy-production:
+    runs-on: ubuntu-latest
+    environment: production  # required reviewers + wait timer are configured on the environment
+    steps:
+      - name: NERvvE DevSecOps deployment gate
+        run: |
+          pip install "${{ vars.MYELIN_CLI_PACKAGE }}"
+          myelin gate --repo "${{ github.event.repository.name }}" --commit "${{ github.sha }}" --environment production
+        env:
+          MYELIN_SERVER: ${{ vars.MYELIN_SERVER }}
+          MYELIN_API_KEY: ${{ secrets.MYELIN_API_KEY }}
+      - name: Verify image signature
+        run: |
+          cosign verify "$IMAGE" --certificate-identity-regexp "https://github.com/${{ github.repository }}/" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}@${{ needs.build.outputs.digest || vars.IMAGE_DIGEST }}
+      - name: Deploy
+        run: helm upgrade --install app ./chart --namespace production --set image.digest="${{ vars.IMAGE_DIGEST }}" --wait

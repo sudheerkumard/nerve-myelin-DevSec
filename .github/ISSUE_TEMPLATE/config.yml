@@ -3,3 +3,6 @@ contact_links:
   - name: Read the documentation
     url: https://sudheerkumard.github.io/nerve-myelin-DevSec/
     about: Features, architecture, data flow and guides.
+  - name: Report a security vulnerability
+    url: https://github.com/sudheerkumard/nerve-myelin-DevSec/security/advisories/new
+    about: Please report vulnerabilities privately, not as a public issue.

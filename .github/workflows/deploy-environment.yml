@@ -1,0 +1,132 @@
+# Copyright (c) 2026 Sudheer Kumar.
+# SPDX-License-Identifier: AGPL-3.0-only. Manual promotion of signed immutable images only.
+name: deploy-environment
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Target environment
+        required: true
+        type: choice
+        options: [development, staging, production]
+      image_digest:
+        description: Application image sha256 digest from a successful main CI run
+        required: true
+        type: string
+      backup_image_digest:
+        description: Backup image sha256 digest from the same successful main CI run
+        required: true
+        type: string
+      confirm_production:
+        description: Type DEPLOY for production only
+        required: false
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: myelin-deploy-${{ inputs.target }}
+  cancel-in-progress: false
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.target }}
+    env:
+      TARGET: ${{ inputs.target }}
+      IMAGE_DIGEST: ${{ inputs.image_digest }}
+      BACKUP_IMAGE_DIGEST: ${{ inputs.backup_image_digest }}
+      IMAGE_REPOSITORY: ${{ vars.MYELIN_IMAGE_REPOSITORY }}
+      BACKUP_IMAGE_REPOSITORY: ${{ vars.MYELIN_BACKUP_IMAGE_REPOSITORY }}
+      KUBE_NAMESPACE: ${{ vars.MYELIN_NAMESPACE }}
+      KUBE_CONTEXT: ${{ vars.KUBE_CONTEXT }}
+      PUBLIC_URL: ${{ vars.MYELIN_PUBLIC_URL }}
+      KUBECONFIG_B64: ${{ secrets.KUBECONFIG_B64 }}
+      CONFIRM_PRODUCTION: ${{ inputs.confirm_production }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4
+      - uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
+      - name: Validate deployment request and environment configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$IMAGE_DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]] || { echo "Invalid application image digest"; exit 1; }
+          [[ "$BACKUP_IMAGE_DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]] || { echo "Invalid backup image digest"; exit 1; }
+          [[ -n "$IMAGE_REPOSITORY" && -n "$BACKUP_IMAGE_REPOSITORY" && -n "$KUBE_NAMESPACE" && -n "$KUBE_CONTEXT" && -n "$PUBLIC_URL" && -n "$KUBECONFIG_B64" ]] || {
+            echo "Configure MYELIN_IMAGE_REPOSITORY, MYELIN_BACKUP_IMAGE_REPOSITORY, MYELIN_NAMESPACE, KUBE_CONTEXT, MYELIN_PUBLIC_URL and KUBECONFIG_B64 in the selected GitHub Environment"; exit 1;
+          }
+          if [[ "$TARGET" == "production" && "$CONFIRM_PRODUCTION" != "DEPLOY" ]]; then
+            echo "Production requires confirm_production=DEPLOY"; exit 1
+          fi
+          VALUES="deploy/environments/$TARGET.yaml"
+          test -f "$VALUES"
+          if grep -Eq 'example\.invalid|REPLACE_WITH_' "$VALUES"; then
+            echo "Environment overlay still contains placeholder hostnames, identity, storage or network values"; exit 1
+          fi
+          echo "VALUES_FILE=$VALUES" >> "$GITHUB_ENV"
+      - name: Verify keyless signatures before deployment
+        shell: bash
+        env:
+          IMAGE: ${{ vars.MYELIN_IMAGE_REPOSITORY }}@${{ inputs.image_digest }}
+          BACKUP_IMAGE: ${{ vars.MYELIN_BACKUP_IMAGE_REPOSITORY }}@${{ inputs.backup_image_digest }}
+        run: |
+          set -euo pipefail
+          IDENTITY='^https://github.com/sudheerkumard/nerve-myelin-DevSec/.github/workflows/ci.yml@refs/heads/main$'
+          cosign verify --certificate-identity-regexp "$IDENTITY" --certificate-oidc-issuer https://token.actions.githubusercontent.com "$IMAGE"
+          cosign verify --certificate-identity-regexp "$IDENTITY" --certificate-oidc-issuer https://token.actions.githubusercontent.com "$BACKUP_IMAGE"
+      - name: Configure Kubernetes access
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s' "$KUBECONFIG_B64" | base64 --decode > "$RUNNER_TEMP/myelin-kubeconfig"
+          chmod 600 "$RUNNER_TEMP/myelin-kubeconfig"
+          echo "KUBECONFIG=$RUNNER_TEMP/myelin-kubeconfig" >> "$GITHUB_ENV"
+          ACTUAL_CONTEXT="$(kubectl config current-context)"
+          [[ "$ACTUAL_CONTEXT" == "$KUBE_CONTEXT" ]] || { echo "Kubernetes context mismatch: expected $KUBE_CONTEXT, got $ACTUAL_CONTEXT"; exit 1; }
+          kubectl cluster-info
+          kubectl get namespace "$KUBE_NAMESPACE"
+      - name: Verify cluster prerequisites before touching the release
+        shell: bash
+        run: |
+          set -euo pipefail
+          kubectl get crd externalsecrets.external-secrets.io
+          kubectl get clustersecretstore "myelin-$TARGET"
+          kubectl get ingressclass nginx
+          if [[ "$TARGET" == "production" ]]; then ISSUER=letsencrypt-prod; else ISSUER=letsencrypt-staging; fi
+          kubectl get crd clusterissuers.cert-manager.io
+          kubectl get clusterissuer "$ISSUER"
+      - name: Validate chart and rendered environment manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          helm lint deploy/helm/myelin -f "$VALUES_FILE"
+          helm template myelin deploy/helm/myelin --namespace "$KUBE_NAMESPACE" -f "$VALUES_FILE" \
+            --set image.repository="$IMAGE_REPOSITORY" --set-string image.digest="$IMAGE_DIGEST" \
+            --set-string backup.image="$BACKUP_IMAGE_REPOSITORY@$BACKUP_IMAGE_DIGEST" > "$RUNNER_TEMP/myelin-rendered.yaml"
+      - name: Deploy pinned images and wait for healthy rollout
+        shell: bash
+        run: |
+          set -euo pipefail
+          helm upgrade --install myelin deploy/helm/myelin \
+            --namespace "$KUBE_NAMESPACE" \
+            --values "$VALUES_FILE" \
+            --set image.repository="$IMAGE_REPOSITORY" \
+            --set-string image.digest="$IMAGE_DIGEST" \
+            --set-string backup.image="$BACKUP_IMAGE_REPOSITORY@$BACKUP_IMAGE_DIGEST" \
+            --history-max 10 --wait --timeout 15m --atomic
+          kubectl rollout status deployment/myelin-myelin-api -n "$KUBE_NAMESPACE" --timeout=10m
+          curl --fail --silent --show-error --retry 12 --retry-delay 5 --retry-connrefused "$PUBLIC_URL/healthz"
+          curl --fail --silent --show-error --retry 12 --retry-delay 5 --retry-connrefused "$PUBLIC_URL/readyz"
+          helm status myelin -n "$KUBE_NAMESPACE"
+      - name: Deployment summary
+        if: always()
+        run: |
+          {
+            echo "### NERVVE DEVSECOPS deployment"
+            echo "- Environment: $TARGET"
+            echo "- Namespace: $KUBE_NAMESPACE"
+            echo "- Application image: $IMAGE_REPOSITORY@$IMAGE_DIGEST"
+            echo "- Backup image: $BACKUP_IMAGE_REPOSITORY@$BACKUP_IMAGE_DIGEST"
+            echo "- URL: $PUBLIC_URL"
+          } >> "$GITHUB_STEP_SUMMARY"

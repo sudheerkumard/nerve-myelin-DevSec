@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: legacy}
+spec:
+  template:
+    spec:
+      hostNetwork: true
+      containers:
+        - name: legacy
+          image: acme/legacy:latest
+          securityContext: {privileged: true}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: hardened}
+spec:
+  template:
+    spec:
+      automountServiceAccountToken: false
+      securityContext: {runAsNonRoot: true, runAsUser: 10001}
+      containers:
+        - name: api
+          image: acme/api@sha256:1111111111111111111111111111111111111111111111111111111111111111
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          resources: {limits: {cpu: 500m, memory: 256Mi}}

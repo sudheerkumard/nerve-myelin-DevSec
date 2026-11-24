@@ -1,0 +1,5 @@
+--index-url https://pypi-proxy.acme.example/simple
+--extra-index-url https://pypi.acme.example/simple
+acme-billing==2.3.1
+git+https://github.com/acme/rates.git@3f2a1b4c5d6e7f8091a2b3c4d5e6f708192a3b4c
+git+https://github.com/acme/ledger.git@main

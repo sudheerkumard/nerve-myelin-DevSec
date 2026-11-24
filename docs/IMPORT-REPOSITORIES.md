@@ -10,7 +10,7 @@ Console → **Repositories** → **⇪ Import many**. You can import in two ways
    - `https://gitlab.com/acme/platform` (subgroups included)
    - `https://dev.azure.com/contoso` or `https://dev.azure.com/contoso/Retail`
    - a Bitbucket workspace
-3. Add a **read-only token**. NERVE Myelin uses it to list the repositories and reuses it, from the vault, to scan them.
+3. Add a **read-only token**. NERvvE DevSecOps uses it to list the repositories and reuses it, from the vault, to scan them.
 4. Click **Find repositories**. Untick anything you don't want; archived repositories are hidden unless you include them.
 5. Click **Import and scan selected**.
 
@@ -27,7 +27,7 @@ Upload the file as you received it. These formats are supported:
 - text or e-mail export
 - Markdown, HTML, JSON, YAML or XML
 
-NERVE Myelin finds every repository address in the file:
+NERvvE DevSecOps finds every repository address in the file:
 
 - `https://` clone and browser links (page paths such as `/tree/main` are removed)
 - `git@host:org/repo.git` and `ssh://` addresses, converted to HTTPS

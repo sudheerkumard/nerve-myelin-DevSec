@@ -1,0 +1,17 @@
+sequenceDiagram
+  autonumber
+  participant C as Client
+  participant A as Auth service
+  participant H as Route handler
+  participant P as PostgreSQL
+  C->>A: request + JWT / session / API key
+  A->>A: verify credential
+  A->>P: resolve (issuer, claim) → tenant_id (SECURITY DEFINER lookup)
+  A-->>H: Principal(tenant_id, roles, mfa)
+  H->>H: check permission for route
+  H->>P: BEGIN · set_config('app.tenant_id', id, true)
+  H->>P: SELECT / INSERT / UPDATE (no tenant filter needed)
+  P->>P: RLS USING tenant_id = myelin_current_tenant()
+  P->>P: RLS WITH CHECK on writes
+  P-->>H: only this tenant's rows
+  H->>P: COMMIT (context discarded with the transaction)

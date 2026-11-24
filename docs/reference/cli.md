@@ -156,7 +156,7 @@ usage: myelin precommit [-h] [--policy POLICY] [--fail-on {block,warn}]
 
 ## `myelin mcp`
 
-run the NERVE Myelin MCP server on stdio for AI coding assistants
+run the NERvvE DevSecOps MCP server on stdio for AI coding assistants
 
 _No options._
 
@@ -186,7 +186,7 @@ cloud and Kubernetes posture (CSPM / KSPM / CIEM): collect read-only or load an 
 |---|---|
 | `action` | (scan · collect) |
 | `--provider` | (azure · aws · gcp · kubernetes) |
-| `--inventory` | Myelin inventory, Azure Resource Graph JSON, Cloud Asset export or kubectl -o json List |
+| `--inventory` | NERvvE inventory, Azure Resource Graph JSON, Cloud Asset export or kubectl -o json List |
 | `--account` | account / subscription / project / cluster label |
 | `--subscriptions` | Azure: comma-separated subscription IDs |
 | `--regions` | AWS: comma-separated regions (default us-east-1) |

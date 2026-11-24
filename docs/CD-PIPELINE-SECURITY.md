@@ -2,7 +2,7 @@
 
 ![Pipelines and posture](assets/screenshots/pipelines.webp){ .nm-shot }
 
-NERVE Myelin covers both halves of the pipeline:
+NERvvE DevSecOps covers both halves of the pipeline:
 
 - **CI** checks how code is built.
 - **CD** checks how it reaches production:
@@ -31,7 +31,7 @@ It needs no extra setup. Every repository scan, from the console or `myelin scan
 | NM-CD-011 | Images deployed without signature or attestation verification | CICD-SEC-9 |
 | NM-CD-012 | Plain-text secret in AWS CodeBuild `buildspec.yml` or Google Cloud Build `cloudbuild.yaml` | CICD-SEC-6 |
 | NM-CD-013 | Privileged build or deploy step (e.g. Tekton) | CICD-SEC-7 |
-| NM-CD-014 | Deployment does not call the NERVE Myelin gate | CICD-SEC-1 |
+| NM-CD-014 | Deployment does not call the NERvvE DevSecOps gate | CICD-SEC-1 |
 
 The following are covered:
 

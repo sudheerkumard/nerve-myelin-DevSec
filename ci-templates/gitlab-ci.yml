@@ -1,0 +1,37 @@
+# Copyright (c) 2026 Sudheer Kumar.
+# SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
+# NERvvE DevSecOps secure pipeline — GitLab CI. include: { remote: 'https://github.com/sudheerkumard/nerve-myelin-DevSec/raw/main/ci-templates/gitlab-ci.yml' }
+stages: [myelin-scan, build, myelin-attest]
+variables:
+  MYELIN_IMAGE: ghcr.io/sudheerkumard/myelin-cli@sha256:REPLACE_WITH_DIGEST   # pin by digest (CICD-SEC-3)
+
+myelin-scan:
+  stage: myelin-scan
+  image: $MYELIN_IMAGE
+  script:
+    - myelin scan . --policy .myelin/policy.yaml --sarif gl-sast-report.sarif --sbom gl-sbom.cdx.json --json myelin.json --fail-on block
+  artifacts:
+    when: always
+    paths: [myelin.json, gl-sbom.cdx.json, gl-sast-report.sarif]
+    reports: { cyclonedx: gl-sbom.cdx.json }
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  # NOTE: no allow_failure — security gates must be able to stop the pipeline (CICD-SEC-1)
+
+build:
+  stage: build
+  image: gcr.io/kaniko-project/executor:debug
+  script:
+    - /kaniko/executor --context $CI_PROJECT_DIR --destination $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA --digest-file digest.txt
+  artifacts: { paths: [digest.txt] }
+  rules: [{ if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH }]
+
+myelin-attest:
+  stage: myelin-attest
+  image: $MYELIN_IMAGE
+  id_tokens:
+    SIGSTORE_ID_TOKEN: { aud: sigstore }     # keyless signing via GitLab OIDC
+  script:
+    - myelin attest --image $CI_REGISTRY_IMAGE@$(cat digest.txt) --sbom gl-sbom.cdx.json
+  rules: [{ if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH }]

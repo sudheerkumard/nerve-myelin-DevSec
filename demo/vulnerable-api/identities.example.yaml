@@ -1,0 +1,18 @@
+# Test identities for NERvvE DevSecOps authorisation testing against the demo API.
+# Values may be literals (demo only), env:VAR_NAME (offline/CLI) or a vault reference (online platform).
+identities:
+  - name: alice
+    role: customer
+    headers: { Authorization: "Bearer alice-token" }
+  - name: bob
+    role: customer
+    headers: { Authorization: "Bearer bob-token" }
+  - name: admin
+    role: admin
+    headers: { Authorization: "Bearer admin-token" }
+# Roles allowed to read every user's objects (not reported as BOLA)
+cross_user_roles: [admin]
+# Operations only some roles may call (BFLA). Spec tags "admin" and /admin/ paths are detected automatically.
+privileged:
+  - path: /api/v2/admin/*
+    roles: [admin]

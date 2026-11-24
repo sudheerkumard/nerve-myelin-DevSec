@@ -17,7 +17,7 @@ Click **Open report**, then **Download PDF / print** to save a PDF. **Download H
 
 ## Contents
 
-1. **Cover**: NERVE Myelin — DevSecOps branding, customer name before the repository name, overall risk rating, prepared for, prepared by NERVE Myelin, date, report reference, target and snapshot.
+1. **Cover**: NERvvE DevSecOps branding, customer name before the repository name, overall risk rating, prepared for, prepared by NERvvE DevSecOps, date, report reference, target and snapshot.
 2. **Document control** and table of contents.
 3. **Executive summary** (dashboard page):
    - risk rating and key messages

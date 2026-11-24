@@ -1,0 +1,36 @@
+# Copyright (c) 2026 Sudheer Kumar.
+# SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
+# Deploy-time integrity: only images signed by your CI identity, with SLSA provenance, may run in
+# production namespaces. Pair it with `myelin gate` in the deployment job.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: myelin-verify-supply-chain
+  annotations: { policies.kyverno.io/title: "NERvvE DevSecOps — verify signature and provenance" }
+spec:
+  validationFailureAction: Enforce
+  webhookTimeoutSeconds: 30
+  background: false
+  rules:
+    - name: verify-signature-and-provenance
+      match:
+        any:
+          - resources: { kinds: [Pod], namespaceSelector: { matchLabels: { myelin.sudheerkumard.github.io/enforce: "true" } } }
+      verifyImages:
+        - imageReferences: ["*.azurecr.io/*"]
+          mutateDigest: true          # rewrite tags to digests
+          verifyDigest: true
+          attestors:
+            - entries:
+                - keyless:
+                    subject: "https://github.com/ORION-ORG/*/.github/workflows/myelin.yml@refs/heads/main"
+                    issuer: "https://token.actions.githubusercontent.com"
+                    rekor: { url: https://rekor.sigstore.dev }
+          attestations:
+            - type: https://slsa.dev/provenance/v1
+              attestors: [{ entries: [{ keyless: { subject: "https://github.com/ORION-ORG/*", issuer: "https://token.actions.githubusercontent.com" } }] }]
+    - name: disallow-latest-tag
+      match: { any: [{ resources: { kinds: [Pod] } }] }
+      validate:
+        message: "Mutable :latest tags are not allowed (NM-CICD-008)."
+        pattern: { spec: { containers: [{ image: "!*:latest" }] } }

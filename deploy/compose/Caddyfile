@@ -1,0 +1,21 @@
+# Copyright (c) 2026 Sudheer Kumar. SPDX-License-Identifier: AGPL-3.0-only.
+# Local TLS ingress. Caddy issues an internal CA certificate; production uses the customer's ingress + cert-manager.
+{
+	auto_https disable_redirects
+	servers {
+		protocols h1 h2
+	}
+}
+https://myelin.localtest.me:8443 {
+	tls internal
+	request_body {
+		max_size 25MB
+	}
+	reverse_proxy myelin-api:8080 {
+		lb_try_duration 30s
+	}
+}
+https://auth.localtest.me:8444 {
+	tls internal
+	reverse_proxy keycloak:8080
+}

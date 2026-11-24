@@ -1,0 +1,26 @@
+// Copyright (c) 2026 Sudheer Kumar.
+// SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
+// NERvvE DevSecOps secure pipeline — Jenkins (declarative)
+pipeline {
+  agent { kubernetes { yamlFile 'ci/myelin-pod.yaml' } }   // ephemeral pod agents, not 'agent any' on the controller (CICD-SEC-7)
+  options { timestamps(); disableConcurrentBuilds() }
+  environment { MYELIN_SERVER = 'https://myelin.orion.example' }
+  stages {
+    stage('NERvvE DevSecOps scan') {
+      steps {
+        withCredentials([string(credentialsId: 'myelin-api-key', variable: 'MYELIN_API_KEY')]) {
+          sh 'myelin scan . --policy .myelin/policy.yaml --sarif myelin.sarif --sbom sbom.cdx.json --json myelin.json --fail-on block'
+        }
+      }
+      post { always { archiveArtifacts artifacts: 'myelin.*,sbom.cdx.json', allowEmptyArchive: true; recordIssues tool: sarif(pattern: 'myelin.sarif') } }
+    }
+    stage('Build') {
+      when { branch 'main' }
+      steps { sh 'buildah bud -t $REGISTRY/$JOB_BASE_NAME:$GIT_COMMIT . && buildah push --digestfile digest.txt $REGISTRY/$JOB_BASE_NAME:$GIT_COMMIT' }
+    }
+    stage('Sign & attest') {
+      when { branch 'main' }
+      steps { withCredentials([file(credentialsId: 'cosign-kms-config', variable: 'COSIGN_CONFIG')]) { sh 'myelin attest --image $REGISTRY/$JOB_BASE_NAME@$(cat digest.txt) --sbom sbom.cdx.json } }
+    }
+  }
+}

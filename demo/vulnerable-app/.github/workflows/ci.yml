@@ -1,0 +1,26 @@
+name: ci
+on:
+  pull_request_target:
+  push:
+    branches: [main]
+jobs:
+  build:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: some-org/setup-tooling@v2
+      - name: Greet PR
+        run: echo "Building ${{ github.event.pull_request.title }}"
+      - name: Install tool
+        run: curl -sSL https://get.example-tool.io/install.sh | bash
+      - name: Dependency scan
+        run: ./scan.sh
+        continue-on-error: true
+      - name: Build & push
+        env:
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        run: |
+          docker build -t acr.example.io/payments:latest .
+          docker push acr.example.io/payments:latest

@@ -1,10 +1,10 @@
-# Security policy — NERVE Myelin
+# Security policy — NERvvE DevSecOps
 
-NERVE Myelin Product designed and developed by Sudheer Kumar.
+NERvvE DevSecOps Product designed and developed by Sudheer Kumar.
 
 ## Reporting a vulnerability
 
-Please report suspected vulnerabilities in NERVE Myelin privately:
+Please report suspected vulnerabilities in NERvvE DevSecOps privately:
 
 - **Customers:** through the support channel named in your Order Form, marked "Security".
 - **Researchers:** through GitHub's private vulnerability reporting ("Report a vulnerability" under the repository's

@@ -1,0 +1,11 @@
+# NERvvE DevSecOps self-scan exclusions — paths that are not shipped product code.
+# Intentionally vulnerable application used in customer demonstrations
+demo/vulnerable-app/
+demo/vulnerable-api/
+# Security test vectors (forged tokens, injection probes, fake keys)
+backend/tests/
+engine/tests/
+# Fictional sample cloud accounts, cluster and runtime events (deliberately misconfigured demo data)
+demo/cloud/
+# Generated documentation website (built by scripts/build_docs.py, not committed)
+site/

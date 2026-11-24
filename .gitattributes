@@ -1,0 +1,14 @@
+# Keep Linux line endings for everything that runs inside containers or on Linux runners, even when the
+# repository is checked out on Windows (core.autocrlf=true would otherwise turn shell scripts into CRLF and break them).
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.png binary
+*.jpg binary
+*.pdf binary
+*.docx binary
+*.pptx binary
+*.xlsx binary
+*.zip binary
+*.ico binary

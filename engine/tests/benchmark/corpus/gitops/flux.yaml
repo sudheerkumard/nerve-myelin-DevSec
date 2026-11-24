@@ -1,0 +1,11 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata: {name: apps}
+spec: {url: https://github.com/acme/apps, ref: {branch: main}}
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata: {name: redis}
+spec:
+  chart: {spec: {chart: redis, version: '*'}}
+  values: {auth: {password: R3dis-Pr0d-Pass}, image: {tag: latest}}

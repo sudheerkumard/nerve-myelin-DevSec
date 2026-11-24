@@ -1,0 +1,73 @@
+# Copyright (c) 2026 Sudheer Kumar.
+# SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
+# NERvvE DevSecOps secure pipeline — GitHub Actions
+# Copy to .github/workflows/myelin.yml. Pin every `uses:` to a full commit SHA in your org
+# (NERvvE DevSecOps reports NM-CICD-001 until you do; Renovate/Dependabot keep the pins current).
+# MYELIN_CLI_PACKAGE: the NERvvE DevSecOps CLI to install, e.g.
+# git+https://github.com/sudheerkumard/nerve-myelin-DevSec@v1.5.0 or a wheel on your internal package index
+name: myelin-secure-pipeline
+on:
+  pull_request:            # untrusted PR code runs WITHOUT secrets (never pull_request_target + checkout)
+  push:
+    branches: [main, "release/**"]
+permissions:
+  contents: read           # least privilege by default (CICD-SEC-5)
+concurrency:
+  group: myelin-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    permissions: { contents: read, security-events: write }
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with: { fetch-depth: 0 }                 # full history for secrets-in-history scanning
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Install NERvvE DevSecOps CLI
+        run: pip install "${{ vars.MYELIN_CLI_PACKAGE }}"        # or run in the CLI image ghcr.io/sudheerkumard/myelin-cli:1.5.0
+      - name: NERvvE DevSecOps scan (SCA, SAST, secrets, IaC, pipeline posture, licences, AI-BOM)
+        env:
+          MYELIN_SERVER: ${{ vars.MYELIN_SERVER }}
+          MYELIN_API_KEY: ${{ secrets.MYELIN_API_KEY }}
+        run: myelin scan . --policy .myelin/policy.yaml --sarif myelin.sarif --sbom sbom.cdx.json --json myelin.json --fail-on block
+      - name: Upload SARIF to code scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with: { sarif_file: myelin.sarif, category: myelin }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: myelin-results, path: "myelin.json\nsbom.cdx.json" }
+
+  build-sign-attest:
+    needs: scan
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions: { contents: read, packages: write, id-token: write, attestations: write }   # OIDC — no static cloud keys (CICD-SEC-2/6)
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/download-artifact@v4      # myelin.json + sbom.cdx.json from the scan job
+        with: { name: myelin-results }
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - run: az acr login --name ${{ vars.ACR_NAME }}
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          tags: ${{ vars.ACR_NAME }}.azurecr.io/${{ github.event.repository.name }}:${{ github.sha }}
+          provenance: mode=max
+          sbom: true
+      - uses: sigstore/cosign-installer@v3
+      - name: NERvvE DevSecOps container scan (image, pre-deploy)
+        run: pip install "${{ vars.MYELIN_CLI_PACKAGE }}" && myelin scan --image ${{ vars.ACR_NAME }}.azurecr.io/${{ github.event.repository.name }}@${{ steps.build.outputs.digest }} --fail-on block
+      - name: Sign + SLSA provenance + SBOM attestation (keyless)
+        env:
+          IMAGE: ${{ vars.ACR_NAME }}.azurecr.io/${{ github.event.repository.name }}@${{ steps.build.outputs.digest }}
+        run: myelin attest --image "$IMAGE" --sbom sbom.cdx.json

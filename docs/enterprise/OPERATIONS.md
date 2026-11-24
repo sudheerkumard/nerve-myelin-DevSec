@@ -1,4 +1,4 @@
-# NERVE Myelin — Operations
+# NERvvE DevSecOps — Operations
 
 *NM-ARC-001 · Enterprise Architecture & Deployment Pack · Version 1.1 · 13 November 2026 · Customer confidential*
 
@@ -88,7 +88,7 @@ flowchart LR
 
 - helm upgrade runs the migration Job first (pre-upgrade hook); API pods roll only after it succeeds. Migrations are forward-only and backward-compatible for one release.
 - Rollback: helm rollback to the previous revision; restore from backup only if a migration must be reversed.
-- Images are referenced by digest; verify the NERVE Myelin cosign signature with your admission controller.
+- Images are referenced by digest; verify the NERvvE DevSecOps cosign signature with your admission controller.
 
 ### 8.7 Hardened container and release pipeline
 
@@ -97,7 +97,7 @@ flowchart LR
 | Minimal runtime | Multi-stage build; compilers and pip only in the build stage; no package manager in the runtime virtualenv; OS packages upgraded at build |
 | Least privilege | UID/GID 10001, read-only root filesystem, all capabilities dropped, no privilege escalation, seccomp RuntimeDefault |
 | Immutable application files | Application tree owned by root and not writable by the runtime user; tests removed from the image |
-| CI security gates | Unit and isolation tests against PostgreSQL, NERVE Myelin self-scan policy gate, pip-audit, gitleaks, Trivy (fixable critical/high fail the build), hadolint, Helm lint and schema validation |
+| CI security gates | Unit and isolation tests against PostgreSQL, NERvvE DevSecOps self-scan policy gate, pip-audit, gitleaks, Trivy (fixable critical/high fail the build), hadolint, Helm lint and schema validation |
 | Supply chain | All CI actions pinned to commit SHAs; BuildKit provenance; CycloneDX SBOM; keyless cosign signature and CycloneDX SBOM |
 
 ### 8.8 Single-host evaluation stack

@@ -1,10 +1,11 @@
 # Quick start
 
-Three ways to see NERVE Myelin, from a minute to a production-like stack.
+Three ways to see NERvvE DevSecOps, from a minute to a production-like stack.
 
 !!! note "Before you start"
-    These commands use the release bundle supplied with an evaluation or a subscription. To get one, see
-    [Evaluate NERVE Myelin](evaluate.md).
+    Clone the open-source Community edition first:
+    `git clone https://github.com/sudheerkumard/nerve-myelin-DevSec && cd nerve-myelin-DevSec`.
+    See [Get NERvvE DevSecOps](evaluate.md) for the options.
 
 === "Demo in 60 seconds"
 
@@ -17,7 +18,7 @@ Three ways to see NERVE Myelin, from a minute to a production-like stack.
 
 === "No server at all"
 
-    Open `demo/offline/NERVE-Myelin-Demo-Console.html` in a browser. Every view works on a recorded snapshot; actions
+    Open `demo/offline/NERvvE-DevSecOps-Demo-Console.html` in a browser. Every view works on a recorded snapshot; actions
     that change data are available once an API is connected.
 
 === "Enterprise stack on one host"
@@ -28,18 +29,18 @@ Three ways to see NERVE Myelin, from a minute to a production-like stack.
     ```
 
     PostgreSQL with row-level security, Keycloak with MFA, migrations, the API and TLS. Windows laptops:
-    `scripts\windows\start-enterprise.ps1` (guide).
+    `scripts\windows\start-enterprise.ps1`.
 
 ## Your first scan from a pipeline
 
 ```bash
-pip install "$MYELIN_CLI_PACKAGE"          # supplied with your subscription (or use the myelin-cli image)
+pip install .                              # from the repository root; provides the `myelin` command
 export MYELIN_SERVER=https://myelin.example.com MYELIN_API_KEY=<integration key>
 myelin scan . --policy policies/myelin-policy.yaml --sarif out.sarif --fail-on block
 ```
 
-The exit code is the gate: `0` pass or warn, `1` blocked by policy. Ready-made templates for GitHub Actions, Azure
-Pipelines, GitLab CI, Jenkins and Bitbucket are in `ci-templates/`.
+The exit code is the gate: `0` pass or warn, `1` blocked by policy. Examples for GitHub Actions, Azure Pipelines,
+GitLab CI, Jenkins and Bitbucket are in [Add to your pipeline](../CI-INTEGRATION.md).
 
 ## Next steps
 

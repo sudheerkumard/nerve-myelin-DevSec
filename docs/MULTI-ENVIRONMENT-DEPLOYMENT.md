@@ -1,4 +1,4 @@
-# NERVE MYELIN multi-environment deployment standard
+# NERvvE DevSecOps multi-environment deployment standard
 
 ## Deployment decision
 

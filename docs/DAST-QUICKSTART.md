@@ -1,4 +1,4 @@
-# Live application testing with NERVE Myelin — quick start (Windows / PowerShell)
+# Live application testing with NERvvE DevSecOps — quick start (Windows / PowerShell)
 
 > **Step-by-step guide (offline and online, with tokens, ownership verification and timings):** [LIVE-APP-TESTING-GUIDE.md](LIVE-APP-TESTING-GUIDE.md)
 
@@ -36,8 +36,8 @@ If activation is blocked by policy, run once: `Set-ExecutionPolicy -Scope Curren
 | Item | Example | Why |
 |---|---|---|
 | Base URL | `https://api.client.com` | What to scan |
-| OpenAPI / Swagger spec | `https://api.client.com/swagger/v1/swagger.json` or a file | Lets Myelin test every operation that should require login |
-| Test credentials (optional) | a bearer token or API key for a **test** user | Lets Myelin compare logged-in and anonymous behaviour |
+| OpenAPI / Swagger spec | `https://api.client.com/swagger/v1/swagger.json` or a file | Lets NERvvE test every operation that should require login |
+| Test credentials (optional) | a bearer token or API key for a **test** user | Lets NERvvE compare logged-in and anonymous behaviour |
 
 ## 3. Run the safe (read-only) scan
 
@@ -106,14 +106,14 @@ What it tests (still read-only — GET requests only):
 | NM-DAST-022 | Responses contain sensitive fields (password hashes, secrets, PAN/Aadhaar, card numbers) | API3 |
 | NM-DAST-023 | A non-admin can call admin operations | API5 |
 
-How it works: Myelin calls every list endpoint as each user, collects the IDs each user owns, then requests each
+How it works: NERvvE calls every list endpoint as each user, collects the IDs each user owns, then requests each
 user's objects as the other users and anonymously. A finding is raised only when the other user receives the
 **same object** — properly protected endpoints are not flagged.
 
 `assessment.html` is a self-contained report (executive summary, scope, method, findings with evidence, reproduction
 steps and fixes) that you can share or print to PDF. Tokens are never written to it.
 
-## 5. Online — run from the Myelin platform
+## 5. Online — run from the NERvvE platform
 
 1. Open the console → **Live app testing** → **Register target**: name, base URL, OpenAPI URL and the test users.
    In enterprise installations the user credentials are **vault references** (`vault://…/tenants/<tenant-id>/…`,

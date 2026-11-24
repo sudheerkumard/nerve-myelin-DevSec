@@ -1,0 +1,66 @@
+{{/* Copyright (c) 2026 Sudheer Kumar. SPDX-License-Identifier: AGPL-3.0-only.
+     Prometheus Operator integration (monitoring.coreos.com CRDs). */}}
+{{- if .Values.monitoring.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "myelin.name" . }}-api
+  labels: {{- include "myelin.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels: { app.kubernetes.io/instance: {{ .Release.Name }}, app.kubernetes.io/component: api }
+  endpoints: [{ port: http, path: /metrics, interval: {{ .Values.monitoring.serviceMonitor.interval }} }]
+{{- end }}
+{{- if .Values.monitoring.prometheusRule.enabled }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "myelin.name" . }}-alerts
+  labels: {{- include "myelin.labels" . | nindent 4 }}
+spec:
+  groups:
+    - name: myelin.availability
+      rules:
+        - alert: MyelinApiDown
+          expr: absent(up{job=~".*myelin.*"} == 1)
+          for: 5m
+          labels: { severity: critical }
+          annotations: { summary: "NERvvE DevSecOps API has no healthy targets" }
+        - alert: MyelinHigh5xxRate
+          expr: sum(rate(myelin_http_requests_total{status=~"5.."}[5m])) / clamp_min(sum(rate(myelin_http_requests_total[5m])), 1) > 0.02
+          for: 10m
+          labels: { severity: warning }
+          annotations: { summary: "More than 2% of NERvvE DevSecOps requests are failing" }
+        - alert: MyelinSlowRequests
+          expr: histogram_quantile(0.95, sum by (le) (rate(myelin_http_request_seconds_bucket[5m]))) > 1.5
+          for: 15m
+          labels: { severity: warning }
+          annotations: { summary: "NERvvE DevSecOps p95 latency above 1.5s" }
+    - name: myelin.security
+      rules:
+        - alert: MyelinAuthFailureSpike
+          expr: sum(rate(myelin_http_requests_total{status="401"}[5m])) > 5
+          for: 10m
+          labels: { severity: warning }
+          annotations: { summary: "Sustained authentication failures — possible credential stuffing or IdP misconfiguration" }
+        - alert: MyelinCrossTenantProbing
+          expr: sum(rate(myelin_http_requests_total{status="404",route=~"/api/findings/.*|/api/v1/evidence/.*"}[10m])) > 2
+          for: 10m
+          labels: { severity: warning }
+          annotations: { summary: "Elevated not-found on object routes — investigate for id enumeration" }
+        - alert: MyelinLicenseExpiring
+          expr: min(myelin_license_days_remaining) < 30
+          for: 1h
+          labels: { severity: warning }
+          annotations: { summary: "NERvvE DevSecOps licence expires within 30 days — contact the NERvvE DevSecOps product owner to renew" }
+        - alert: MyelinLicenseRestricted
+          expr: min(myelin_license_usable) == 0
+          for: 5m
+          labels: { severity: critical }
+          annotations: { summary: "NERvvE DevSecOps licence is missing, invalid or past grace — new scans are paused, data stays readable" }
+        - alert: MyelinBackupMissing
+          expr: time() - max(kube_cronjob_status_last_successful_time{cronjob=~".*myelin.*backup"}) > 93600
+          labels: { severity: critical }
+          annotations: { summary: "No successful NERvvE DevSecOps database backup in 26 hours" }
+{{- end }}

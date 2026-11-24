@@ -31,8 +31,8 @@ Settings are read from the process environment, then the file named by `MYELIN_E
 | `MYELIN_DEMO_OPEN` | `True` | Demo mode only: read-only access without a key (set false elsewhere) |
 | `MYELIN_DEPLOYMENT_ID` |  | Optional: binds a licence to one installation |
 | `MYELIN_ENV_FILE` |  | Path of an env file to load |
-| `MYELIN_EVIDENCE_SIGNING_KEY_REF` | `env://MYELIN_EVIDENCE_SIGNING_KEY` | Secret reference of the Ed25519 evidence signing key |
-| `MYELIN_EVIDENCE_STORE` | `(installation path)` | Evidence storage location: file://, s3:// or azblob:// |
+| `MYELIN_EVIDENCE_SIGNING_KEY_REF` | `env://MYELIN_EVIDENCE_SIGNING_KEY` | Secret reference of the evidence signing key |
+| `MYELIN_EVIDENCE_STORE` | `(installation path)` | Evidence storage: file://, s3:// or azblob:// |
 | `MYELIN_IDP_CONFIG` | `(installation path)` | Identity-provider configuration file (issuers, clients, role mapping) |
 | `MYELIN_ITSM_ALLOW_PRIVATE` |  | Allow ticketing systems on private networks |
 | `MYELIN_KSPM_EXCLUDE_NS` |  | Namespaces excluded from Kubernetes workload rules (default kube-system,kube-public,kube-node-lease) |

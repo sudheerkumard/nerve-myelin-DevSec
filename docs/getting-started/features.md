@@ -27,7 +27,7 @@ Everything below ships in the current release and is covered by automated tests
 
 ## Decide
 
-- [Myelin Risk Score](../concepts/risk-score.md) and CISA SSVC on every finding
+- [NERvvE Risk Score](../concepts/risk-score.md) and CISA SSVC on every finding
 - [Policy as code](../POLICY-GOVERNANCE.md): versioned, four-eyes approval, bindings, time-boxed exceptions
 - [Commit-bound CI/CD gate](../CD-PIPELINE-SECURITY.md) that fails closed, deployment checks
 

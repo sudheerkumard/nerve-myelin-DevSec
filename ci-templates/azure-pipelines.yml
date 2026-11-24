@@ -1,0 +1,44 @@
+# Copyright (c) 2026 Sudheer Kumar.
+# SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
+# NERvvE DevSecOps secure pipeline — Azure DevOps
+# MYELIN_CLI_PACKAGE: the NERvvE DevSecOps CLI to install, e.g.
+# git+https://github.com/sudheerkumard/nerve-myelin-DevSec@v1.5.0 or a wheel on your internal package index
+trigger: { branches: { include: [main, release/*] } }
+pr: { branches: { include: ["*"] } }
+pool: { vmImage: ubuntu-latest }        # Microsoft-hosted (ephemeral) agents; avoid shared self-hosted pools (CICD-SEC-7)
+variables:
+  - group: myelin                        # MYELIN_SERVER, MYELIN_API_KEY (secret) from a Key Vault-linked variable group
+
+stages:
+  - stage: Security
+    jobs:
+      - job: myelin_scan
+        steps:
+          - checkout: self
+            fetchDepth: 0
+          - task: UsePythonVersion@0
+            inputs: { versionSpec: "3.12" }
+          - script: pip install "$(MYELIN_CLI_PACKAGE)"
+            displayName: Install NERvvE DevSecOps CLI
+          - script: myelin scan . --policy .myelin/policy.yaml --sarif $(Build.ArtifactStagingDirectory)/CodeAnalysisLogs/myelin.sarif --sbom $(Build.ArtifactStagingDirectory)/sbom.cdx.json --fail-on block
+            displayName: NERvvE DevSecOps scan & policy gate
+            env: { MYELIN_SERVER: $(MYELIN_SERVER), MYELIN_API_KEY: $(MYELIN_API_KEY) }
+          - task: PublishBuildArtifacts@1
+            condition: always()
+            inputs: { PathtoPublish: $(Build.ArtifactStagingDirectory)/CodeAnalysisLogs, ArtifactName: CodeAnalysisLogs }   # shows in the SARIF SAST Scans tab
+
+  - stage: BuildSign
+    dependsOn: Security
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - job: build
+        steps:
+          - task: AzureCLI@2             # service connection using workload identity federation (no client secret)
+            inputs:
+              azureSubscription: sc-acr-wif
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az acr build -r $(ACR_NAME) -t $(Build.Repository.Name):$(Build.SourceVersion) . --query outputImages[0].digest -o tsv > digest.txt
+                pip install "$(MYELIN_CLI_PACKAGE)"
+                myelin attest --image $(ACR_NAME).azurecr.io/$(Build.Repository.Name)@$(cat digest.txt)

@@ -1,0 +1,20 @@
+# Never send secrets, local environments or build output to the image build
+.git
+.venv
+**/__pycache__
+**/*.pyc
+config/backend/enterprise.env
+config/backend/*.env*
+!config/backend/myelin.env.example
+!config/backend/enterprise.env.example
+**/*.key
+**/*.lic
+ip/
+sales/
+demo/offline/*.html
+var/
+
+# Demo fixtures include intentionally vulnerable applications and fake credentials; never ship them in the production image.
+demo/*
+!demo/vulnerable-app/
+!demo/vulnerable-app/**

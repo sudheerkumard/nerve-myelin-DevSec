@@ -1,0 +1,11 @@
+name: agent-safe
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: anthropics/claude-code-action@b4ffde65f46336ab88eb53be808477a3936bae11  # SAFE

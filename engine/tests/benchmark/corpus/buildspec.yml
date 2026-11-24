@@ -1,0 +1,4 @@
+version: 0.2
+env:
+  variables: {DB_PASSWORD: plaintextPass99, REGION: ap-south-1}
+  secrets-manager: {API_TOKEN: prod/api:token}

@@ -1,0 +1,192 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>API security assessment — orion-payments-api</title>
+<style>
+body{font-family:Arial,Helvetica,sans-serif;color:#0c1218;margin:0;background:#f4f7fa}
+.page{max-width:980px;margin:0 auto;background:#fff;padding:40px 48px}
+.cover{background:#0c1218;color:#fff;padding:36px 48px;max-width:980px;margin:0 auto;box-sizing:border-box}
+.cover .eb{color:#7fd8cc;letter-spacing:3px;font-size:12px;font-weight:700}
+.cover h1{margin:8px 0 6px;font-size:28px} .cover p{color:#c9d3dd;margin:2px 0}
+h2{border-bottom:2px solid #0f9f8f;padding-bottom:6px;margin-top:34px;font-size:20px} h3{font-size:16px;margin:0 0 10px}
+table{border-collapse:collapse;width:100%;font-size:13px} th,td{text-align:left;padding:7px 9px;border-bottom:1px solid #e2e8f0;vertical-align:top}
+th{background:#f1f5f8} .kv th{width:170px;background:none;color:#5b6b7c;font-weight:600}
+.sev{color:#fff;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:700;text-transform:uppercase}
+.tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:14px 0} .tile{border:1px solid #e2e8f0;border-radius:8px;padding:12px;text-align:center}
+.tile b{display:block;font-size:26px} .tile span{font-size:12px;color:#5b6b7c;text-transform:capitalize}
+.verdict{border-left:5px solid #b42318;background:#f8fafc;padding:12px 16px;margin:12px 0;font-size:15px}
+.finding{border:1px solid #e2e8f0;border-radius:10px;padding:16px 18px;margin:14px 0;page-break-inside:avoid}
+code{font-family:Consolas,"Courier New",monospace;font-size:12px;word-break:break-all;background:#f1f5f8;padding:1px 4px;border-radius:3px}
+.muted{color:#5b6b7c;font-size:12px} a{color:#0f766e}
+@media(max-width:700px){.page,.cover{padding:22px 16px}.tiles{grid-template-columns:repeat(3,1fr)}.kv th{width:110px}}
+@media print{body{background:#fff}.page{padding:0 10px}}
+</style></head><body>
+<div class="cover"><div class="eb">NERvvE DevSecOps · LIVE APPLICATION SECURITY ASSESSMENT</div>
+<h1>API security assessment — orion-payments-api</h1>
+<p>Target: https://api.orion-payments.example</p><p>Date: 2026-11-17 · Mode: safe (read-only) · Prepared for Orion Financial Group (fictional demo)</p>
+<p>Confidential</p></div>
+<div class="page">
+<h2>1. Executive summary</h2>
+<div class="verdict"><b>Not acceptable for release.</b> Policy “myelin-default”: BLOCK — 2 blocking, 3 warnings.</div>
+<div class="tiles"><div class="tile"><b style="color:#b42318">2</b><span>critical</span></div><div class="tile"><b style="color:#c2410c">3</b><span>high</span></div><div class="tile"><b style="color:#b7791f">3</b><span>medium</span></div><div class="tile"><b style="color:#2563eb">4</b><span>low</span></div><div class="tile"><b style="color:#64748b">0</b><span>info</span></div></div>
+<table><tr><th>OWASP API Top 10 (2023)</th><th>Meaning</th><th>Findings</th></tr><tr><td>API1</td><td>Users can read objects that belong to other users by changing an identifier.</td><td>1</td></tr><tr><td>API2</td><td>Data or operations are available without authentication.</td><td>1</td></tr><tr><td>API3</td><td>Responses expose properties the client should not receive.</td><td>1</td></tr><tr><td>API5</td><td>Lower-privileged users can call administrative functions.</td><td>1</td></tr><tr><td>API8</td><td>Configuration weaknesses in transport, headers, CORS, cookies or error handling.</td><td>7</td></tr><tr><td>API9</td><td>API inventory and documentation are exposed.</td><td>1</td></tr></table>
+<h2>2. Scope and method</h2>
+<table class="kv">
+<tr><th>Target</th><td><code>https://api.orion-payments.example</code></td></tr>
+<tr><th>API specification</th><td>https://api.orion-payments.example/openapi.json · 12 GET operations</td></tr>
+<tr><th>Test identities</th><td>alice (customer), bob (customer), admin (admin)</td></tr>
+<tr><th>Checks</th><td>Transport and TLS, security headers, CORS, cookies, error handling, API inventory;
+  object-level (4 objects) and function-level (3 calls) authorisation across users; sensitive data exposure</td></tr>
+<tr><th>Mode and safety</th><td>safe (read-only). Read-only: GET, HEAD and OPTIONS requests only; no data was created, changed or deleted.
+  63 requests in 0.18 s, locked to the target host.</td></tr>
+<tr><th>Tools</th><td>myelin-dast, myelin-authz · NERvvE DevSecOps 1.2.0</td></tr>
+<tr><th>Limitations</th><td>Automated testing does not replace manual penetration testing of business logic, chained attacks or write operations.</td></tr>
+</table>
+<h2>3. Findings overview</h2>
+<table><tr><th>Severity</th><th>Priority</th><th>MRS</th><th>Finding</th><th>OWASP</th></tr><tr><td><span class="sev" style="background:#b42318">critical</span></td><td>P1</td><td>73.3</td><td><a href="#NM-81EDDE9397">Operation &#x27;accounts_api_v1_accounts_get&#x27; responds without authentication</a></td><td>API2:2023</td></tr><tr><td><span class="sev" style="background:#b42318">critical</span></td><td>P1</td><td>73.3</td><td><a href="#NM-BEC989D9E9">bob can read alice&#x27;s object via /api/v2/accounts/{accountId}</a></td><td>API1:2023</td></tr><tr><td><span class="sev" style="background:#c2410c">high</span></td><td>P2</td><td>58.5</td><td><a href="#NM-429D302B9D">API served over plain HTTP</a></td><td>API8:2023</td></tr><tr><td><span class="sev" style="background:#c2410c">high</span></td><td>P2</td><td>58.5</td><td><a href="#NM-91CC56088F">CORS reflects arbitrary origins with credentials</a></td><td>API8:2023</td></tr><tr><td><span class="sev" style="background:#c2410c">high</span></td><td>P2</td><td>58.5</td><td><a href="#NM-380FC2E6AB">Privileged operation /api/v2/admin/users callable by role &#x27;customer&#x27;</a></td><td>API5:2023</td></tr><tr><td><span class="sev" style="background:#b7791f">medium</span></td><td>P2</td><td>44.2</td><td><a href="#NM-5D7033522D">Cookie &#x27;session&#x27; lacks Secure, HttpOnly</a></td><td>API8:2023</td></tr><tr><td><span class="sev" style="background:#b7791f">medium</span></td><td>P2</td><td>44.2</td><td><a href="#NM-EFB7CB9A8E">Stack trace or framework internals in error response</a></td><td>API8:2023</td></tr><tr><td><span class="sev" style="background:#b7791f">medium</span></td><td>P2</td><td>44.2</td><td><a href="#NM-D3AB2249C9">Sensitive properties returned by /api/v2/me/profile</a></td><td>API3:2023</td></tr><tr><td><span class="sev" style="background:#2563eb">low</span></td><td>P3</td><td>31.2</td><td><a href="#NM-23C7B7A9D2">X-Content-Type-Options: nosniff missing</a></td><td>API8:2023</td></tr><tr><td><span class="sev" style="background:#2563eb">low</span></td><td>P3</td><td>31.2</td><td><a href="#NM-BA91C66012">Technology versions disclosed in response headers</a></td><td>API8:2023</td></tr><tr><td><span class="sev" style="background:#2563eb">low</span></td><td>P3</td><td>31.2</td><td><a href="#NM-74AB80D0C3">TRACE method advertised</a></td><td>API8:2023</td></tr><tr><td><span class="sev" style="background:#2563eb">low</span></td><td>P3</td><td>31.2</td><td><a href="#NM-FCE3335895">API documentation publicly accessible without authentication</a></td><td>API9:2023</td></tr></table>
+<h2>4. Finding details</h2><section class="finding" id="NM-81EDDE9397">
+  <h3><span class="sev" style="background:#b42318">critical</span> Operation &#x27;accounts_api_v1_accounts_get&#x27; responds without authentication</h3>
+  <table class="kv">
+    <tr><th>ID / rule</th><td>NM-81EDDE9397 · NM-DAST-010</td></tr>
+    <tr><th>Priority / risk score</th><td>P1 · MRS 73.3 / 100 · fix within 7 days</td></tr>
+    <tr><th>Location</th><td><code>GET /api/v1/accounts</code></td></tr>
+    <tr><th>Classification</th><td>API2:2023 Broken Authentication · CWE-306</td></tr>
+    <tr><th>What it means</th><td>Data or operations are available without authentication.</td></tr>
+    <tr><th>Evidence</th><td><code>unauthenticated GET → HTTP 200</code></td></tr>
+    <tr><th>Reproduce</th><td><code>curl -i -X GET &quot;https://api.orion-payments.example/api/v1/accounts&quot;</code></td></tr>
+    <tr><th>Remediation</th><td>Enforce authentication on this operation in the API gateway and the service; add a regression test.</td></tr>
+  </table>
+</section><section class="finding" id="NM-BEC989D9E9">
+  <h3><span class="sev" style="background:#b42318">critical</span> bob can read alice&#x27;s object via /api/v2/accounts/{accountId}</h3>
+  <table class="kv">
+    <tr><th>ID / rule</th><td>NM-BEC989D9E9 · NM-DAST-020</td></tr>
+    <tr><th>Priority / risk score</th><td>P1 · MRS 73.3 / 100 · fix within 7 days</td></tr>
+    <tr><th>Location</th><td><code>GET /api/v2/accounts/{accountId}</code></td></tr>
+    <tr><th>Classification</th><td>API1:2023 Broken Object Level Authorization · CWE-639</td></tr>
+    <tr><th>What it means</th><td>Users can read objects that belong to other users by changing an identifier.</td></tr>
+    <tr><th>Evidence</th><td><code>alice → HTTP 200; bob → HTTP 200 with the same object</code></td></tr>
+    <tr><th>Reproduce</th><td><code>curl -i -X GET -H &quot;Authorization: &lt;token of the second user&gt;&quot; &quot;https://api.orion-payments.example/api/v2/accounts/ACC-2001&quot;</code></td></tr>
+    <tr><th>Remediation</th><td>Check on every request that the authenticated user owns or may access the requested object (e.g. WHERE owner_id = :current_user); return 404 otherwise. Add an automated cross-user test.</td></tr>
+  </table>
+</section><section class="finding" id="NM-429D302B9D">
+  <h3><span class="sev" style="background:#c2410c">high</span> API served over plain HTTP</h3>
+  <table class="kv">
+    <tr><th>ID / rule</th><td>NM-429D302B9D · NM-DAST-001</td></tr>
+    <tr><th>Priority / risk score</th><td>P2 · MRS 58.5 / 100 · fix within 30 days</td></tr>
+    <tr><th>Location</th><td><code>GET /</code></td></tr>
+    <tr><th>Classification</th><td>API8:2023 Security Misconfiguration · CWE-319</td></tr>
+    <tr><th>What it means</th><td>Configuration weaknesses in transport, headers, CORS, cookies or error handling.</td></tr>
+    <tr><th>Evidence</th><td><code></code></td></tr>
+    <tr><th>Reproduce</th><td><code>curl -i -X GET &quot;https://api.orion-payments.example&quot;</code></td></tr>
+    <tr><th>Remediation</th><td>Serve the API over HTTPS only and redirect or refuse HTTP.</td></tr>
+  </table>
+</section><section class="finding" id="NM-91CC56088F">
+  <h3><span class="sev" style="background:#c2410c">high</span> CORS reflects arbitrary origins with credentials</h3>
+  <table class="kv">
+    <tr><th>ID / rule</th><td>NM-91CC56088F · NM-DAST-005</td></tr>
+    <tr><th>Priority / risk score</th><td>P2 · MRS 58.5 / 100 · fix within 30 days</td></tr>
+    <tr><th>Location</th><td><code>GET /</code></td></tr>
+    <tr><th>Classification</th><td>API8:2023 Security Misconfiguration · CWE-942</td></tr>
+    <tr><th>What it means</th><td>Configuration weaknesses in transport, headers, CORS, cookies or error handling.</td></tr>
+    <tr><th>Evidence</th><td><code>Access-Control-Allow-Origin: https://myelin-cors-probe.invalid; Allow-Credentials: True</code></td></tr>
+    <tr><th>Reproduce</th><td><code>curl -i -X GET &quot;https://api.orion-payments.example&quot;</code></td></tr>
+    <tr><th>Remediation</th><td>Allow only an explicit list of trusted origins; never reflect the Origin header with credentials.</td></tr>
+  </table>
+</section><section class="finding" id="NM-380FC2E6AB">
+  <h3><span class="sev" style="background:#c2410c">high</span> Privileged operation /api/v2/admin/users callable by role &#x27;customer&#x27;</h3>
+  <table class="kv">
+    <tr><th>ID / rule</th><td>NM-380FC2E6AB · NM-DAST-023</td></tr>
+    <tr><th>Priority / risk score</th><td>P2 · MRS 58.5 / 100 · fix within 30 days</td></tr>
+    <tr><th>Location</th><td><code>GET /api/v2/admin/users</code></td></tr>
+    <tr><th>Classification</th><td>API5:2023 Broken Function Level Authorization · CWE-285</td></tr>
+    <tr><th>What it means</th><td>Lower-privileged users can call administrative functions.</td></tr>
+    <tr><th>Evidence</th><td><code>alice (customer) → HTTP 200</code></td></tr>
+    <tr><th>Reproduce</th><td><code>curl -i -X GET -H &quot;Authorization: &lt;token of a non-privileged user&gt;&quot; &quot;https://api.orion-payments.example/api/v2/admin/users&quot;</code></td></tr>
+    <tr><th>Remediation</th><td>Enforce role checks server-side: only admin may call this operation. Deny by default and centralise authorisation policy.</td></tr>
+  </table>
+</section><section class="finding" id="NM-5D7033522D">
+  <h3><span class="sev" style="background:#b7791f">medium</span> Cookie &#x27;session&#x27; lacks Secure, HttpOnly</h3>
+  <table class="kv">
+    <tr><th>ID / rule</th><td>NM-5D7033522D · NM-DAST-011</td></tr>
+    <tr><th>Priority / risk score</th><td>P2 · MRS 44.2 / 100 · fix within 30 days</td></tr>
+    <tr><th>Location</th><td><code>GET /</code></td></tr>
+    <tr><th>Classification</th><td>API8:2023 Security Misconfiguration · CWE-614</td></tr>
+    <tr><th>What it means</th><td>Configuration weaknesses in transport, headers, CORS, cookies or error handling.</td></tr>
+    <tr><th>Evidence</th><td><code>session=demo-session-id; Path=/; SameSite=lax</code></td></tr>
+    <tr><th>Reproduce</th><td><code>curl -i -X GET &quot;https://api.orion-payments.example&quot;</code></td></tr>
+    <tr><th>Remediation</th><td>Set Secure, HttpOnly and SameSite on session and authentication cookies.</td></tr>
+  </table>
+</section><section class="finding" id="NM-EFB7CB9A8E">
+  <h3><span class="sev" style="background:#b7791f">medium</span> Stack trace or framework internals in error response</h3>
+  <table class="kv">
+    <tr><th>ID / rule</th><td>NM-EFB7CB9A8E · NM-DAST-009</td></tr>
+    <tr><th>Priority / risk score</th><td>P2 · MRS 44.2 / 100 · fix within 30 days</td></tr>
+    <tr><th>Location</th><td><code>GET /myelin-nonexistent-%7B%7D</code></td></tr>
+    <tr><th>Classification</th><td>API8:2023 Security Misconfiguration · CWE-209</td></tr>
+    <tr><th>What it means</th><td>Configuration weaknesses in transport, headers, CORS, cookies or error handling.</td></tr>
+    <tr><th>Evidence</th><td><code>Traceback (most recent call last)</code></td></tr>
+    <tr><th>Reproduce</th><td><code>curl -i -X GET &quot;https://api.orion-payments.example/myelin-nonexistent-%7B%7D&quot;</code></td></tr>
+    <tr><th>Remediation</th><td>Return generic error bodies in production; log details server-side only.</td></tr>
+  </table>
+</section><section class="finding" id="NM-D3AB2249C9">
+  <h3><span class="sev" style="background:#b7791f">medium</span> Sensitive properties returned by /api/v2/me/profile</h3>
+  <table class="kv">
+    <tr><th>ID / rule</th><td>NM-D3AB2249C9 · NM-DAST-022</td></tr>
+    <tr><th>Priority / risk score</th><td>P2 · MRS 44.2 / 100 · fix within 30 days</td></tr>
+    <tr><th>Location</th><td><code>GET /api/v2/me/profile</code></td></tr>
+    <tr><th>Classification</th><td>API3:2023 Broken Object Property Level Authorization · CWE-213</td></tr>
+    <tr><th>What it means</th><td>Responses expose properties the client should not receive.</td></tr>
+    <tr><th>Evidence</th><td><code>as alice: fields pan, password_hash</code></td></tr>
+    <tr><th>Reproduce</th><td><code>curl -i -X GET &quot;https://api.orion-payments.example/api/v2/me/profile&quot;</code></td></tr>
+    <tr><th>Remediation</th><td>Return only the properties the client needs; never return password hashes, secrets or full identity/card numbers. Use explicit response schemas (allow-lists) rather than serialising whole objects.</td></tr>
+  </table>
+</section><section class="finding" id="NM-23C7B7A9D2">
+  <h3><span class="sev" style="background:#2563eb">low</span> X-Content-Type-Options: nosniff missing</h3>
+  <table class="kv">
+    <tr><th>ID / rule</th><td>NM-23C7B7A9D2 · NM-DAST-004</td></tr>
+    <tr><th>Priority / risk score</th><td>P3 · MRS 31.2 / 100 · fix within 90 days</td></tr>
+    <tr><th>Location</th><td><code>GET /</code></td></tr>
+    <tr><th>Classification</th><td>API8:2023 Security Misconfiguration · CWE-693</td></tr>
+    <tr><th>What it means</th><td>Configuration weaknesses in transport, headers, CORS, cookies or error handling.</td></tr>
+    <tr><th>Evidence</th><td><code></code></td></tr>
+    <tr><th>Reproduce</th><td><code>curl -i -X GET &quot;https://api.orion-payments.example&quot;</code></td></tr>
+    <tr><th>Remediation</th><td>Send X-Content-Type-Options: nosniff on every response.</td></tr>
+  </table>
+</section><section class="finding" id="NM-BA91C66012">
+  <h3><span class="sev" style="background:#2563eb">low</span> Technology versions disclosed in response headers</h3>
+  <table class="kv">
+    <tr><th>ID / rule</th><td>NM-BA91C66012 · NM-DAST-006</td></tr>
+    <tr><th>Priority / risk score</th><td>P3 · MRS 31.2 / 100 · fix within 90 days</td></tr>
+    <tr><th>Location</th><td><code>GET /</code></td></tr>
+    <tr><th>Classification</th><td>API8:2023 Security Misconfiguration · CWE-200</td></tr>
+    <tr><th>What it means</th><td>Configuration weaknesses in transport, headers, CORS, cookies or error handling.</td></tr>
+    <tr><th>Evidence</th><td><code>server: Kestrel/6.0.1; x-powered-by: ASP.NET 4.0.30319</code></td></tr>
+    <tr><th>Reproduce</th><td><code>curl -i -X GET &quot;https://api.orion-payments.example&quot;</code></td></tr>
+    <tr><th>Remediation</th><td>Remove or genericise these headers so software versions are not disclosed.</td></tr>
+  </table>
+</section><section class="finding" id="NM-74AB80D0C3">
+  <h3><span class="sev" style="background:#2563eb">low</span> TRACE method advertised</h3>
+  <table class="kv">
+    <tr><th>ID / rule</th><td>NM-74AB80D0C3 · NM-DAST-007</td></tr>
+    <tr><th>Priority / risk score</th><td>P3 · MRS 31.2 / 100 · fix within 90 days</td></tr>
+    <tr><th>Location</th><td><code>OPTIONS /</code></td></tr>
+    <tr><th>Classification</th><td>API8:2023 Security Misconfiguration · CWE-693</td></tr>
+    <tr><th>What it means</th><td>Configuration weaknesses in transport, headers, CORS, cookies or error handling.</td></tr>
+    <tr><th>Evidence</th><td><code>Allow: GET, POST, OPTIONS, TRACE</code></td></tr>
+    <tr><th>Reproduce</th><td><code>curl -i -X OPTIONS &quot;https://api.orion-payments.example&quot;</code></td></tr>
+    <tr><th>Remediation</th><td>Disable the TRACE method on the server and proxies.</td></tr>
+  </table>
+</section><section class="finding" id="NM-FCE3335895">
+  <h3><span class="sev" style="background:#2563eb">low</span> API documentation publicly accessible without authentication</h3>
+  <table class="kv">
+    <tr><th>ID / rule</th><td>NM-FCE3335895 · NM-DAST-008</td></tr>
+    <tr><th>Priority / risk score</th><td>P3 · MRS 31.2 / 100 · fix within 90 days</td></tr>
+    <tr><th>Location</th><td><code>GET /openapi.json</code></td></tr>
+    <tr><th>Classification</th><td>API9:2023 Improper Inventory Management · CWE-200</td></tr>
+    <tr><th>What it means</th><td>API inventory and documentation are exposed.</td></tr>
+    <tr><th>Evidence</th><td><code>/openapi.json, /docs, /redoc</code></td></tr>
+    <tr><th>Reproduce</th><td><code>curl -i -X GET &quot;https://api.orion-payments.example/openapi.json&quot;</code></td></tr>
+    <tr><th>Remediation</th><td>Restrict API documentation to internal networks or authenticated users in production.</td></tr>
+  </table>
+</section>
+<p class="muted">Generated by NERvvE DevSecOps 1.2.0. Tokens and credentials are never written to this report.
+© 2026 Sudheer Kumar · NERvvE DevSecOps. Confidential.</p>
+</div></body></html>

@@ -1,42 +1,129 @@
-# NERVE Myelin
+# NERvvE DevSecOps — Community edition
 
-**DevSecOps and cloud-native application protection in one platform.** Fifteen engines (SAST, SCA, secrets, IaC,
-CI/CD posture, live application testing, cloud, Kubernetes and identity posture, runtime detections) feed one finding
-queue, one risk score and one policy gate, from a developer's commit to a running container.
+**Secure the code, the pipeline that builds it, and the artifact that ships.**
 
-This repository is the **public documentation** for NERVE Myelin. The product itself is proprietary and is supplied
-under subscription; its source code is not published here.
+> Free and open source under the [GNU AGPL-3.0](LICENSE). © 2026 Sudheer Kumar.
+> NERvvE DevSecOps Product designed and developed by Sudheer Kumar.
 
-## What is here
+NERvvE DevSecOps is a DevSecOps and cloud-native application protection platform. Fifteen engines from code to cloud
+to runtime write into one finding schema, one exploitability-based risk score (the NERvvE Risk Score) and one policy,
+enforced from the developer's laptop through the pull request and pipeline gate to Kubernetes admission.
 
-| Folder | Contents |
+📖 **Documentation:** <https://sudheerkumard.github.io/nerve-myelin-DevSec/>
+
+![NERvvE DevSecOps console — overview](docs/assets/screenshots/overview.webp)
+
+## What it covers
+
+| Engine | What it covers |
 |---|---|
-| `docs/` | Product documentation: getting started, architecture and data-flow diagrams, guides, reference, legal terms |
-| `docs/assets/explorer/` | Interactive architecture explorer (open `index.html` in any browser) |
-| `config/connectors/` | Least-privilege, read-only permission definitions for Azure, AWS, Google Cloud and the GitHub App |
-| `deploy/k8s/myelin-kspm-reader.yaml` | Read-only Kubernetes role for cluster posture (cannot read Secrets) |
-| `deploy/runtime/` | Falco and Tetragon configuration for runtime detections |
-| `policies/` | Example policy as code (YAML and OPA/Rego) |
+| SCA + reachability | Open-source dependencies (npm, PyPI, Maven, Go) with import-graph reachability |
+| SAST | First-party code: injection, deserialisation, TLS, JWT, crypto |
+| Secrets | Code, history and pipeline definitions, with high-confidence and live-credential flags |
+| IaC | Terraform, Bicep/ARM, Kubernetes, Helm, Dockerfile |
+| Container | Image OS and language packages (Trivy) |
+| **Pipeline posture** | GitHub Actions, GitLab CI, Azure Pipelines, Jenkins, Bitbucket, mapped to the OWASP Top 10 CI/CD risks |
+| Licences | Copyleft and deny-list policy |
+| DAST / API | Running web apps and APIs: read-only checks, crawler, multi-user authorisation tests, authorised active checks |
+| **AI-BOM** | Models, prompts, agents and MCP tools (OWASP LLM Top 10) |
+| **Provenance** | Sigstore signing, SLSA provenance, SBOM attestation, admission verification |
+| **Cloud posture (CSPM)** | Azure, AWS and Google Cloud configuration against the CIS foundations benchmarks |
+| **Kubernetes posture (KSPM)** | Pod Security Standards, RBAC, exposure, network isolation, node versions |
+| **Identities (CIEM)** | Effective privilege across Azure, AWS, Google Cloud and Kubernetes |
+| **Runtime (CWPP)** | Falco and Tetragon detections grouped per workload and mapped to MITRE ATT&CK |
+| **Attack paths** | Internet exposure + exploitable weakness + privileged identity or data store, linked back to the repository |
 
-## Read the documentation
+Around the engines: a web console, VEX and CSAF triage, AutoFix pull requests, policy as code (YAML or OPA/Rego),
+compliance mapping (OWASP, PCI DSS, ISO 27001, NIST SSDF, SOC 2, EU CRA), ticketing, a pre-commit hook, an MCP server
+for AI coding assistants, and an offline AI assistant.
 
-Online: **https://sudheerkumard.github.io/nerve-myelin-DevSec/**. Want to try the product? See
-[Evaluate NERVE Myelin](docs/getting-started/evaluate.md), or open a
-[Request an evaluation](../../issues/new/choose) issue.
-
-Or build the documentation website locally (works fully offline):
+## Quick start (demo in 60 seconds)
 
 ```bash
-pip install -r docs/requirements.txt
-mkdocs serve            # http://127.0.0.1:8000, or: mkdocs build  ->  site/
+git clone https://github.com/sudheerkumard/nerve-myelin-DevSec.git && cd nerve-myelin-DevSec
+
+./demo/start-demo.sh                 # macOS / Linux  → http://localhost:8080   (Windows: demo\start-demo.ps1)
+docker compose up --build            # or Docker       → http://localhost:8080
+open demo/offline/NERvvE-DevSecOps-Demo-Console.html   # or no server: embedded demo snapshot
 ```
+
+With the API running, **Live scan** runs the real engine against `demo/vulnerable-app`. The demo tenant
+"Orion Financial Group" is fictional; its findings use real public CVEs.
+
+## Scan your own code (CLI and pipeline gate)
+
+```bash
+pip install .                          # provides the `myelin` command (Python 3.10+)
+myelin scan . --sarif out.sarif --sbom sbom.cdx.json --json out.json
+echo $?                                # 0 pass · 1 blocked by policy · 2 error
+myelin scan . --policy policies/myelin-policy.yaml --fail-on block
+myelin scan --image myregistry/app@sha256:…          # needs trivy (bundled in Dockerfile.cli)
+myelin dast --target https://api.example.com --openapi spec.json   # only APIs you are authorised to test
+myelin attest --image myregistry/app@sha256:… --sbom sbom.cdx.json   # cosign keyless sign + SBOM attestation
+```
+
+When Trivy, Semgrep, Gitleaks or Checkov are on PATH, NERvvE DevSecOps runs them alongside its built-in engines,
+normalises their output and removes duplicates. Ready-made pipeline templates are in [`ci-templates/`](ci-templates/).
+
+Apply supplier VEX or CSAF statements to a saved scan. An exact vulnerability ID and package URL are required, and
+imported `not_affected` evidence stays visible and never closes a finding by itself:
+
+```bash
+myelin vex --results out.json --document supplier-vex.json --output assessed.json
+myelin gate --results assessed.json
+```
+
+## Run the platform
+
+```bash
+# Single host: PostgreSQL + Keycloak (MFA) + migrations + API + TLS
+scripts/ops/gen-secrets.sh > config/backend/enterprise.env
+docker compose -f docker-compose.enterprise.yml --env-file config/backend/enterprise.env up -d
+
+# Kubernetes
+helm upgrade --install myelin deploy/helm/myelin -f config/deploy/values-customer.example.yaml
+```
+
+OIDC sign-in (Keycloak, Entra ID, Okta, Auth0, Ping, Google), MFA with step-up, six-role RBAC, PostgreSQL row-level
+security for multi-tenancy, read-only cloud connectors and a hash-chained audit log are all included. No licence key is
+needed. See [identity](docs/enterprise/IDENTITY.md), [multi-tenancy](docs/enterprise/MULTI-TENANCY.md),
+[connectors](docs/enterprise/CONNECTORS.md) and [operations](docs/enterprise/OPERATIONS.md).
+
+## Repository layout
+
+```
+engine/myelin_engine/   scan engine and the `myelin` CLI (orchestrator, scoring, policy, engines, normalisers)
+backend/app/           FastAPI API: findings, pipelines, supply chain, compliance, policy, connectors, scans
+console/               single-page console (console.template.html → index.html via scripts/build_console.py)
+ci-templates/          GitHub Actions, GitLab CI, Azure Pipelines, Jenkinsfile, Bitbucket, CD templates
+policies/              myelin-policy.yaml and its OPA/Rego equivalent
+deploy/                Helm chart, Keycloak, Compose and Kubernetes manifests
+config/                every setting, with examples (see config/README.md)
+demo/                  start/stop scripts, offline console and an intentionally vulnerable repository
+docs/                  documentation site sources (mkdocs.yml; build with scripts/build_docs.py)
+```
+
+Code identifiers (the `myelin` command, `myelin_engine`, `MYELIN_*` settings) keep their original names so existing
+pipelines and configuration keep working.
+
+## Tests
+
+```bash
+pip install -r backend/requirements.txt -r backend/requirements-dev.txt
+python -m pytest -q backend/tests engine/tests          # PostgreSQL tests skip without a database
+MYELIN_TEST_PG="host=localhost port=5432 user=postgres password=..." python -m pytest -q backend/tests engine/tests
+```
+
+## Contributing
+
+Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md);
+pull requests need the [Contributor Licence Agreement](CLA.md). Report vulnerabilities privately as described in
+[SECURITY.md](SECURITY.md).
 
 ## Licence
 
-NERVE Myelin is proprietary software. The documentation and files in this repository are provided for evaluation
-and for use by licensed customers; see [`LICENSE`](LICENSE) and
-[`docs/legal/SUBSCRIPTION-AGREEMENT.md`](docs/legal/SUBSCRIPTION-AGREEMENT.md). Third-party notices are in
-[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md). Report security issues as described in [`SECURITY.md`](SECURITY.md).
-
-**NERVE Myelin Product designed and developed by Sudheer Kumar.**
-Copyright © 2026 Sudheer Kumar. All rights reserved.
+NERvvE DevSecOps Community edition is licensed under the GNU Affero General Public License v3.0 only
+([LICENSE](LICENSE)). If you run a modified version as a network service, the AGPL requires you to offer its source
+to the users of that service. Commercial licences (for use without AGPL obligations), support and customisation are
+available from the author through <https://github.com/sudheerkumard/nerve-myelin-DevSec>. Third-party components are
+listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md); see [NOTICE.md](NOTICE.md) for names and trademarks.

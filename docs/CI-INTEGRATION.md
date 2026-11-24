@@ -1,4 +1,4 @@
-# Add NERVE Myelin to your pipeline
+# Add NERvvE DevSecOps to your pipeline
 
 Two commands do the work in any CI/CD system:
 
@@ -14,8 +14,8 @@ uploaded; only findings, the SBOM and the decision are sent to the platform.
 
 | You need | Where it comes from |
 |---|---|
-| The `myelin` CLI | The CLI package or the `myelin-cli` container image supplied with your subscription or evaluation |
-| `MYELIN_SERVER` | The URL of your NERVE Myelin platform |
+| The `myelin` CLI | `pip install .` from the repository, or the `myelin-cli` container image built with `Dockerfile.cli` |
+| `MYELIN_SERVER` | The URL of your NERvvE DevSecOps platform (optional: without it, `myelin scan` runs fully offline) |
 | `MYELIN_API_KEY` | An integration API key, created in the console by a tenant administrator (**Create API key**). Store it as a CI secret |
 | A policy file | Start from [`policies/myelin-policy.yaml`](https://github.com/sudheerkumard/nerve-myelin-DevSec/blob/main/policies/myelin-policy.yaml) and commit it as `.myelin/policy.yaml` |
 
@@ -59,7 +59,7 @@ administer the tenant.
     ```
 
     Add your code-scanning upload step for `myelin.sarif` to see findings as pull request annotations. Pin every
-    `uses:` to a full commit SHA (NERVE Myelin reports rule NM-CICD-001 until you do).
+    `uses:` to a full commit SHA (NERvvE DevSecOps reports rule NM-CICD-001 until you do).
 
 === "Azure Pipelines"
 
@@ -89,7 +89,7 @@ administer the tenant.
     # .gitlab-ci.yml
     myelin-scan:
       stage: test
-      image: ghcr.io/sudheerkumard/myelin-cli@sha256:<digest supplied with your release>
+      image: ghcr.io/sudheerkumard/myelin-cli@sha256:<digest of your myelin-cli image>
       script:
         - myelin scan . --policy .myelin/policy.yaml --sarif gl-sast-report.sarif --sbom gl-sbom.cdx.json --fail-on block
       artifacts:
@@ -107,7 +107,7 @@ administer the tenant.
       agent { docker { image 'ghcr.io/sudheerkumard/myelin-cli@sha256:<digest>' } }
       environment { MYELIN_SERVER = 'https://myelin.example.com' }
       stages {
-        stage('NERVE Myelin scan') {
+        stage('NERvvE DevSecOps scan') {
           steps {
             withCredentials([string(credentialsId: 'myelin-api-key', variable: 'MYELIN_API_KEY')]) {
               sh 'myelin scan . --policy .myelin/policy.yaml --sarif myelin.sarif --fail-on block'
@@ -127,7 +127,7 @@ administer the tenant.
       pull-requests:
         "**":
           - step:
-              name: NERVE Myelin scan
+              name: NERvvE DevSecOps scan
               script:
                 - myelin scan . --policy .myelin/policy.yaml --sarif myelin.sarif --fail-on block
               artifacts: [myelin.sarif]
@@ -161,8 +161,7 @@ myelin gate --repo payments-api --commit "$COMMIT_SHA" --environment production 
 - **`--environment`.** Recorded in the audit trail with the decision.
 
 The same command works in GitHub Actions protected environments, Azure Pipelines environments, GitLab manual
-production jobs and an Argo CD PreSync hook, which stops a sync when the gate blocks. Ready-to-use deployment
-templates for each are included in the release bundle.
+production jobs and an Argo CD PreSync hook, which stops a sync when the gate blocks.
 
 ## Developer machines
 

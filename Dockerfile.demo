@@ -1,0 +1,34 @@
+# Copyright (c) 2026 Sudheer Kumar.
+# SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
+# Local-only demo image. Never use this image for customer production deployments.
+FROM python:3.12-slim
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PATH=/venv/bin:$PATH \
+    MYELIN_MODE=demo MYELIN_DEMO_OPEN=true MYELIN_SEED_DEMO_DATA=true \
+    MYELIN_CONSOLE_PATH=/opt/myelin/demo/offline/NERvvE-DevSecOps-Demo-Console.html \
+    MYELIN_LIVE_SCAN_ROOT=/opt/myelin
+RUN python -m venv /venv
+WORKDIR /opt/myelin
+COPY backend/requirements.txt /tmp/requirements.txt
+RUN /venv/bin/pip install --no-cache-dir -r /tmp/requirements.txt \
+ && /venv/bin/pip uninstall -y pip setuptools wheel
+COPY engine engine
+COPY backend backend
+COPY console console
+COPY config config
+COPY policies policies
+COPY LICENSE THIRD-PARTY-NOTICES.md /usr/share/doc/nerve-myelin/
+COPY docs/legal /usr/share/doc/nerve-myelin/legal
+COPY demo/vulnerable-app demo/vulnerable-app
+COPY scripts/build_console.py scripts/build_console.py
+COPY deploy/docker/entrypoint.sh /usr/local/bin/myelin
+RUN chmod 0555 /usr/local/bin/myelin \
+ && python scripts/build_console.py \
+ && groupadd --gid 10001 myelin \
+ && useradd --uid 10001 --gid 10001 --no-create-home --shell /usr/sbin/nologin myelin \
+ && chown -R root:root /opt/myelin \
+ && chmod -R a-w /opt/myelin
+USER 10001:10001
+EXPOSE 8080
+STOPSIGNAL SIGTERM
+ENTRYPOINT ["/usr/local/bin/myelin"]
+CMD ["api"]

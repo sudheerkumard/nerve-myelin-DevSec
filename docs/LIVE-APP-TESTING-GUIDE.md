@@ -5,7 +5,7 @@
 
 ![Live application testing](assets/screenshots/apptest.webp){ .nm-shot }
 
-NERVE Myelin tests a **running** API the way real users use it: it checks transport and headers, checks that
+NERvvE DevSecOps tests a **running** API the way real users use it: it checks transport and headers, checks that
 protected endpoints really need a login, checks whether one customer can read another customer's data (OWASP API1),
 whether a customer can call admin functions (API5) and whether responses leak sensitive fields (API3).
 All checks are **read-only** (GET / HEAD / OPTIONS) and stay within a fixed request budget.
@@ -14,7 +14,7 @@ There are two ways to run it:
 
 | | Offline (CLI) | Online (console) |
 |---|---|---|
-| Where it runs | Your laptop or a CI runner | The NERVE Myelin platform |
+| Where it runs | Your laptop or a CI runner | The NERvvE DevSecOps platform |
 | Server needed | No | Yes (the platform) |
 | Where test-account tokens live | Environment variables on your machine | A secret vault (OpenBao / Vault, Azure Key Vault, AWS Secrets Manager) |
 | Ownership proof | Not checked (you confirm authorisation) | Required: a file on the target website |

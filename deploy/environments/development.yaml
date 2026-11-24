@@ -1,0 +1,60 @@
+# NERvvE DevSecOps development environment.
+# Replace .invalid hostnames, secret-store references and network ranges before deployment.
+image:
+  repository: ghcr.io/sudheerkumard/nerve-myelin
+  tag: "1.5.0"
+  digest: ""
+mode: enterprise
+replicaCount: 1
+workers: 1
+publicUrl: https://myelin-dev.example.invalid
+trustedProxies: "REPLACE_WITH_DEVELOPMENT_INGRESS_CIDR"
+identityProviders:
+  providers:
+    - name: development-idp
+      type: entra
+      display_name: "Development SSO"
+      issuer: https://login.microsoftonline.com/REPLACE_WITH_DEV_TENANT_ID/v2.0
+      client_id: REPLACE_WITH_DEV_CLIENT_ID
+      client_secret_ref: env://MYELIN_OIDC_CLIENT_SECRET
+      audiences: [REPLACE_WITH_DEV_CLIENT_ID, api://myelin-dev]
+      tenant_claim: tenant
+      require_mfa: true
+      role_mapping:
+        NERvvE.TenantAdmin: tenant_admin
+        NERvvE.SecurityLead: security_lead
+        NERvvE.Developer: developer
+        NERvvE.Auditor: auditor
+        NERvvE.Viewer: viewer
+externalSecret:
+  enabled: true
+  secretStoreRef: { kind: ClusterSecretStore, name: myelin-development }
+  remoteKeyPrefix: nerve-myelin/development
+secrets:
+  name: myelin-development-secrets
+serviceAccount:
+  create: true
+  annotations:
+    azure.workload.identity/client-id: REPLACE_WITH_DEVELOPMENT_AZURE_CLIENT_ID
+evidence:
+  store: azblob://REPLACE_WITH_DEV_STORAGE_ACCOUNT/myelin/evidence
+  persistence: { enabled: false, size: 20Gi, storageClass: "" }
+ingress:
+  enabled: true
+  host: myelin-dev.example.invalid
+  tlsSecret: myelin-development-tls
+  certManager: { enabled: true, clusterIssuer: letsencrypt-staging }
+networkPolicy:
+  enabled: true
+  ingressNamespace: ingress-nginx
+  monitoringNamespace: monitoring
+  databaseCidr: REPLACE_WITH_DEVELOPMENT_DATABASE_CIDR
+  egressHttpsCidrs: ["REPLACE_WITH_DEVELOPMENT_EGRESS_CIDR"]
+autoscaling: { enabled: false, minReplicas: 1, maxReplicas: 1, targetCPU: 70 }
+podDisruptionBudget: { enabled: false, minAvailable: 1 }
+topologySpread: false
+monitoring:
+  serviceMonitor: { enabled: false, interval: 30s }
+  prometheusRule: { enabled: false }
+backup:
+  enabled: false

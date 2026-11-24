@@ -1,0 +1,27 @@
+# NERvvE DevSecOps — CD gate for Azure Pipelines. Approvals and checks live on the 'production' environment.
+# MYELIN_CLI_PACKAGE: the NERvvE DevSecOps CLI to install, e.g.
+# git+https://github.com/sudheerkumard/nerve-myelin-DevSec@v1.5.0 or a wheel on your internal package index
+stages:
+  - stage: deploy_production
+    jobs:
+      - deployment: deploy
+        environment: production
+        pool: { vmImage: ubuntu-latest }
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - script: |
+                    pip install "$(MYELIN_CLI_PACKAGE)"
+                    myelin gate --repo "$(Build.Repository.Name)" --commit "$(Build.SourceVersion)" --environment production
+                  displayName: NERvvE DevSecOps deployment gate
+                  env:
+                    MYELIN_SERVER: $(MYELIN_SERVER)
+                    MYELIN_API_KEY: $(MYELIN_API_KEY)     # secret variable from a variable group linked to Key Vault
+                - task: HelmDeploy@0
+                  inputs:
+                    command: upgrade
+                    chartType: FilePath
+                    chartPath: chart
+                    releaseName: app
+                    namespace: production

@@ -1,0 +1,11 @@
+name: deploy-production
+on:
+  pull_request_target:
+    branches: [main]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: terraform apply -auto-approve infra
+      - run: helm upgrade --install payments-web ./chart --namespace production

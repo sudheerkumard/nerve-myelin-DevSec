@@ -1,5 +1,5 @@
-# Copyright (c) 2026 Sudheer Kumar. All rights reserved.
-# Proprietary and confidential. Unauthorised copying or distribution is prohibited. See LICENSE.
+# Copyright (c) 2026 Sudheer Kumar.
+# SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
 # OPA / Conftest equivalent of myelin-policy.yaml.
 #   conftest test myelin.json --policy policies/rego --namespace myelin.gate
 package myelin.gate

@@ -1,0 +1,7 @@
+- id: nerve-myelin
+  name: NERvvE DevSecOps pre-commit scan
+  description: Secrets, code, configuration, pipeline, supply-chain and AI agent checks on staged files.
+  entry: myelin precommit
+  language: python
+  pass_filenames: false
+  stages: [pre-commit]

@@ -1,6 +1,6 @@
 # MYELIN SPDX and advisory feed operations
 
-Copyright (c) 2026 Sudheer Kumar. Proprietary and confidential. See LICENSE.
+Copyright (c) 2026 Sudheer Kumar. Licensed under the GNU AGPL-3.0; see LICENSE.
 
 ## SPDX 2.x JSON intake
 

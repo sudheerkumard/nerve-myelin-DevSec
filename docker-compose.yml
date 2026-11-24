@@ -1,0 +1,20 @@
+# Copyright (c) 2026 Sudheer Kumar.
+# SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
+# Local / customer demo:  docker compose up --build   →  http://localhost:8080
+services:
+  myelin-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.demo
+    image: ghcr.io/sudheerkumard/nerve-myelin-demo:1.5.0
+    ports: ["127.0.0.1:8080:8080"]   # demo binds to localhost only
+    env_file:
+      - ${MYELIN_ENV_FILE:-config/backend/myelin.env.demo}
+    environment:
+      MYELIN_CONSOLE_PATH: /opt/myelin/demo/offline/NERvvE-DevSecOps-Demo-Console.html
+      MYELIN_LIVE_SCAN_ROOT: /opt/myelin
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    restart: unless-stopped

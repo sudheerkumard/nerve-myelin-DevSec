@@ -1,0 +1,23 @@
+# Copyright (c) 2026 Sudheer Kumar.
+# SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
+# NERvvE DevSecOps CLI image for CI runners: built-in engines + bundled OSS scanners (Trivy, Gitleaks, Checkov, Cosign).
+# Semgrep/Opengrep are NOT bundled: supply your own engine and licensed rules via MYELIN_SAST_RULES.
+# Pin these base images by digest in your registry mirror.
+FROM aquasec/trivy:0.56.2 AS trivy
+FROM zricethezav/gitleaks:v8.21.2 AS gitleaks
+FROM gcr.io/projectsigstore/cosign:v2.4.1 AS cosign
+# myelin:ignore[NM-IAC-011] -- batch CLI image: runs one scan and exits, there is no long-running service to health-check
+FROM python:3.12-slim
+RUN pip install --no-cache-dir checkov && useradd -u 10001 -m myelin
+COPY --from=trivy /usr/local/bin/trivy /usr/local/bin/trivy
+COPY --from=gitleaks /usr/bin/gitleaks /usr/local/bin/gitleaks
+COPY --from=cosign /ko-app/cosign /usr/local/bin/cosign
+WORKDIR /opt/myelin
+COPY pyproject.toml .
+COPY engine engine
+COPY LICENSE THIRD-PARTY-NOTICES.md /usr/share/doc/nerve-myelin/
+COPY docs/legal /usr/share/doc/nerve-myelin/legal
+RUN pip install --no-cache-dir . && rm -rf /root/.cache
+USER 10001
+WORKDIR /src
+ENTRYPOINT ["myelin"]

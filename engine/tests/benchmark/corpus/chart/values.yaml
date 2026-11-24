@@ -1,0 +1,4 @@
+image: {repository: acme/api, tag: ""}
+db: {password: Sup3rS3cretDb, existingSecret: db-creds, passwordSecretName: db-creds}
+externalSecrets: {sessionSecret: ACME_SESSION_SECRET, apiToken: ACME_API_TOKEN}
+ingress: {tlsSecret: acme-api-tls}

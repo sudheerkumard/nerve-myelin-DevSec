@@ -1,0 +1,13 @@
+name: deploy
+on: [push, pull_request]
+jobs:
+  deploy-prod:
+    runs-on: ubuntu-latest
+    steps:
+      - run: helm upgrade --install api ./chart --namespace production
+      - run: terraform apply -auto-approve
+  deploy-dev:
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - run: kubectl apply -f k8s/ -n dev

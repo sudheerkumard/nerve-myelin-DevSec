@@ -1,0 +1,21 @@
+# Copyright (c) 2026 Sudheer Kumar.
+# SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
+# Dedicated logical-backup runtime: PostgreSQL 16 client, AWS CLI and Azure CLI.
+FROM debian:bookworm-slim
+ENV DEBIAN_FRONTEND=noninteractive AZURE_CONFIG_DIR=/work/.azure
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates curl gnupg postgresql-common awscli jq \
+ && /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y \
+ && install -d -m 0755 /etc/apt/keyrings \
+ && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /etc/apt/keyrings/microsoft.gpg \
+ && chmod 0644 /etc/apt/keyrings/microsoft.gpg \
+ && echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/azure-cli/ bookworm main" > /etc/apt/sources.list.d/azure-cli.list \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends azure-cli postgresql-client-16 \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/* /root/.cache
+RUN groupadd --gid 10001 myelin && useradd --uid 10001 --gid 10001 --no-create-home --shell /usr/sbin/nologin myelin \
+ && install -d -o 10001 -g 10001 /work
+WORKDIR /work
+USER 10001:10001
+ENTRYPOINT ["/bin/sh"]
