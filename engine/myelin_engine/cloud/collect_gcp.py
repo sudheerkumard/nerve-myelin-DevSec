@@ -3,8 +3,8 @@
 """Live Google Cloud collection through the Cloud Asset Inventory API (read-only).
 
 Permissions: roles/cloudasset.viewer and roles/iam.securityReviewer on the project, folder or organisation.
-Credentials (JSON): a service-account key ({"type": "service_account", "client_email", "private_key", ...}) or
-{"access_token"} (for example from `gcloud auth print-access-token` or workload identity federation)."""
+Credentials (JSON): a downloaded service-account key file (with client_email and private_key fields), or
+an object with an access_token (for example from `gcloud auth print-access-token` or workload identity federation)."""
 import base64
 import json
 import time
