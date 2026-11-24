@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
 # Dedicated logical-backup runtime: PostgreSQL 16 client, AWS CLI and Azure CLI.
 FROM debian:bookworm-slim
+# The ssl-cert package (pulled in by postgresql-common) generates a sample key and certificate that are never used;
+# they are removed in the same layer that creates them.
 ENV DEBIAN_FRONTEND=noninteractive AZURE_CONFIG_DIR=/work/.azure
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ca-certificates curl gnupg postgresql-common awscli jq \
@@ -12,19 +14,19 @@ RUN apt-get update \
  && echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/azure-cli/ bookworm main" > /etc/apt/sources.list.d/azure-cli.list \
  && apt-get update \
  && apt-get install -y --no-install-recommends azure-cli postgresql-client-16 \
+ && rm -f /etc/ssl/private/ssl-cert-snakeoil.key /etc/ssl/certs/ssl-cert-snakeoil.pem \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/* /root/.cache
 # The Azure CLI ships its own Python; lift its bundled libraries to releases with the published fixes, then prove
 # the commands the backup job uses still load; pip itself (which vendors an old
-# setuptools) is removed afterwards, as in the API image. The ssl-cert sample key and certificate are never used, so remove them.
+# setuptools) is removed afterwards, as in the API image.
 RUN /opt/az/bin/python3 -m pip install --no-cache-dir --upgrade \
       "cryptography>=50.0.0" "pyopenssl>=26.0.0" "urllib3>=2.8.0" "oauthlib>=4.0.0" "setuptools>=78.1.1" \
  && az version >/dev/null \
  && az storage blob upload --help >/dev/null \
  && aws --version \
  && rm -rf /root/.cache \
- && /opt/az/bin/python3 -m pip uninstall -y pip \
- && rm -f /etc/ssl/private/ssl-cert-snakeoil.key /etc/ssl/certs/ssl-cert-snakeoil.pem
+ && /opt/az/bin/python3 -m pip uninstall -y pip
 RUN groupadd --gid 10001 myelin && useradd --uid 10001 --gid 10001 --no-create-home --shell /usr/sbin/nologin myelin \
  && install -d -o 10001 -g 10001 /work
 WORKDIR /work
