@@ -282,7 +282,7 @@ svg text{fill:var(--tx3);font-size:10.5px;font-family:inherit}
 
 <script>
 const SNAPSHOT = /*__SNAPSHOT__*/null;
-const CFG = /*__CONFIG__*/null || {product: "NERvvE DevSecOps", company: "NERvvE DevSecOps", contact: {web: "https://github.com/sudheerkumard/nerve-myelin-DevSec", author: "Sudheer Kumar"}, confidentialityNotice: "Proprietary and confidential — NERvvE DevSecOps, designed and developed by Sudheer Kumar; shown under NDA.", defaultTheme: "corporate", defaultCustomer: {customer: "Your Organisation", industry: "Technology", devs: 0, presenter: ""}, api: {baseUrl: "", demoApiKey: ""}};
+const CFG = /*__CONFIG__*/null || {product: "NERvvE DevSecOps", company: "NERvvE DevSecOps", contact: {web: "https://github.com/sudheerkumard/nervve-devsecops", author: "Sudheer Kumar"}, confidentialityNotice: "Proprietary and confidential — NERvvE DevSecOps, designed and developed by Sudheer Kumar; shown under NDA.", defaultTheme: "corporate", defaultCustomer: {customer: "Your Organisation", industry: "Technology", devs: 0, presenter: ""}, api: {baseUrl: "", demoApiKey: ""}};
 const API_KEY = CFG.api.demoApiKey, API_BASE = (CFG.api.baseUrl || "").replace(/\/$/, "");
 document.documentElement.dataset.theme = CFG.defaultTheme || "corporate";
 let MODE = "snapshot", S = {}, AUTHMODE = "apikey", USER = null;   // AUTHMODE: apikey (demo) | session (enterprise SSO)
@@ -1852,7 +1852,7 @@ function applyCustomer() {
       : `Licence ${lic.state}: ${lic.reason || ""} Contact the NERvvE DevSecOps product owner to renew.`;
     $("#modeBanner").after(el);
   }
-  const repo = (CFG.contact && CFG.contact.web) || "https://github.com/sudheerkumard/nerve-myelin-DevSec";
+  const repo = (CFG.contact && CFG.contact.web) || "https://github.com/sudheerkumard/nervve-devsecops";
   $("#sideFoot").innerHTML = `<b>NERvvE DevSecOps</b><br>Product designed and developed by ${esc(CFG.author || "Sudheer Kumar")}<br>`
     + `<a href="${esc(repo)}" target="_blank" rel="noopener">${esc(repo.replace(/^https?:\/\//, ""))}</a><br>© ${new Date().getFullYear()} ${esc(CFG.author || "Sudheer Kumar")} · Open source (AGPL-3.0) · <a href="#" id="legalLnk">Licence</a>`;
   $("#legalLnk").onclick = e => { e.preventDefault(); modal("Licence and copyright", `<p><b>NERvvE DevSecOps Product designed and developed by ${esc(CFG.author || "Sudheer Kumar")}.</b><br>Copyright © 2026 ${esc(CFG.author || "Sudheer Kumar")}.</p>

@@ -1,6 +1,6 @@
 # Supply-chain defence, SSVC, repository posture, cryptography (CBOM) and EU CRA
 
-NERvvE DevSecOps Product designed and developed by Sudheer Kumar · <https://github.com/sudheerkumard/nerve-myelin-DevSec>
+NERvvE DevSecOps Product designed and developed by Sudheer Kumar · <https://github.com/sudheerkumard/nervve-devsecops>
 
 ![Supply-chain defence view](assets/screenshots/defence.webp){ .nm-shot }
 ![Repository posture (OSPS Baseline)](assets/screenshots/posture.webp){ .nm-shot }

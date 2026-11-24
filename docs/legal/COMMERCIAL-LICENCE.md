@@ -2,7 +2,7 @@ NERvvE DevSecOps — COMMERCIAL LICENCE NOTICE (commercial and enterprise editio
 
 NERvvE DevSecOps Product designed and developed by Sudheer Kumar.
 Copyright (c) 2026 Sudheer Kumar. All rights reserved.
-Product: https://github.com/sudheerkumard/nerve-myelin-DevSec
+Product: https://github.com/sudheerkumard/nervve-devsecops
 
 1. OWNERSHIP. NERvvE DevSecOps, including its source code, object code, container images, command-line tools,
    user interfaces, visual designs, report templates, detection rules, risk models, policies, framework
@@ -44,4 +44,4 @@ Product: https://github.com/sudheerkumard/nerve-myelin-DevSec
 8. DISCLAIMER. Except as expressly stated in an Agreement, the Software is provided "AS IS" without
    warranty of any kind, and the Licensor's liability is limited as stated in the Agreement.
 
-Licensing enquiries: https://github.com/sudheerkumard/nerve-myelin-DevSec
+Licensing enquiries: https://github.com/sudheerkumard/nervve-devsecops

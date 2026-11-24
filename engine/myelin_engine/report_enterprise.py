@@ -95,7 +95,7 @@ def _stack(parts, total):
 
 PRODUCT = "NERvvE DevSecOps"
 VENDOR = "NERvvE DevSecOps"                       # "Prepared by"
-REPO_URL = "https://github.com/sudheerkumard/nerve-myelin-DevSec"
+REPO_URL = "https://github.com/sudheerkumard/nervve-devsecops"
 SITE = REPO_URL.split("://", 1)[1]
 
 

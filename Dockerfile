@@ -27,7 +27,7 @@ FROM ${PY_BASE} AS runtime
 LABEL org.opencontainers.image.title="NERvvE DevSecOps" \
       org.opencontainers.image.vendor="Sudheer Kumar (NERvvE DevSecOps)" \
       org.opencontainers.image.licenses="AGPL-3.0-only" \
-      org.opencontainers.image.source="https://github.com/sudheerkumard/nerve-myelin-DevSec"
+      org.opencontainers.image.source="https://github.com/sudheerkumard/nervve-devsecops"
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PATH=/venv/bin:$PATH \
     MYELIN_MODE=enterprise
 # git: fetch repositories hosted on AWS CodeCommit, Google Cloud and self-hosted Git servers (run hardened, see scm.py)

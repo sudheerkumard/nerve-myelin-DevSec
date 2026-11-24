@@ -2,7 +2,7 @@
 
 **Version 2.0 · Effective 21 November 2026**
 NERvvE DevSecOps Product designed and developed by Sudheer Kumar · Copyright © 2026 Sudheer Kumar. All rights reserved.
-<https://github.com/sudheerkumard/nerve-myelin-DevSec>
+<https://github.com/sudheerkumard/nervve-devsecops>
 
 This NERvvE DevSecOps Subscription Agreement (the **"Agreement"**) is between **Sudheer Kumar**, the owner and developer of
 NERvvE DevSecOps (the **"Licensor"**), and the organisation identified in an Order Form (the **"Customer"**). It applies to
@@ -376,6 +376,6 @@ the previous version continues to apply to that Order Form.
 
 ---
 
-**Licensor:** Sudheer Kumar · NERvvE DevSecOps · <https://github.com/sudheerkumard/nerve-myelin-DevSec>
+**Licensor:** Sudheer Kumar · NERvvE DevSecOps · <https://github.com/sudheerkumard/nervve-devsecops>
 
 *NERvvE DevSecOps Product designed and developed by Sudheer Kumar.*

@@ -9,7 +9,7 @@ NERvvE DevSecOps is a DevSecOps and cloud-native application protection platform
 to runtime write into one finding schema, one exploitability-based risk score (the NERvvE Risk Score) and one policy,
 enforced from the developer's laptop through the pull request and pipeline gate to Kubernetes admission.
 
-📖 **Documentation:** <https://sudheerkumard.github.io/nerve-myelin-DevSec/>
+📖 **Documentation:** <https://sudheerkumard.github.io/nervve-devsecops/>
 
 ![NERvvE DevSecOps console — overview](docs/assets/screenshots/overview.webp)
 
@@ -40,7 +40,7 @@ for AI coding assistants, and an offline AI assistant.
 ## Quick start (demo in 60 seconds)
 
 ```bash
-git clone https://github.com/sudheerkumard/nerve-myelin-DevSec.git && cd nerve-myelin-DevSec
+git clone https://github.com/sudheerkumard/nervve-devsecops.git && cd nervve-devsecops
 
 ./demo/start-demo.sh                 # macOS / Linux  → http://localhost:8080   (Windows: demo\start-demo.ps1)
 docker compose up --build            # or Docker       → http://localhost:8080
@@ -125,5 +125,5 @@ pull requests need the [Contributor Licence Agreement](CLA.md). Report vulnerabi
 NERvvE DevSecOps Community edition is licensed under the GNU Affero General Public License v3.0 only
 ([LICENSE](LICENSE)). If you run a modified version as a network service, the AGPL requires you to offer its source
 to the users of that service. Commercial licences (for use without AGPL obligations), support and customisation are
-available from the author through <https://github.com/sudheerkumard/nerve-myelin-DevSec>. Third-party components are
+available from the author through <https://github.com/sudheerkumard/nervve-devsecops>. Third-party components are
 listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md); see [NOTICE.md](NOTICE.md) for names and trademarks.

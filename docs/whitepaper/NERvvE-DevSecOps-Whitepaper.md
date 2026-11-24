@@ -3,8 +3,8 @@
 ## Securing the whole software delivery chain: code, dependencies, pipelines, cloud, Kubernetes, runtime and AI
 
 **Whitepaper · Version 1.4 · November 2026**
-NERvvE DevSecOps Product designed and developed by Sudheer Kumar · <https://github.com/sudheerkumard/nerve-myelin-DevSec>
-Documentation: <https://sudheerkumard.github.io/nerve-myelin-DevSec/> · Designed edition: [open the laid-out whitepaper](designed/index.html)
+NERvvE DevSecOps Product designed and developed by Sudheer Kumar · <https://github.com/sudheerkumard/nervve-devsecops>
+Documentation: <https://sudheerkumard.github.io/nervve-devsecops/> · Designed edition: [open the laid-out whitepaper](designed/index.html)
 
 ---
 
@@ -161,7 +161,7 @@ Every result, from any engine or import, becomes the same finding record, with:
 ## 5. Product features and the console
 
 
-Everything below ships in the product today and is covered by the documentation at <https://sudheerkumard.github.io/nerve-myelin-DevSec/>.
+Everything below ships in the product today and is covered by the documentation at <https://sudheerkumard.github.io/nervve-devsecops/>.
 
 **Find**
 - Fifteen engines in one scan: SAST, SCA, secrets, IaC, CI posture, CD/GitOps posture, supply-chain defence, licences, AI application security, live application and API testing, cloud posture, Kubernetes posture, identities and entitlements, runtime detections and attack paths.
@@ -558,12 +558,12 @@ The NERvvE DevSecOps Community edition is free and open-source software, license
 
 Full terms are in `LICENSE` and `NOTICE.md`; commercial terms are in `docs/legal/`. Third-party components are listed in `THIRD-PARTY-NOTICES.md`.
 
-**Next steps.** Explore the documentation and the interactive architecture explorer at <https://sudheerkumard.github.io/nerve-myelin-DevSec/>, and get the
-open-source Community edition from <https://github.com/sudheerkumard/nerve-myelin-DevSec>.
+**Next steps.** Explore the documentation and the interactive architecture explorer at <https://sudheerkumard.github.io/nervve-devsecops/>, and get the
+open-source Community edition from <https://github.com/sudheerkumard/nervve-devsecops>.
 
 **NERvvE DevSecOps Product designed and developed by Sudheer Kumar.**
 Copyright © 2026 Sudheer Kumar. All rights reserved.
-<https://github.com/sudheerkumard/nerve-myelin-DevSec> · Documentation: <https://sudheerkumard.github.io/nerve-myelin-DevSec/>
+<https://github.com/sudheerkumard/nervve-devsecops> · Documentation: <https://sudheerkumard.github.io/nervve-devsecops/>
 
 ---
 
@@ -583,7 +583,7 @@ SOC, SIEM and SOAR · exposure management · incident response and resilience ·
 
 **Approach:** understand the business → identify the risk → design the architecture → enable the teams → measure the outcome.
 
-<https://github.com/sudheerkumard/nerve-myelin-DevSec> · Documentation: <https://sudheerkumard.github.io/nerve-myelin-DevSec/>
+<https://github.com/sudheerkumard/nervve-devsecops> · Documentation: <https://sudheerkumard.github.io/nervve-devsecops/>
 
 ---
 

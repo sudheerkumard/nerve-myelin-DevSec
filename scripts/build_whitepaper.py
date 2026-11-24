@@ -12,8 +12,8 @@ import markdown
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.environ.get("MYELIN_WP_SRC") or os.path.join(ROOT, "docs", "whitepaper", "NERvvE-DevSecOps-Whitepaper.md")
 OUT = os.environ.get("MYELIN_WP_OUT") or os.path.join(ROOT, "docs", "whitepaper", "NERvvE-DevSecOps-Whitepaper.html")  # env: public edition builds
-REPO = "https://github.com/sudheerkumard/nerve-myelin-DevSec"
-DOCS = "https://sudheerkumard.github.io/nerve-myelin-DevSec/"
+REPO = "https://github.com/sudheerkumard/nervve-devsecops"
+DOCS = "https://sudheerkumard.github.io/nervve-devsecops/"
 
 ARCH = """<figure class="arch"><svg viewBox="0 0 860 430" role="img" aria-label="NERvvE DevSecOps architecture">
 <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#5a6b85"/></marker></defs>
@@ -86,7 +86,7 @@ ol.refs{font-size:8.8pt;color:var(--ink2)} ol.refs li{margin:5px 0;word-break:br
 .end{margin-top:30px;padding:16px 18px;border-left:4px solid var(--acc);background:#f6f9fe;border-radius:6px}
 .bar-print{max-width:820px;margin:14px auto 0;text-align:right} .bar-print button{font:inherit;border:1px solid #c3c2b7;background:#fff;border-radius:7px;padding:7px 14px;cursor:pointer}
 @page{size:A4;margin:16mm 15mm 18mm;@bottom-left{content:"NERvvE DevSecOps · Whitepaper";font:8pt system-ui;color:#898781}
-  @bottom-center{content:"sudheerkumard.github.io/nerve-myelin-DevSec";font:8pt system-ui;color:#898781}
+  @bottom-center{content:"sudheerkumard.github.io/nervve-devsecops";font:8pt system-ui;color:#898781}
   @bottom-right{content:"Page " counter(page) " of " counter(pages);font:8pt system-ui;color:#898781}}
 @page :first{margin:0;@bottom-left{content:none}@bottom-center{content:none}@bottom-right{content:none}}
 @media print{body{background:#fff;font-size:10pt}.bar-print{display:none}.cover{margin:0;max-width:none;height:297mm;min-height:297mm;break-after:page}
@@ -140,7 +140,7 @@ def build():
     doc = f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>NERvvE DevSecOps · Whitepaper</title><style>{CSS}</style></head><body>
 <div class="bar-print"><button onclick="window.print()">Download PDF / print</button></div>
-<div class="cover"><div class="brand"><span class="mark">Nv</span><div>NERvvE DevSecOps<div style="font-weight:500;letter-spacing:.06em;font-size:11px;color:#9ec5f4;margin-top:2px">github.com/sudheerkumard/nerve-myelin-DevSec</div></div></div>
+<div class="cover"><div class="brand"><span class="mark">Nv</span><div>NERvvE DevSecOps<div style="font-weight:500;letter-spacing:.06em;font-size:11px;color:#9ec5f4;margin-top:2px">github.com/sudheerkumard/nervve-devsecops</div></div></div>
 <div class="kind">Whitepaper · November 2026</div>
 <h1>Securing the whole software delivery chain</h1>
 <p class="sub">From code to cloud to runtime: one risk score, one policy, one release gate and one evidence trail that leadership, auditors and regulators can trust.</p>

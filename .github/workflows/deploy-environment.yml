@@ -72,7 +72,7 @@ jobs:
           BACKUP_IMAGE: ${{ vars.MYELIN_BACKUP_IMAGE_REPOSITORY }}@${{ inputs.backup_image_digest }}
         run: |
           set -euo pipefail
-          IDENTITY='^https://github.com/sudheerkumard/nerve-myelin-DevSec/.github/workflows/ci.yml@refs/heads/main$'
+          IDENTITY='^https://github.com/sudheerkumard/nervve-devsecops/.github/workflows/ci.yml@refs/heads/main$'
           cosign verify --certificate-identity-regexp "$IDENTITY" --certificate-oidc-issuer https://token.actions.githubusercontent.com "$IMAGE"
           cosign verify --certificate-identity-regexp "$IDENTITY" --certificate-oidc-issuer https://token.actions.githubusercontent.com "$BACKUP_IMAGE"
       - name: Configure Kubernetes access

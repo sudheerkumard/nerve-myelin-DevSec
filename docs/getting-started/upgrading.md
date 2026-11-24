@@ -24,4 +24,4 @@
 
 Migrations are forward-only and compatible with the previous release, so a rollback of the application (not the
 schema) is possible within one release. Versioning follows [Semantic Versioning](https://semver.org); every change is
-listed in the [change log](https://github.com/sudheerkumard/nerve-myelin-DevSec/blob/main/CHANGELOG.md).
+listed in the [change log](https://github.com/sudheerkumard/nervve-devsecops/blob/main/CHANGELOG.md).

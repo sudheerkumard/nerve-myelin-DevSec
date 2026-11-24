@@ -8,7 +8,7 @@ Please report suspected vulnerabilities in NERvvE DevSecOps privately:
 
 - **Customers:** through the support channel named in your Order Form, marked "Security".
 - **Researchers:** through GitHub's private vulnerability reporting ("Report a vulnerability" under the repository's
-  Security tab) for <https://github.com/sudheerkumard/nerve-myelin-DevSec>.
+  Security tab) for <https://github.com/sudheerkumard/nervve-devsecops>.
 
 Please do not open public issues for security reports. Include the affected version, the steps to reproduce, the
 impact you observed and any proof-of-concept, with secrets and personal data removed.

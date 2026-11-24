@@ -28,4 +28,4 @@
 
 Further reading: threat model, [identity](../enterprise/IDENTITY.md),
 [multi-tenancy](../enterprise/MULTI-TENANCY.md), evidence integrity,
-[vulnerability disclosure](https://github.com/sudheerkumard/nerve-myelin-DevSec/blob/main/SECURITY.md).
+[vulnerability disclosure](https://github.com/sudheerkumard/nervve-devsecops/blob/main/SECURITY.md).

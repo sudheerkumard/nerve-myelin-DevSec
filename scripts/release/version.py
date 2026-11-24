@@ -24,7 +24,7 @@ FILES = {   # path -> regex with one group around the version
     "docker-compose.enterprise.yml": rf"ghcr.io/sudheerkumard/nerve-myelin:({SEMVER})",
     "Dockerfile": rf"ghcr.io/sudheerkumard/nerve-myelin:({SEMVER})",
     "ci-templates/github-actions.yml": rf"ghcr.io/sudheerkumard/myelin-cli:({SEMVER})",
-    "ci-templates/azure-pipelines.yml": rf"nerve-myelin-DevSec@v({SEMVER})",
+    "ci-templates/azure-pipelines.yml": rf"nervve-devsecops@v({SEMVER})",
 }
 
 

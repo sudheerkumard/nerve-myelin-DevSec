@@ -40,7 +40,7 @@ cosign verify {{IMAGE}}@{{DIGEST}} \
 
 ## Support
 
-Community support: [GitHub issues](https://github.com/sudheerkumard/nerve-myelin-DevSec/issues). Report vulnerabilities privately as described in `SECURITY.md`.
+Community support: [GitHub issues](https://github.com/sudheerkumard/nervve-devsecops/issues). Report vulnerabilities privately as described in `SECURITY.md`.
 Commercial support and licences are available from the author.
 
 *© 2026 Sudheer Kumar. Licensed under the GNU AGPL-3.0.*

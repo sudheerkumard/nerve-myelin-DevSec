@@ -4,7 +4,7 @@
 # Copy to .github/workflows/myelin.yml. Pin every `uses:` to a full commit SHA in your org
 # (NERvvE DevSecOps reports NM-CICD-001 until you do; Renovate/Dependabot keep the pins current).
 # MYELIN_CLI_PACKAGE: the NERvvE DevSecOps CLI to install, e.g.
-# git+https://github.com/sudheerkumard/nerve-myelin-DevSec@v1.5.0 or a wheel on your internal package index
+# git+https://github.com/sudheerkumard/nervve-devsecops@v1.5.0 or a wheel on your internal package index
 name: myelin-secure-pipeline
 on:
   pull_request:            # untrusted PR code runs WITHOUT secrets (never pull_request_target + checkout)

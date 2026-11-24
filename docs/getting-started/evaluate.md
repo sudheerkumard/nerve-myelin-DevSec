@@ -13,8 +13,8 @@ no licence key is needed: download it, run it on your own machines, and scan you
 ## 2. Run it
 
 ```bash
-git clone https://github.com/sudheerkumard/nerve-myelin-DevSec
-cd nerve-myelin-DevSec
+git clone https://github.com/sudheerkumard/nervve-devsecops
+cd nervve-devsecops
 ./demo/start-demo.sh                  # Windows: demo\start-demo.ps1  ->  http://localhost:8080
 ```
 

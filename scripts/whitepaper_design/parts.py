@@ -6,8 +6,8 @@ All artwork, icons and charts are drawn here from simple shapes; no third-party 
 import math
 import random
 
-DOCS = "https://sudheerkumard.github.io/nerve-myelin-DevSec/"
-REPO = "https://github.com/sudheerkumard/nerve-myelin-DevSec"
+DOCS = "https://sudheerkumard.github.io/nervve-devsecops/"
+REPO = "https://github.com/sudheerkumard/nervve-devsecops"
 
 NAVY, DEEP, BLUE, SKY, ORANGE, INK, INK2, LINE, SURF = (
     "#0b1f3a", "#071427", "#2a78d6", "#9ec5f4", "#eb6834", "#0b1220", "#4a5a72", "#dfe5ee", "#f4f7fb")

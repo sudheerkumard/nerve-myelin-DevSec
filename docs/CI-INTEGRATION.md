@@ -17,7 +17,7 @@ uploaded; only findings, the SBOM and the decision are sent to the platform.
 | The `myelin` CLI | `pip install .` from the repository, or the `myelin-cli` container image built with `Dockerfile.cli` |
 | `MYELIN_SERVER` | The URL of your NERvvE DevSecOps platform (optional: without it, `myelin scan` runs fully offline) |
 | `MYELIN_API_KEY` | An integration API key, created in the console by a tenant administrator (**Create API key**). Store it as a CI secret |
-| A policy file | Start from [`policies/myelin-policy.yaml`](https://github.com/sudheerkumard/nerve-myelin-DevSec/blob/main/policies/myelin-policy.yaml) and commit it as `.myelin/policy.yaml` |
+| A policy file | Start from [`policies/myelin-policy.yaml`](https://github.com/sudheerkumard/nervve-devsecops/blob/main/policies/myelin-policy.yaml) and commit it as `.myelin/policy.yaml` |
 
 Integration keys carry the narrow integration role: upload scans and read findings and decisions. They cannot
 administer the tenant.

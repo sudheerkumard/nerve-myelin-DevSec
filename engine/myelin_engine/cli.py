@@ -59,7 +59,7 @@ def to_sarif(findings):
             }]
         results.append(res)
     return {"$schema": "https://json.schemastore.org/sarif-2.1.0.json", "version": "2.1.0",
-            "runs": [{"tool": {"driver": {"name": "NERvvE DevSecOps", "version": __version__, "informationUri": "https://github.com/sudheerkumard/nerve-myelin-DevSec", "rules": list(rules.values())}},
+            "runs": [{"tool": {"driver": {"name": "NERvvE DevSecOps", "version": __version__, "informationUri": "https://github.com/sudheerkumard/nervve-devsecops", "rules": list(rules.values())}},
                       "results": results}]}
 
 

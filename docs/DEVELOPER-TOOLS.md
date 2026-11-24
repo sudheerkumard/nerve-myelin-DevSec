@@ -1,6 +1,6 @@
 # Developer tools: pre-commit hook, MCP server, AutoFix and air-gapped intelligence
 
-NERvvE DevSecOps Product designed and developed by Sudheer Kumar · <https://github.com/sudheerkumard/nerve-myelin-DevSec>
+NERvvE DevSecOps Product designed and developed by Sudheer Kumar · <https://github.com/sudheerkumard/nervve-devsecops>
 
 ## Pre-commit hook
 

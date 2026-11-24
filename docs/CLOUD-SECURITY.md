@@ -1,6 +1,6 @@
 # NERvvE DevSecOps — Cloud-native application protection
 
-NERvvE DevSecOps Product designed and developed by Sudheer Kumar · <https://github.com/sudheerkumard/nerve-myelin-DevSec>
+NERvvE DevSecOps Product designed and developed by Sudheer Kumar · <https://github.com/sudheerkumard/nervve-devsecops>
 
 ![Cloud overview: attack paths, coverage and accounts](assets/screenshots/cnapp.webp){ .nm-shot }
 

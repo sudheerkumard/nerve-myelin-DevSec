@@ -1,6 +1,6 @@
 # NERvvE DevSecOps — CD gate for Azure Pipelines. Approvals and checks live on the 'production' environment.
 # MYELIN_CLI_PACKAGE: the NERvvE DevSecOps CLI to install, e.g.
-# git+https://github.com/sudheerkumard/nerve-myelin-DevSec@v1.5.0 or a wheel on your internal package index
+# git+https://github.com/sudheerkumard/nervve-devsecops@v1.5.0 or a wheel on your internal package index
 stages:
   - stage: deploy_production
     jobs:

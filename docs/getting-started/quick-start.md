@@ -4,7 +4,7 @@ Three ways to see NERvvE DevSecOps, from a minute to a production-like stack.
 
 !!! note "Before you start"
     Clone the open-source Community edition first:
-    `git clone https://github.com/sudheerkumard/nerve-myelin-DevSec && cd nerve-myelin-DevSec`.
+    `git clone https://github.com/sudheerkumard/nervve-devsecops && cd nervve-devsecops`.
     See [Get NERvvE DevSecOps](evaluate.md) for the options.
 
 === "Demo in 60 seconds"

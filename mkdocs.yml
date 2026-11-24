@@ -1,6 +1,6 @@
 # NERvvE DevSecOps documentation site. Copyright (c) 2026 Sudheer Kumar. SPDX-License-Identifier: AGPL-3.0-only.
 # Build:  pip install -r docs/requirements.txt && python scripts/build_docs.py   (output: site/, fully offline)
-site_url: https://sudheerkumard.github.io/nerve-myelin-DevSec/
+site_url: https://sudheerkumard.github.io/nervve-devsecops/
 site_name: NERvvE DevSecOps Documentation
 site_description: DevSecOps and cloud-native application protection — code, pipeline, cloud and runtime.
 site_author: Sudheer Kumar
@@ -51,7 +51,7 @@ extra:
   generator: false
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/sudheerkumard/nerve-myelin-DevSec
+      link: https://github.com/sudheerkumard/nervve-devsecops
       name: NERvvE DevSecOps on GitHub
 
 extra_css:

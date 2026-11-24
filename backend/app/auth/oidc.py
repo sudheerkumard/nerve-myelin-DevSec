@@ -34,7 +34,7 @@ PRESETS = {
     "entra": {"tenant_claim": "tid", "role_claims": ["roles"], "acr_values": [], "amr_values": ["mfa"]},
     "okta": {"tenant_claim": "myelin_tenant", "role_claims": ["groups"], "acr_values": ["urn:okta:loa:2fa:any", "phr"],
              "amr_values": ["mfa", "otp", "sms", "hwk", "swk", "pop"]},
-    "auth0": {"tenant_claim": "https://sudheerkumard.github.io/nerve-myelin/tenant", "role_claims": ["https://github.com/sudheerkumard/nerve-myelin-DevSec/roles"],
+    "auth0": {"tenant_claim": "https://sudheerkumard.github.io/nerve-myelin/tenant", "role_claims": ["https://github.com/sudheerkumard/nervve-devsecops/roles"],
               "acr_values": ["http://schemas.openid.net/pape/policies/2007/06/multi-factor"], "amr_values": ["mfa"]},
     "ping": {"tenant_claim": "myelin_tenant", "role_claims": ["groups"], "acr_values": ["MFA"], "amr_values": ["mfa", "otp"]},
     "google": {"tenant_claim": "hd", "role_claims": ["groups"], "acr_values": [], "amr_values": ["mfa"]},
