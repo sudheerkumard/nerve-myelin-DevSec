@@ -1,0 +1,24 @@
+# Never send secrets, local environments or build output to the image build
+.git
+.venv
+**/__pycache__
+**/*.pyc
+config/backend/enterprise.env
+config/backend/*.env*
+!config/backend/myelin.env.example
+!config/backend/enterprise.env.example
+**/*.key
+**/*.lic
+ip/
+sales/
+demo/offline/*.html
+var/
+
+# Demo image only (Dockerfile.demo): the vulnerable demo app, demo API and cloud sample data are needed here.
+demo/*
+!demo/vulnerable-app/
+!demo/vulnerable-app/**
+!demo/vulnerable-api/
+!demo/vulnerable-api/**
+!demo/cloud/
+!demo/cloud/**
