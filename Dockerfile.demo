@@ -19,6 +19,8 @@ COPY policies policies
 COPY LICENSE THIRD-PARTY-NOTICES.md /usr/share/doc/nerve-myelin/
 COPY docs/legal /usr/share/doc/nerve-myelin/legal
 COPY demo/vulnerable-app demo/vulnerable-app
+COPY demo/vulnerable-api demo/vulnerable-api
+COPY demo/cloud demo/cloud
 COPY scripts/build_console.py scripts/build_console.py
 COPY deploy/docker/entrypoint.sh /usr/local/bin/myelin
 RUN chmod 0555 /usr/local/bin/myelin \
