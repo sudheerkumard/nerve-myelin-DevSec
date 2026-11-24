@@ -1,0 +1,18 @@
+# Copyright (c) 2026 Sudheer Kumar.
+# SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
+# Gitleaks configuration: the default rules, minus intentional, non-working test and demo credentials.
+# demo/vulnerable-app and engine/tests/benchmark/corpus are deliberately vulnerable repositories used to show and
+# measure detection; the other paths hold fixtures and recorded demo data. None of these values are real.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Intentional fake credentials in demo and test fixtures"
+paths = [
+  '''^demo/vulnerable-app/''',
+  '''^demo/cloud/''',
+  '''^demo/offline/''',
+  '''^engine/tests/benchmark/corpus/''',
+  '''^backend/tests/''',
+  '''^engine/tests/''',
+]

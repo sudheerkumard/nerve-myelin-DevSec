@@ -24,11 +24,14 @@ PASSROLE_TARGETS = {"lambda:createfunction", "ec2:runinstances", "cloudformation
 
 
 def clients(cred: dict | None):
-    import boto3
     cred = cred or {}
+    if cred.get("role_arn") and not cred.get("external_id"):
+        raise http.CollectorError("external_id is required when assuming a role (confused-deputy protection)")
+    try:
+        import boto3
+    except ImportError as e:
+        raise http.CollectorError("the AWS collector needs boto3: pip install -r backend/requirements-cloud.txt") from e
     if cred.get("role_arn"):
-        if not cred.get("external_id"):
-            raise http.CollectorError("external_id is required when assuming a role (confused-deputy protection)")
         c = boto3.client("sts").assume_role(RoleArn=cred["role_arn"], RoleSessionName="nerve-myelin-cspm",
                                             ExternalId=cred["external_id"], DurationSeconds=3600)["Credentials"]
         sess = boto3.Session(aws_access_key_id=c["AccessKeyId"], aws_secret_access_key=c["SecretAccessKey"], aws_session_token=c["SessionToken"])
