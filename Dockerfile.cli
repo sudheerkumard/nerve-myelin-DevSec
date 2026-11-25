@@ -8,6 +8,10 @@ FROM zricethezav/gitleaks:v8.21.2 AS gitleaks
 FROM gcr.io/projectsigstore/cosign:v2.4.1 AS cosign
 # myelin:ignore[NM-IAC-011] -- batch CLI image: runs one scan and exits, there is no long-running service to health-check
 FROM python:3.12-slim
+ENV PIP_CERT=/etc/ssl/certs/ca-certificates.crt SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+# Networks that inspect HTTPS: trust the company root certificates placed in config/certs (see its README)
+COPY config/certs/ /tmp/extra-ca/
+RUN if ls /tmp/extra-ca/*.crt >/dev/null 2>&1; then cp /tmp/extra-ca/*.crt /usr/local/share/ca-certificates/ && update-ca-certificates; fi
 RUN pip install --no-cache-dir checkov && useradd -u 10001 -m myelin
 COPY --from=trivy /usr/local/bin/trivy /usr/local/bin/trivy
 COPY --from=gitleaks /usr/bin/gitleaks /usr/local/bin/gitleaks

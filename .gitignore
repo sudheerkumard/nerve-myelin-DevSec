@@ -18,3 +18,7 @@ demo/.demo.*
 config/backend/enterprise.env
 docs/enterprise/diagrams/.mermaid.json
 site/
+
+# Corporate CA certificates added locally for container builds (config/certs/README.md)
+config/certs/*.crt
+config/certs/*.pem

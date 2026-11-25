@@ -27,6 +27,7 @@ function Dc {   # simple function on purpose: $args passes flags such as -d thro
   $ErrorActionPreference = "Stop"; return $c }
 
 . (Join-Path $PSScriptRoot "myelin-vault.ps1")
+. (Join-Path $PSScriptRoot "network-ca.ps1")
 
 if ($Stop -or $Reset) {
   Step ($(if ($Reset) { "Stopping and DELETING all data" } else { "Stopping" }))
@@ -127,6 +128,9 @@ if (-not (Test-Path $LicTool)) {
   Set-Content -Path $EnvFile -Value ($content -join "`n") -Encoding ascii
   Ok "365-day Enterprise licence installed (signed by $kid)"
 }
+
+Step "Network certificates"
+Save-NetworkCA $Root
 
 Step "Building and starting (first run downloads ~1.5 GB and takes several minutes)"
 if ((Dc up -d --build) -ne 0) {

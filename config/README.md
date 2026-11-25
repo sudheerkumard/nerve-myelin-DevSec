@@ -10,6 +10,7 @@ All runtime configuration lives here. Code reads these files; nothing customer-s
 | `backend/myelin.env.demo` | **Customer live demo** settings: sample tenant, read-only access on localhost | `demo/start-demo.*`, `docker-compose.yml` (default) |
 | `frontend/console.config.json` | **Console**: product name, company, contact details, notice, default theme, default demo customer, API base URL | Baked into `console/index.html` by `scripts/build_console.py` |
 | `deploy/values-customer.example.yaml` | **Customer self-hosted** Helm override: image and digest, replicas, ingress host, TLS, resources | `helm install myelin deploy/helm/myelin -f config/deploy/values-customer.example.yaml` |
+| `certs/` | **Corporate HTTPS inspection**: company root certificates (`.crt`, git-ignored) that container builds trust | `Dockerfile`, `Dockerfile.demo`, `Dockerfile.cli`; filled automatically by `scripts/windows/start-enterprise.ps1` |
 
 Related configuration elsewhere in the repository:
 

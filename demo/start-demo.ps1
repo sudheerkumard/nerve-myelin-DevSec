@@ -11,6 +11,8 @@ if (-not $env:MYELIN_ENV_FILE) { $env:MYELIN_ENV_FILE = "config/backend/myelin.e
 $Url = "http://localhost:8080"
 
 if ($Docker) {
+  . (Join-Path $PSScriptRoot "..\scripts\windows\network-ca.ps1")
+  Save-NetworkCA (Get-Location).Path
   docker compose up --build -d
 } else {
   $env:MYELIN_CONSOLE_PATH = (Join-Path (Get-Location) "demo\offline\NERvvE-DevSecOps-Demo-Console.html")

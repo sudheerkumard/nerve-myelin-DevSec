@@ -12,7 +12,10 @@ ARG PY_BASE=python:3.12-slim
 
 # ---------- build stage: compilers and pip live here only ----------
 FROM ${PY_BASE} AS build
-ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
+ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_CERT=/etc/ssl/certs/ca-certificates.crt
+# Networks that inspect HTTPS: trust the company root certificates placed in config/certs (see its README)
+COPY config/certs/ /tmp/extra-ca/
+RUN if ls /tmp/extra-ca/*.crt >/dev/null 2>&1; then cp /tmp/extra-ca/*.crt /usr/local/share/ca-certificates/ && update-ca-certificates; fi
 RUN python -m venv /venv
 COPY backend/requirements.txt /tmp/requirements.txt
 ARG EXTRA_REQUIREMENTS=""
@@ -29,11 +32,14 @@ LABEL org.opencontainers.image.title="NERvvE DevSecOps" \
       org.opencontainers.image.licenses="AGPL-3.0-only" \
       org.opencontainers.image.source="https://github.com/sudheerkumard/nervve-devsecops"
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PATH=/venv/bin:$PATH \
-    MYELIN_MODE=enterprise
+    MYELIN_MODE=enterprise \
+    SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
 # git: fetch repositories hosted on AWS CodeCommit, Google Cloud and self-hosted Git servers (run hardened, see scm.py)
 RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends git ca-certificates && rm -rf /var/lib/apt/lists/* \
  && pip uninstall -y pip setuptools wheel 2>/dev/null; \
     groupadd -g 10001 myelin && useradd -u 10001 -g 10001 -M -s /usr/sbin/nologin myelin
+COPY --from=build /usr/local/share/ca-certificates/ /usr/local/share/ca-certificates/
+RUN update-ca-certificates >/dev/null
 COPY --from=build /venv /venv
 WORKDIR /opt/myelin
 COPY --chown=root:root engine engine
