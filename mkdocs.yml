@@ -85,6 +85,7 @@ nav:
   - Getting started:
       - Evaluate NERvvE DevSecOps: getting-started/evaluate.md
       - Quick start: getting-started/quick-start.md
+      - First-time setup and common issues: getting-started/first-time-setup.md
       - Features: getting-started/features.md
       - Architecture: getting-started/architecture.md
       - Data flow: getting-started/data-flow.md

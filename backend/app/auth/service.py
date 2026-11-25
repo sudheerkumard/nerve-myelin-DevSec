@@ -152,10 +152,16 @@ class AuthService:
             if "invalid_client" in low or "unauthorized_client" in low or "client credentials" in low:
                 hint = ("The platform's client secret does not match the one stored in the identity provider. On the evaluation "
                         "stack, run scripts\\windows\\start-enterprise.ps1 again (it re-synchronises the secret); otherwise ask your administrator.")
+            elif "not provisioned" in low:
+                hint = ("Your account names an organisation that does not exist on this platform yet. Create it first, for example "
+                        "on the evaluation stack: scripts\\windows\\new-tenant.ps1 -Slug <organisation> -Name \"<display name>\" "
+                        "(or myelin admin tenant-create), then sign in again. See the first-time setup guide in the documentation.")
             elif "tenant" in low:
                 hint = ("Your account is not linked to an organisation. In Keycloak (realm 'myelin') open Users, select the user named "
-                        "in the reason below, set the attribute 'tenant' to the organisation (for example acme or globex), save, "
-                        "then sign in again. With another identity provider, ask your administrator to add the tenant claim.")
+                        "in the reason below, set the field 'NERvvE DevSecOps tenant' to an existing organisation (for example acme "
+                        "or globex), assign a role such as myelin-tenant-admin, save, then sign in again. On the evaluation stack, "
+                        "scripts\\windows\\new-tenant.ps1 -User <username> does this for you. With another identity provider, ask "
+                        "your administrator to add the tenant claim.")
             elif "multi-factor" in low or "insufficient" in low:
                 hint = "Multi-factor authentication is required. Sign in again and complete the second step."
             elif "invalid_grant" in low or "expired" in low or "again" in low:

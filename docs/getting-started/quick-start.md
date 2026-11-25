@@ -31,6 +31,10 @@ Three ways to see NERvvE DevSecOps, from a minute to a production-like stack.
     PostgreSQL with row-level security, Keycloak with MFA, migrations, the API and TLS. Windows laptops:
     `scripts\windows\start-enterprise.ps1`.
 
+    !!! warning "First installation?"
+        Read [First-time setup and common issues](first-time-setup.md) first: corporate networks that inspect
+        HTTPS, creating organisations and linking users to them.
+
 ## Your first scan from a pipeline
 
 ```bash

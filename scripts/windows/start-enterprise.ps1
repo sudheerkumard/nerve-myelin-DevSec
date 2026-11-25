@@ -136,6 +136,7 @@ Step "Building and starting (first run downloads ~1.5 GB and takes several minut
 if ((Dc up -d --build) -ne 0) {
   Write-Host "`n--- logs of the services that did not start (paste these when asking for help) ---" -ForegroundColor Yellow
   Dc logs --no-color --tail 60 migrate myelin-api keycloak | Out-Null
+  Write-Host "Common causes and fixes: docs\getting-started\first-time-setup.md (e.g. CERTIFICATE_VERIFY_FAILED on corporate networks)" -ForegroundColor Yellow
   throw "docker compose up failed - see the logs above"
 }
 Ok "containers started"
@@ -197,4 +198,6 @@ Write-Host "                 Microsoft Authenticator or Google Authenticator (MF
 Write-Host "  Keycloak admin https://auth.localtest.me:8444/admin   user kcadmin   password $kcPass"
 Write-Host "  Live-scan test accounts: powershell -ExecutionPolicy Bypass -File scripts\windows\myelin-secret.ps1 -Tenant globex -Name customer-a"
 Write-Host "  Stop           powershell -ExecutionPolicy Bypass -File scripts\windows\start-enterprise.ps1 -Stop"
+Write-Host "  New organisation  powershell -ExecutionPolicy Bypass -File scripts\windows\new-tenant.ps1 -Slug <id> -Name \"<name>\" -User <username>"
+Write-Host "  Problems?      docs\getting-started\first-time-setup.md"
 if (-not $NoBrowser) { Start-Process $Console }

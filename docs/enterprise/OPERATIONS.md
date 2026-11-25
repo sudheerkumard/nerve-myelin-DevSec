@@ -102,6 +102,8 @@ flowchart LR
 
 ### 8.8 Single-host evaluation stack
 
+First installation: see [First-time setup and common issues](../getting-started/first-time-setup.md).
+
 ```
 scripts/ops/gen-secrets.sh > config/backend/enterprise.env
 docker compose -f docker-compose.enterprise.yml --env-file config/backend/enterprise.env up -d

@@ -1,5 +1,7 @@
 # Production-style NERvvE DevSecOps on a Windows laptop
 
+> **First installation?** Read [First-time setup and common issues](getting-started/first-time-setup.md): corporate networks, organisations and users.
+
 > **Step-by-step guide (offline and online, with tokens, ownership verification and timings):** [LIVE-APP-TESTING-GUIDE.md](LIVE-APP-TESTING-GUIDE.md)
 
 Runs the same components as a customer production deployment on one machine with Docker Desktop:

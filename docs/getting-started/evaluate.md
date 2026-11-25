@@ -20,7 +20,7 @@ cd nervve-devsecops
 
 The demo runs the real engines on a fictional organisation with sample repositories, cloud accounts, a cluster and
 runtime events, so every view has data. For a production-like stack (PostgreSQL, Keycloak, TLS), see the
-[quick start](quick-start.md).
+[quick start](quick-start.md) and, before a first installation, [First-time setup and common issues](first-time-setup.md).
 
 ## 3. Scan your own code
 

@@ -87,6 +87,9 @@ powershell -ExecutionPolicy Bypass -File scripts\windows\start-enterprise.ps1   
 helm upgrade --install myelin deploy/helm/myelin -f config/deploy/values-customer.example.yaml
 ```
 
+**First installation?** Read [First-time setup and common issues](docs/getting-started/first-time-setup.md): corporate
+networks that inspect HTTPS, creating organisations and linking users.
+
 OIDC sign-in (Keycloak, Entra ID, Okta, Auth0, Ping, Google), MFA with step-up, six-role RBAC, PostgreSQL row-level
 security for multi-tenancy, read-only cloud connectors and a hash-chained audit log are all included. No licence key is
 needed. See [identity](docs/enterprise/IDENTITY.md), [multi-tenancy](docs/enterprise/MULTI-TENANCY.md),
