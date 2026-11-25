@@ -92,6 +92,7 @@ nav:
       - Anatomy of a finding: getting-started/anatomy-of-a-finding.md
       - Risk score: concepts/risk-score.md
       - Attack paths: concepts/attack-paths.md
+      - Windows evaluation: ENTERPRISE-WINDOWS.md
       - Upgrading: getting-started/upgrading.md
   - Use:
       - Code & pipelines:

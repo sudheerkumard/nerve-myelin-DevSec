@@ -80,6 +80,9 @@ myelin gate --results assessed.json
 scripts/ops/gen-secrets.sh > config/backend/enterprise.env
 docker compose -f docker-compose.enterprise.yml --env-file config/backend/enterprise.env up -d
 
+# Windows laptop (Docker Desktop): one script; add organisations with scripts\windows\new-tenant.ps1
+powershell -ExecutionPolicy Bypass -File scripts\windows\start-enterprise.ps1     # guide: docs/ENTERPRISE-WINDOWS.md
+
 # Kubernetes
 helm upgrade --install myelin deploy/helm/myelin -f config/deploy/values-customer.example.yaml
 ```
