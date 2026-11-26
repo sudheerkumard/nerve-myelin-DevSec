@@ -89,3 +89,39 @@ def test_malformed_lockfile_does_not_hide_other_ecosystem_inventory(tmp_path):
     items = vulndb.parse_lockfiles(str(tmp_path))
     assert any(x["ecosystem"] == "composer" and x["name"] == "vendor/pkg" for x in items)
     assert any("Cargo.lock" in error for error in vulndb.STATUS["errors"])
+
+
+def test_parses_uv_pdm_and_nuget_packages_config(tmp_path):
+    _write(tmp_path, "uv.lock", """version = 1
+[[package]]
+name = "httpx"
+version = "0.27.0"
+source = { registry = "https://pypi.org/simple" }
+
+[[package]]
+name = "anyio"
+version = "4.4.0"
+source = { registry = "https://pypi.org/simple" }
+""")
+    _write(tmp_path, "pdm.lock", """[[package]]
+name = "requests"
+version = "2.32.3"
+groups = ["default"]
+[[package]]
+name = "pytest"
+version = "8.3.2"
+groups = ["dev"]
+""")
+    _write(tmp_path, "packages.config", """<?xml version="1.0" encoding="utf-8"?>
+<packages>
+  <package id="Newtonsoft.Json" version="13.0.1" targetFramework="net472" />
+  <package id="NUnit" version="3.14.0" targetFramework="net472" developmentDependency="true" />
+</packages>
+""")
+    items = vulndb.parse_lockfiles(str(tmp_path))
+    found = {(x["ecosystem"], x["name"], x["version"], x["scope"]) for x in items}
+    assert ("pypi", "httpx", "0.27.0", "transitive") in found
+    assert ("pypi", "requests", "2.32.3", "transitive") in found
+    assert ("pypi", "pytest", "8.3.2", "dev") in found
+    assert ("nuget", "Newtonsoft.Json", "13.0.1", "transitive") in found
+    assert ("nuget", "NUnit", "3.14.0", "dev") in found
