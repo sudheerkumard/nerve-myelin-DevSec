@@ -31,3 +31,8 @@ def test_existing_scanner_remediation_is_preserved():
     result = enrich_finding(finding)
     assert result["remediation"] == text
     assert result["verification"]
+
+
+def test_common_tls_title_without_cwe_still_gets_specific_guidance():
+    result = enrich_finding({"engine": "sast", "title": "TLS certificate verification disabled"})
+    assert "certificate-chain" in result["remediation"]
