@@ -40,3 +40,11 @@ The Docker runtime now includes a pinned Grype release. Offline deployments must
 ## Regression tests
 
 `engine/tests/test_lockfile_parsers.py` covers modern and legacy pnpm keys, Cargo, Composer, RubyGems, Gradle, NuGet, uv, PDM, malformed lockfile isolation and Grype normalization/selection.
+
+## Vulnerability intelligence and coverage status
+
+Online CVE-backed findings are enriched with the FIRST EPSS probability and CISA Known Exploited Vulnerabilities (KEV) status when those feeds are reachable. Feed results are cached. If either source is unavailable, the report records the enrichment error and leaves the corresponding value unknown rather than assigning a misleading zero probability or false exploitation status.
+
+The built-in inventory also parses Hex (mix.lock), Dart (pubspec.lock) and CocoaPods (Podfile.lock) package records. Their package coordinates are queried against OSV where the ecosystem is supported, while Trivy and Grype provide independent artifact and source-tree analysis.
+
+SCA coverage exposes complete and status fields. A scan with advisory-feed errors or a failed configured scanner is partial, even if it found no vulnerabilities. A zero-finding result is not a proof that the repository is vulnerability-free.
