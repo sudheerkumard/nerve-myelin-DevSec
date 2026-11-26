@@ -294,15 +294,39 @@ def _merge_duplicates(path, findings):
     out = [f for f in out if not (f.get("engine") == "secrets" and f.get("source_tool") in ("gitleaks", "trivy")
                                   and ((f.get("file"), f.get("line")) in own_secret
                                        or (f.get("source_tool") == "trivy" and (f.get("file"), f.get("line")) in gl_secret)))]
-    # Dependencies: OSV results and Trivy results for the same package, version and advisory are one finding
+    # Correlate OSV, Trivy and Grype by package identity, exact version and advisory aliases.
+    # Keep the richest NERvvE/OSV record, while retaining all contributing scanner names.
     def _ids(f):
-        return {str(x).upper() for x in [f.get("cve"), f.get("rule_id"), *(f.get("aliases") or [])] if x}
-    osv = defaultdict(set)
+        return {str(x).upper() for x in [f.get("cve"), f.get("rule_id"), f.get("advisory"),
+                                         *(f.get("aliases") or [])] if x}
+
+    def _package_key(f):
+        purl = str(f.get("purl") or "").lower().split("?", 1)[0]
+        if purl:
+            return purl
+        return (str(f.get("ecosystem") or "").lower(),
+                str(f.get("package") or "").strip().lower(),
+                str(f.get("version") or ""))
+
+    sca_groups = defaultdict(list)
     for f in out:
-        if f.get("engine") == "sca" and f.get("source_tool") != "trivy":
-            osv[(str(f.get("package") or "").lower(), str(f.get("version") or ""))] |= _ids(f)
-    out = [f for f in out if not (f.get("engine") == "sca" and f.get("source_tool") == "trivy"
-                                  and _ids(f) & osv.get((str(f.get("package") or "").lower(), str(f.get("version") or "")), set()))]
+        if f.get("engine") == "sca":
+            sca_groups[(_package_key(f), str(f.get("version") or ""), tuple(sorted(_ids(f))))].append(f)
+    duplicate_ids = set()
+    for group in sca_groups.values():
+        if len(group) < 2:
+            continue
+        priority = {"": 0, "osv": 0, "myelin": 0, "grype": 1, "trivy": 2}
+        group.sort(key=lambda f: priority.get(str(f.get("source_tool") or "").lower(), 3))
+        preferred = group[0]
+        sources = set(preferred.get("scanner_sources") or [])
+        for duplicate in group[1:]:
+            sources.add(duplicate.get("source_tool") or "NERvvE advisory engine")
+            sources.update(duplicate.get("scanner_sources") or [])
+            duplicate_ids.add(id(duplicate))
+        if sources:
+            preferred["scanner_sources"] = sorted(sources)
+    out = [f for f in out if id(f) not in duplicate_ids]
     # IaC: Trivy misconfiguration on a line another IaC engine already reports
     iac_lines = {(f.get("file"), f.get("line")) for f in out if f.get("engine") == "iac" and f.get("source_tool") != "trivy"}
     out = [f for f in out if not (f.get("engine") == "iac" and f.get("source_tool") == "trivy" and (f.get("file"), f.get("line")) in iac_lines)]
