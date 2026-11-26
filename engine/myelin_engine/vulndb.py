@@ -718,6 +718,7 @@ def vulnerabilities(comps: list[dict]) -> list[tuple[dict, dict]]:
             pairs.extend((c, v) for v in _pypi_vulns(c))
 
     normalised = _normalise(pairs)
+    normalised = _enrich_threat_intel(normalised)
     unique, seen = [], set()
     for component, advisory in normalised:
         key = (component.get("ecosystem"), component.get("name"), component.get("version"),
@@ -727,6 +728,61 @@ def vulnerabilities(comps: list[dict]) -> list[tuple[dict, dict]]:
         seen.add(key)
         unique.append((component, advisory))
     return unique
+
+
+EPSS_URL = "https://api.first.org/data/v1/epss"
+CISA_KEV_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+_THREAT_INTEL = {"kev": None}
+
+
+def _enrich_threat_intel(pairs):
+    """Enrich CVE-backed findings with EPSS probability and CISA KEV evidence.
+
+    Feeds are cached by the shared HTTP cache. Missing feeds are recorded as
+    coverage errors; absence of enrichment is never represented as EPSS=0 or KEV=false.
+    """
+    cves = sorted({str(v.get("cve")) for _, v in pairs if str(v.get("cve") or "").startswith("CVE-")})
+    if not cves:
+        return pairs
+    epss = {}
+    try:
+        for start in range(0, len(cves), 100):
+            data = _http_json(EPSS_URL + "?" + urllib.parse.urlencode({"cve": ",".join(cves[start:start + 100])}), ttl=6 * 3600)
+            if data is None:
+                raise RuntimeError("EPSS feed unavailable")
+            for row in data.get("data") or []:
+                try:
+                    epss[row["cve"]] = float(row["epss"])
+                except (KeyError, TypeError, ValueError):
+                    continue
+        STATUS["sources"].add("FIRST EPSS")
+    except Exception as exc:
+        STATUS["errors"].add(f"EPSS enrichment unavailable: {type(exc).__name__}")
+
+    kev_ids = _THREAT_INTEL.get("kev")
+    if kev_ids is None:
+        try:
+            data = _http_json(CISA_KEV_URL, ttl=6 * 3600)
+            if data is None:
+                raise RuntimeError("CISA KEV feed unavailable")
+            kev_ids = {str(item.get("cveID")) for item in data.get("vulnerabilities") or [] if item.get("cveID")}
+            _THREAT_INTEL["kev"] = kev_ids
+            STATUS["sources"].add("CISA KEV")
+        except Exception as exc:
+            STATUS["errors"].add(f"CISA KEV enrichment unavailable: {type(exc).__name__}")
+            kev_ids = set()
+
+    enriched = []
+    for component, advisory in pairs:
+        item = dict(advisory)
+        cve = item.get("cve")
+        if cve in epss:
+            item["epss"] = epss[cve]
+        if kev_ids is not None and cve:
+            item["kev"] = cve in kev_ids
+        enriched.append((component, item))
+    return enriched
+
 
 def _normalise(pairs):
     out = []
