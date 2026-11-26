@@ -61,6 +61,9 @@ def online(tmp_path, monkeypatch):
     monkeypatch.setenv("MYELIN_CACHE_DIR", str(tmp_path / "cache"))
     monkeypatch.setattr(vulndb, "OSV_URL", base)
     monkeypatch.setattr(vulndb, "PYPI_URL", base)
+    monkeypatch.setattr(vulndb, "EPSS_URL", base + "/epss")
+    monkeypatch.setattr(vulndb, "CISA_KEV_URL", base + "/kev")
+    vulndb._THREAT_INTEL["kev"] = None
     yield base
     srv.shutdown()
 
