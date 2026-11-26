@@ -259,3 +259,40 @@ def test_sca_coverage_is_partial_when_advisory_or_scanner_sources_fail():
     assert cov["sca"]["complete"] is False
     assert cov["sca"]["status"] == "partial"
     assert any("database unavailable" in x for x in cov["sca"]["errors"])
+
+
+def test_nvd_cvss_cwe_and_references_enrichment(monkeypatch):
+    from myelin_engine import vulndb
+
+    component = vulndb._c("npm", "sample", "1.0.0", "package-lock.json", "required")
+    advisory = {"id": "GHSA-test", "cve": "CVE-2025-1234", "cvss": None,
+                "severity": "medium", "severity_known": False, "cwe": None}
+    record = {
+        "cvss": {"version": "3.1", "score": 9.8, "severity": "CRITICAL",
+                 "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"},
+        "cwes": ["CWE-89"], "references": ["https://example.test/advisory"],
+        "published": "2025-01-01T00:00:00.000", "modified": "2025-01-02T00:00:00.000",
+        "source": "NVD", "vuln_status": "Analyzed",
+    }
+    monkeypatch.setattr(vulndb, "_nvd_record", lambda cve: record)
+    enriched = vulndb._enrich_nvd([(component, advisory)], ["CVE-2025-1234"])
+    result = enriched[0][1]
+    assert result["cvss"] == 9.8
+    assert result["severity"] == "critical"
+    assert result["severity_known"] is True
+    assert result["cwe"] == "CWE-89"
+    assert result["nvd_cvss"]["vector"].startswith("CVSS:3.1")
+    assert "https://example.test/advisory" in result["references"]
+
+
+def test_nvd_unavailable_does_not_invent_cvss_or_cwe(monkeypatch):
+    from myelin_engine import vulndb
+
+    component = vulndb._c("npm", "sample", "1.0.0", "package-lock.json", "required")
+    advisory = {"id": "GHSA-test", "cve": "CVE-2025-1234", "cvss": None,
+                "severity": "medium", "severity_known": False}
+    monkeypatch.setattr(vulndb, "_nvd_record", lambda cve: None)
+    result = vulndb._enrich_nvd([(component, advisory)], ["CVE-2025-1234"])[0][1]
+    assert result["cvss"] is None
+    assert result["severity_known"] is False
+    assert "cwe" not in result
