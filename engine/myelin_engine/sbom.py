@@ -134,9 +134,23 @@ def inventory(root: str) -> list[dict]:
     for c in direct:
         c["purl"] = f"pkg:{c['ecosystem']}/{c['name'].replace(':', '/')}@{c['version']}"
     locked = vulndb.parse_lockfiles(root)
+    # Lockfile resolved versions override ranges in manifests; retain both evidence paths.
+    direct_by_key = {(c["ecosystem"], c["name"]): c for c in direct}
+    locked_by_key = {}
+    for c in locked:
+        locked_by_key.setdefault((c["ecosystem"], c["name"]), []).append(c)
+    for key, manifest in direct_by_key.items():
+        candidates = locked_by_key.get(key) or []
+        if not candidates:
+            continue
+        selected = candidates[0]
+        selected["scope"] = manifest.get("scope", "required")
+        selected["evidence_files"] = sorted(set(selected.get("evidence_files") or [selected.get("file", "")]) |
+                                            {manifest.get("file", "")})
+    direct = [c for c in direct if (c["ecosystem"], c["name"]) not in locked_by_key]
     locked_ecos = {c["ecosystem"] for c in locked}
-    trans = [] if "pypi" in locked_ecos or vulndb.offline() else \
-        vulndb.resolve_pypi([c for c in direct if c["ecosystem"] == "pypi"])
+    trans = [] if "pypi" in locked_ecos or vulndb.offline() else vulndb.resolve_pypi(
+        [c for c in direct if c["ecosystem"] == "pypi"])
     comps, seen = [], set()
     for c in direct + locked + trans:
         k = (c["ecosystem"], c["name"], c["version"])
@@ -180,7 +194,7 @@ def match_advisories(comps: list[dict], repo: str = "local", reachable_hint: set
         out.append({
             "engine": "sca", "rule_id": v["cve"] or v["id"], "cve": v["cve"], "advisory": v["id"], "aliases": v["aliases"],
             "title": f"{c['name']}@{c['version']}: {v['summary'] or v['id']}", "severity": v["severity"],
-            "cvss": v["cvss"], "epss": None, "kev": False, "cwe": v["cwe"], "package": c["name"], "version": c["version"],
+            "cvss": v["cvss"], "epss": v.get("epss"), "kev": v.get("kev"), "cwe": v["cwe"], "package": c["name"], "version": c["version"],
             "fixed_version": v["fixed"], "file": c["file"], "repo": repo, "ecosystem": c["ecosystem"], "purl": c["purl"],
             "reachable": _reach(c["via"] or c["name"], reachable_hint), "exposure": "internet",
             "dependency_type": _dep_type(c), "introduced_by": c.get("via"), "autofix": bool(v["fixed"]),
