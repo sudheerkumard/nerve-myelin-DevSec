@@ -348,7 +348,7 @@ def _yarn_lock(text, rel):
 def _mix_lock(text, rel):
     """Parse Hex package records from Elixir's mix.lock."""
     out = []
-    for name, version in re.findall(r'"([^"]+)"\s*:\s*\{:\w+,\s*:"([^"]+)"', text):
+    for name, version in re.findall(r'"([^"]+)"\s*:\s*\{:\w+,\s*:\w+,\s*"([^"]+)"', text):
         if name and version:
             out.append(_c("hex", name, version, rel, "transitive"))
     return out
