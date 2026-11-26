@@ -814,6 +814,10 @@ def _enrich_nvd(pairs, cves):
             item["nvd"] = record
             if record.get("cvss", {}).get("score") is not None:
                 item["nvd_cvss"] = record["cvss"]
+                if item.get("cvss") is None:
+                    item["cvss"] = record["cvss"]["score"]
+                    item["severity"] = str(record["cvss"].get("severity") or "UNKNOWN").lower()
+                    item["severity_known"] = True
             if record.get("cwes"):
                 item["cwes"] = sorted(set((item.get("cwes") or []) + record["cwes"]))
             if not item.get("cwe") and record.get("cwes"):
