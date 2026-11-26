@@ -55,7 +55,7 @@ def _cache_dir():
         return d
 
 
-def _http_json(url, body=None, ttl=CACHE_TTL):
+def _http_json(url, body=None, ttl=CACHE_TTL, headers=None):
     key = hashlib.sha256((url + "\n" + (json.dumps(body, sort_keys=True) if body else "")).encode()).hexdigest()
     path = os.path.join(_cache_dir(), key + ".json")
     try:
@@ -69,7 +69,7 @@ def _http_json(url, body=None, ttl=CACHE_TTL):
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(url, data=data, method="POST" if data else "GET",
                                  headers={"User-Agent": "NERvvE-DevSecOps", "Accept": "application/json",
-                                          **({"Content-Type": "application/json"} if data else {})})
+                                          **({"Content-Type": "application/json"} if data else {}), **(headers or {})})
     try:
         with urllib.request.urlopen(req, timeout=20) as r:  # myelin:ignore[NM-SAST-010] -- URLs are built from fixed OSV/PyPI/npm https endpoints or operator-set mirrors
             out = json.loads(r.read())
@@ -761,18 +761,11 @@ def _nvd_cvss(cve_item):
 
 
 def _nvd_record(cve):
-    headers = {"User-Agent": "NERvvE-DevSecOps", "Accept": "application/json"}
-    if NVD_API_KEY:
-        headers["apiKey"] = NVD_API_KEY
-    req = urllib.request.Request(NVD_API_URL + "?" + urllib.parse.urlencode({"cveId": cve}),
-                                 headers=headers)
-    try:
-        with urllib.request.urlopen(req, timeout=20) as response:  # myelin:ignore[NM-SAST-010] -- fixed NVD API endpoint or operator-configured mirror
-            data = json.loads(response.read())
-    except urllib.error.HTTPError as exc:
-        if exc.code == 404:
-            return None
-        raise
+    headers = {"apiKey": NVD_API_KEY} if NVD_API_KEY else {}
+    url = NVD_API_URL + "?" + urllib.parse.urlencode({"cveId": cve})
+    data = _http_json(url, ttl=24 * 3600, headers=headers)
+    if not data:
+        return None
     records = data.get("vulnerabilities") or []
     if not records:
         return None
@@ -787,7 +780,6 @@ def _nvd_record(cve):
     return {"cvss": _nvd_cvss(c), "cwes": weaknesses, "published": c.get("published"),
             "modified": c.get("lastModified"), "references": refs[:30],
             "source": "NVD", "vuln_status": c.get("vulnStatus")}
-
 
 def _enrich_nvd(pairs, cves):
     """Add NVD CVSS vectors, CWE mappings and reference metadata; OSV remains authoritative for package ranges."""
