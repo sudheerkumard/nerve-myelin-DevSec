@@ -19,6 +19,8 @@ FROM ${TRIVY_IMAGE} AS trivy
 FROM golang:1.27-alpine AS gitleaks
 ARG GITLEAKS_VERSION=8.30.1
 COPY config/certs/ /tmp/extra-ca/
+# build-only stage (nothing from apk reaches the final image); the Go toolchain image is pinned by tag
+# hadolint ignore=DL3018
 RUN apk add --no-cache git ca-certificates \
  && if ls /tmp/extra-ca/*.crt >/dev/null 2>&1; then cp /tmp/extra-ca/*.crt /usr/local/share/ca-certificates/ && update-ca-certificates; fi \
  && git clone --depth 1 --branch "v${GITLEAKS_VERSION}" https://github.com/gitleaks/gitleaks /src
