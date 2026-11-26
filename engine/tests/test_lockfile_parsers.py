@@ -247,3 +247,15 @@ def test_unavailable_kev_feed_does_not_claim_not_exploited(monkeypatch):
     enriched = vulndb._enrich_threat_intel([(component, {"id": "GHSA-test", "cve": "CVE-2025-1234"})])
     assert "kev" not in enriched[0][1]
     assert any("CISA KEV enrichment unavailable" in e for e in vulndb.STATUS["errors"])
+
+
+def test_sca_coverage_is_partial_when_advisory_or_scanner_sources_fail():
+    from myelin_engine import coverage
+    inv = {"files": 2, "languages": {}, "manifests": ["package-lock.json"], "iac": [], "pipelines": [], "ai": []}
+    err = {"engine": "meta", "rule_id": "tool-error:grype", "title": "grype failed: database unavailable"}
+    cov = coverage.build(inv, ["sca"], ["myelin-builtin", "grype"], [err], 3,
+                         {"errors": ["OSV unavailable"]})
+    assert cov["sca"]["assessed"] is True
+    assert cov["sca"]["complete"] is False
+    assert cov["sca"]["status"] == "partial"
+    assert any("database unavailable" in x for x in cov["sca"]["errors"])
