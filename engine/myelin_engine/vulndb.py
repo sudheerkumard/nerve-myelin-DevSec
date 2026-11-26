@@ -138,9 +138,6 @@ def parse_lockfiles(root: str) -> list[dict]:
                 elif fn == "gradle.lockfile":
                     with open(p, encoding="utf-8", errors="ignore") as fh:
                         out += _gradle_lock(fh.read(), rel)
-                elif fn == "go.sum":
-                    with open(p, encoding="utf-8", errors="ignore") as fh:
-                        out += _go_sum(fh.read(), rel)
                 elif fn == "packages.lock.json":
                     with open(p, encoding="utf-8") as fh:
                         out += _nuget_lock(json.load(fh), rel)
@@ -188,8 +185,16 @@ def _pnpm_lock(text, rel):
     for raw_key, meta in packages.items():
         key = str(raw_key).lstrip("/")
         # pnpm v5/v6: /name/version; pnpm v8+: name@version (peer suffix optional).
-        key = re.sub(r"\\([^)]*\\)$", "", key)
-        if key.startswith("@"):
+        key = re.sub(r"\([^)]*\)$", "", key)
+        if key.startswith("/"):
+            parts = key.strip("/").split("/")
+            if len(parts) >= 3 and parts[0].startswith("@"):
+                name, version = "/".join(parts[:2]), parts[2]
+            elif len(parts) >= 2:
+                name, version = parts[0], parts[1]
+            else:
+                continue
+        elif key.startswith("@"):
             marker = key.rfind("@")
             if marker <= key.find("/"):
                 continue
@@ -233,7 +238,7 @@ def _gem_lock(text, rel):
             in_specs = False
         if not in_specs:
             continue
-        match = re.match(r"^    ([A-Za-z0-9_.-]+) \\(([^)]+)\\)", line)
+        match = re.match(r"^    ([A-Za-z0-9_.-]+) \(([^)]+)\)", line)
         if match:
             out.append(_c("gem", match.group(1), match.group(2), rel, "transitive"))
     return out
@@ -249,18 +254,6 @@ def _gradle_lock(text, rel):
         parts = coordinate.split(":")
         if len(parts) == 3 and all(parts):
             out.append(_c("maven", f"{parts[0]}:{parts[1]}", parts[2], rel, "transitive"))
-    return out
-
-
-def _go_sum(text, rel):
-    out = []
-    for line in text.splitlines():
-        parts = line.split()
-        if len(parts) < 2 or parts[1].endswith("/go.mod"):
-            continue
-        version = parts[1].lstrip("v")
-        if version:
-            out.append(_c("go", parts[0], version, rel, "transitive"))
     return out
 
 
