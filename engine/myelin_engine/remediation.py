@@ -40,6 +40,13 @@ def enrich_finding(finding: dict) -> dict:
     """Populate consistent remediation fields without overwriting richer scanner guidance."""
     engine = str(finding.get("engine") or "").lower()
     cwe = str(finding.get("cwe") or "").upper()
+    # Conservative title fallback for common scanner outputs that omit CWE metadata.
+    if not cwe:
+        label = str(finding.get("title") or "").lower()
+        if "tls" in label and ("certificate" in label or "verification" in label):
+            cwe = "CWE-295"
+        elif any(term in label for term in ("api key", "password", "credential", "token", "secret")):
+            cwe = "CWE-798"
     title, action, verify = CWE_GUIDANCE.get(cwe, (None, None, None))
     if not action:
         title, action, verify = ENGINE_GUIDANCE.get(engine, ("Security finding", "Review the evidence and affected code/resource. Apply the vendor or rule-specific secure configuration, remove the root cause, and avoid suppressing the finding without an approved exception.", "Rerun the same scan and add a regression test or configuration validation proving the issue is resolved."))
