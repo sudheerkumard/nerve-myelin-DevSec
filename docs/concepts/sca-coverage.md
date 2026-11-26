@@ -84,3 +84,10 @@ NVD enrichment now retains reference classifications (including exploit and patc
 VEX is a separate product-context assertion, not another vulnerability feed. A future VEX workflow should accept CycloneDX VEX or CSAF VEX statements, validate issuer, product identity, component identity, vulnerability identifier, status, justification and timestamp, and preserve the original signed/source document. It must never auto-mark a finding `not_affected` merely because static reachability was not detected. CycloneDX describes VEX as exploitability information for a component in the context of a product: https://www.cyclonedx.org/capabilities/vex/.
 
 Operational rule: a missing exploit reference does not mean no exploit exists; a missing KEV entry does not mean not exploitable; and an unobserved import path does not prove non-reachability. Keep these states separate in the finding model and risk prioritisation.
+
+
+## Structured prioritisation evidence (NVD SSVC and affected products)
+
+When NVD supplies structured SSVC metrics or CVE-record affected-product data, NERvvE preserves those source records as evidence on the finding. These fields are supplemental context: the scanner does not translate an unrecognised SSVC schema into an invented priority, and it does not use NVD product CPE/CVE affected-product records as a substitute for ecosystem-specific OSV package ranges. Product matching requires an explicit, validated mapping between the scanned component and the vendor/product identity.
+
+SCA findings also carry EPSS percentile, CISA KEV catalog details and the NVD evidence object so downstream reporting can display the source values and timestamps. A missing field remains unknown. Risk ranking should combine exploit evidence, package reachability, deployment exposure, business criticality and fix availability, while retaining each underlying source field for audit.
