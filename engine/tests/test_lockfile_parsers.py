@@ -125,3 +125,24 @@ groups = ["dev"]
     assert ("pypi", "pytest", "8.3.2", "dev") in found
     assert ("nuget", "Newtonsoft.Json", "13.0.1", "transitive") in found
     assert ("nuget", "NUnit", "3.14.0", "dev") in found
+
+
+def test_grype_is_selected_for_source_dependency_scans():
+    from myelin_engine import orchestrator
+
+    inventory = {"languages": {"Python": 2}, "manifests": ["poetry.lock"], "files": 3}
+    assert orchestrator._applies("grype", inventory, ["sca"])
+    assert not orchestrator._applies("grype", inventory, ["secrets"])
+
+
+def test_grype_normalizer_preserves_package_and_fixed_version():
+    from myelin_engine import normalize
+
+    findings = normalize.grype({"matches": [{
+        "vulnerability": {"id": "CVE-2025-1234", "severity": "High", "fix": {"versions": ["2.0.0"]}},
+        "artifact": {"name": "sample-lib", "version": "1.0.0", "purl": "pkg:pypi/sample-lib@1.0.0"}
+    }]}, "sample")
+    assert len(findings) == 1
+    assert findings[0]["engine"] == "sca"
+    assert findings[0]["package"] == "sample-lib"
+    assert findings[0]["fixed_version"] == "2.0.0"
