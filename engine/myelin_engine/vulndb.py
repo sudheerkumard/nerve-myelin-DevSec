@@ -144,7 +144,7 @@ def parse_lockfiles(root: str) -> list[dict]:
                         out += _nuget_lock(json.load(fh), rel)
                 elif fn == "packages.config":
                     out += _nuget_packages_config(p, rel)
-            except (OSError, ValueError, KeyError, TypeError, ImportError):
+            except (OSError, ValueError, KeyError, TypeError, ImportError, ET.ParseError):
                 STATUS["errors"].add(f"lockfile parse: {rel}")
                 continue
     # Keep one exact component per ecosystem/name/version while preserving first evidence path.
