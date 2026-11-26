@@ -92,6 +92,8 @@ nav:
       - Data model: getting-started/data-model.md
       - Anatomy of a finding: getting-started/anatomy-of-a-finding.md
       - How scanning works: concepts/scanning.md
+      - SCA coverage and vulnerability intelligence: concepts/sca-coverage.md
+      - Developer remediation guidance: concepts/remediation.md
       - Risk score: concepts/risk-score.md
       - Attack paths: concepts/attack-paths.md
       - Windows evaluation: ENTERPRISE-WINDOWS.md

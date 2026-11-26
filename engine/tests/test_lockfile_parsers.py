@@ -188,3 +188,74 @@ source = { registry = "https://pypi.org/simple" }
     items = vulndb.parse_lockfiles(str(tmp_path))
     assert not any(x["name"] == "workspace-app" for x in items)
     assert any(x["name"] == "httpx" for x in items)
+
+
+def test_parses_hex_pub_and_cocoapods_lockfiles(tmp_path):
+    _write(tmp_path, "mix.lock", '''"decimal": {:hex, :decimal, "2.1.0", "checksum", [:mix], [], "hexpm", "checksum"}
+''')
+    _write(tmp_path, "pubspec.lock", """packages:
+  http:
+    dependency: "direct main"
+    description: {name: http, sha256: abc, url: "https://pub.dev"}
+    source: hosted
+    version: "1.2.0"
+  flutter:
+    dependency: "direct main"
+    source: sdk
+    version: "0.0.0"
+""")
+    _write(tmp_path, "Podfile.lock", """PODS:
+  - Alamofire (5.9.1)
+  - Firebase/CoreOnly (10.20.0)
+DEPENDENCIES:
+  - Alamofire
+""")
+    items = vulndb.parse_lockfiles(str(tmp_path))
+    found = {(x["ecosystem"], x["name"], x["version"]) for x in items}
+    assert ("hex", "decimal", "2.1.0") in found
+    assert ("pub", "http", "1.2.0") in found
+    assert not any(x[0] == "pub" and x[1] == "flutter" for x in found)
+    assert ("cocoapods", "Alamofire", "5.9.1") in found
+    assert ("cocoapods", "Firebase", "10.20.0") in found
+
+
+def test_cve_threat_intelligence_enrichment(monkeypatch):
+    vulndb._THREAT_INTEL["kev"] = None
+    def fake(url, body=None, ttl=None):
+        if url.startswith(vulndb.EPSS_URL):
+            return {"data": [{"cve": "CVE-2025-1234", "epss": "0.87", "percentile": "0.99"}]}
+        if url == vulndb.CISA_KEV_URL:
+            return {"vulnerabilities": [{"cveID": "CVE-2025-1234"}]}
+        return None
+    monkeypatch.setattr(vulndb, "_http_json", fake)
+    vulndb.STATUS["sources"].clear()
+    vulndb.STATUS["errors"].clear()
+    component = vulndb._c("npm", "sample", "1.0.0", "package-lock.json", "required")
+    enriched = vulndb._enrich_threat_intel([(component, {"id": "GHSA-test", "cve": "CVE-2025-1234"})])
+    advisory = enriched[0][1]
+    assert advisory["epss"] == 0.87
+    assert advisory["kev"] is True
+    assert "FIRST EPSS" in vulndb.STATUS["sources"]
+    assert "CISA KEV" in vulndb.STATUS["sources"]
+
+
+def test_unavailable_kev_feed_does_not_claim_not_exploited(monkeypatch):
+    vulndb._THREAT_INTEL["kev"] = None
+    monkeypatch.setattr(vulndb, "_http_json", lambda *a, **k: None)
+    vulndb.STATUS["errors"].clear()
+    component = vulndb._c("npm", "sample", "1.0.0", "package-lock.json", "required")
+    enriched = vulndb._enrich_threat_intel([(component, {"id": "GHSA-test", "cve": "CVE-2025-1234"})])
+    assert "kev" not in enriched[0][1]
+    assert any("CISA KEV enrichment unavailable" in e for e in vulndb.STATUS["errors"])
+
+
+def test_sca_coverage_is_partial_when_advisory_or_scanner_sources_fail():
+    from myelin_engine import coverage
+    inv = {"files": 2, "languages": {}, "manifests": ["package-lock.json"], "iac": [], "pipelines": [], "ai": []}
+    err = {"engine": "meta", "rule_id": "tool-error:grype", "title": "grype failed: database unavailable"}
+    cov = coverage.build(inv, ["sca"], ["myelin-builtin", "grype"], [err], 3,
+                         {"errors": ["OSV unavailable"]})
+    assert cov["sca"]["assessed"] is True
+    assert cov["sca"]["complete"] is False
+    assert cov["sca"]["status"] == "partial"
+    assert any("database unavailable" in x for x in cov["sca"]["errors"])

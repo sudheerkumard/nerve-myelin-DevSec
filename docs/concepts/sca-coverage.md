@@ -40,3 +40,25 @@ The Docker runtime now includes a pinned Grype release. Offline deployments must
 ## Regression tests
 
 `engine/tests/test_lockfile_parsers.py` covers modern and legacy pnpm keys, Cargo, Composer, RubyGems, Gradle, NuGet, uv, PDM, malformed lockfile isolation and Grype normalization/selection.
+
+## Vulnerability intelligence and coverage status
+
+Online CVE-backed findings are enriched with the FIRST EPSS probability and CISA Known Exploited Vulnerabilities (KEV) status when those feeds are reachable. Feed results are cached. If either source is unavailable, the report records the enrichment error and leaves the corresponding value unknown rather than assigning a misleading zero probability or false exploitation status.
+
+The built-in inventory also parses Hex (mix.lock), Dart (pubspec.lock) and CocoaPods (Podfile.lock) package records. Their package coordinates are queried against OSV where the ecosystem is supported, while Trivy and Grype provide independent artifact and source-tree analysis.
+
+SCA coverage exposes complete and status fields. A scan with advisory-feed errors or a failed configured scanner is partial, even if it found no vulnerabilities. A zero-finding result is not a proof that the repository is vulnerability-free.
+
+## Vulnerability classes and product coverage
+
+NERvvE combines multiple analysis methods because vulnerability detection is not one scanner task:
+
+- **Source-code weaknesses:** injection (SQL, OS command, LDAP and template), path traversal, SSRF, insecure deserialization, XSS, broken access control patterns, weak cryptography, unsafe TLS validation and insecure file handling. Coverage depends on the language and available rule pack; the scan report lists unsupported languages.
+- **Dependency and supply-chain risks:** known CVEs and ecosystem advisories (including GHSA/PYSEC where published), vulnerable version ranges, malicious packages, typosquatting and dependency confusion. Package inventory comes from manifests, lockfiles, imported SBOMs and supported artifact scanners.
+- **Secrets:** provider-specific credentials, private keys, generic credentials and Git history when a Git clone is available.
+- **Build and infrastructure configuration:** Docker, Kubernetes, Terraform, Bicep, Helm, Compose and CI/CD workflow weaknesses.
+- **Container and artifact vulnerabilities:** operating-system and application packages discovered by Trivy and Grype when their databases and target format are available.
+- **Live application and API weaknesses:** safe read-only checks by default; active testing requires explicit authorisation and a suitable non-production target.
+- **Cloud, identity and runtime posture:** configuration, excessive privilege, exposure and runtime detections through the corresponding collectors and integrations.
+
+No static scanner can guarantee detection of every vulnerability. Dynamic behavior, unsupported languages, proprietary package sources, generated code, platform-specific dependency resolution, unreachable code and vulnerabilities not yet disclosed in an advisory feed can all create blind spots. NERvvE therefore reports the files, ecosystems, scanners, intelligence sources, errors and partial-coverage status. Missing data is not reported as a clean bill of health.

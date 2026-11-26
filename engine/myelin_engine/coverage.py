@@ -177,6 +177,15 @@ def build(inv: dict, engines: list[str], tools_used: list[str], findings: list[d
                            + (" — offline: bundled advisory data only" if (intel or {}).get("offline") else ""),
                   "tools": tools_for("sca", ["OSV"] + [t for t in ("trivy", "grype") if t in tools_used]),
                   "errors": (intel or {}).get("errors") or []}
+    sca_tool_errors = [f.get("title", "scanner failed") for f in findings
+                       if f.get("engine") == "meta" and str(f.get("rule_id", "")).startswith(("tool-error:trivy", "tool-error:grype"))]
+    sca_errors = list(cov["sca"]["errors"]) + sca_tool_errors
+    cov["sca"]["complete"] = not bool(sca_errors)
+    cov["sca"]["status"] = "complete" if not sca_errors else "partial"
+    cov["sca"]["errors"] = sca_errors
+    cov["sca"]["limitations"] = ["Only dependencies discovered in supported manifests, lockfiles, SBOMs or scanned artifacts can be assessed.",
+                                  "A dependency inventory does not prove runtime reachability; unknown reachability remains unknown.",
+                                  "A partial advisory feed or scanner failure must not be interpreted as a clean result."]
     cov["license"] = {"applicable": components > 0, "assessed": "license" in engines and components > 0,
                       "examined": f"{components} components" if components else "", "depth": "Licence of every component against the policy",
                       "tools": [{"name": "NERvvE licence policy", "version": ""}]}

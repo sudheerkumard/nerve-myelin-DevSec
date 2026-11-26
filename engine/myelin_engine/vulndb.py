@@ -25,6 +25,7 @@ import re
 import tempfile
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
@@ -33,7 +34,7 @@ OSV_URL = os.environ.get("MYELIN_OSV_URL", "https://api.osv.dev").rstrip("/")
 PYPI_URL = os.environ.get("MYELIN_PYPI_URL", "https://pypi.org").rstrip("/")
 NPM_URL = os.environ.get("MYELIN_NPM_URL", "https://registry.npmjs.org").rstrip("/")
 OSV_ECO = {"pypi": "PyPI", "npm": "npm", "maven": "Maven", "go": "Go", "cargo": "crates.io", "nuget": "NuGet",
-           "gem": "RubyGems", "composer": "Packagist"}
+           "gem": "RubyGems", "composer": "Packagist", "hex": "Hex", "pub": "Pub", "cocoapods": "CocoaPods"}
 CACHE_TTL = 24 * 3600
 MAX_TRANSITIVE = 600
 STATUS = {"sources": set(), "errors": set()}     # what the last scan could reach, shown in reports
@@ -144,16 +145,28 @@ def parse_lockfiles(root: str) -> list[dict]:
                         out += _nuget_lock(json.load(fh), rel)
                 elif fn == "packages.config":
                     out += _nuget_packages_config(p, rel)
+                elif fn == "mix.lock":
+                    with open(p, encoding="utf-8", errors="ignore") as fh:
+                        out += _mix_lock(fh.read(), rel)
+                elif fn == "pubspec.lock":
+                    with open(p, encoding="utf-8") as fh:
+                        out += _pubspec_lock(fh.read(), rel)
+                elif fn == "Podfile.lock":
+                    with open(p, encoding="utf-8") as fh:
+                        out += _podfile_lock(fh.read(), rel)
             except (OSError, ValueError, KeyError, TypeError, ImportError, ET.ParseError):
                 STATUS["errors"].add(f"lockfile parse: {rel}")
                 continue
-    # Keep one exact component per ecosystem/name/version while preserving first evidence path.
-    unique, seen = [], set()
+    # Keep one exact component per ecosystem/name/version while preserving all source paths.
+    unique, by_key = [], {}
     for component in out:
         key = (component["ecosystem"], component["name"], component["version"])
-        if key not in seen:
-            seen.add(key)
+        if key not in by_key:
+            by_key[key] = component
+            component["evidence_files"] = [component["file"]]
             unique.append(component)
+        elif component["file"] not in by_key[key]["evidence_files"]:
+            by_key[key]["evidence_files"].append(component["file"])
     return unique
 
 
@@ -302,10 +315,17 @@ def _npm_lock(data, rel):
             if not path or "node_modules/" not in path or not (meta or {}).get("version"):
                 continue
             name = (meta or {}).get("name") or path.split("node_modules/")[-1]
-            if path == f"node_modules/{name}":
-                scope = "optional" if name in optional else "dev" if name in dev else "required" if name in direct else "transitive"
+            meta = meta or {}
+            # Lockfile package metadata is authoritative for dev/optional entries even
+            # when older or hand-authored lockfiles omit root dependency declarations.
+            if name in optional or meta.get("optional"):
+                scope = "optional"
+            elif name in dev or meta.get("dev"):
+                scope = "dev"
+            elif path == f"node_modules/{name}" and name in direct:
+                scope = "required"
             else:
-                scope = "dev" if (meta or {}).get("dev") else "transitive"
+                scope = "transitive"
             out.append(_c("npm", name, meta["version"], rel, scope))
     else:  # lockfile v1: first-level entries are direct dependencies.
         def walk(deps, depth=0):
@@ -323,6 +343,53 @@ def _yarn_lock(text, rel):
         out.append(_c("npm", m.group(1), m.group(2), rel, "transitive"))
     return out
 
+
+
+def _mix_lock(text, rel):
+    """Parse Hex package records from Elixir's mix.lock."""
+    out = []
+    for name, version in re.findall(r'"([^"]+)"\s*:\s*\{:\w+,\s*:\w+,\s*"([^"]+)"', text):
+        if name and version:
+            out.append(_c("hex", name, version, rel, "transitive"))
+    return out
+
+
+def _pubspec_lock(text, rel):
+    """Parse Dart pubspec.lock package entries (YAML)."""
+    try:
+        import yaml
+        data = yaml.safe_load(text) or {}
+    except Exception as exc:
+        STATUS["errors"].add(f"pubspec lock parse: {rel}: {type(exc).__name__}")
+        return []
+    out = []
+    for name, meta in (data.get("packages") or {}).items():
+        if not isinstance(meta, dict) or not meta.get("version"):
+            continue
+        source = meta.get("source", "hosted")
+        if source in ("sdk", "path", "git"):
+            continue
+        out.append(_c("pub", name, str(meta["version"]), rel, "transitive"))
+    return out
+
+
+def _podfile_lock(text, rel):
+    """Parse the PODS section of CocoaPods lockfiles, retaining exact pod versions."""
+    out = []
+    in_pods = False
+    for line in text.splitlines():
+        if line.strip() == "PODS:":
+            in_pods = True
+            continue
+        if in_pods and line and not line.startswith(" "):
+            break
+        if not in_pods:
+            continue
+        match = re.match(r"^\s*-\s+([A-Za-z0-9_.+/-]+)(?:\s+\(([^)]+)\))?", line)
+        if match and match.group(2):
+            name = match.group(1).split("/", 1)[0]
+            out.append(_c("cocoapods", name, match.group(2), rel, "transitive"))
+    return out
 
 def _c(eco, name, version, file, scope, via=None):
     name = norm_name(eco, name)
@@ -658,6 +725,7 @@ def vulnerabilities(comps: list[dict]) -> list[tuple[dict, dict]]:
             pairs.extend((c, v) for v in _pypi_vulns(c))
 
     normalised = _normalise(pairs)
+    normalised = _enrich_threat_intel(normalised)
     unique, seen = [], set()
     for component, advisory in normalised:
         key = (component.get("ecosystem"), component.get("name"), component.get("version"),
@@ -667,6 +735,63 @@ def vulnerabilities(comps: list[dict]) -> list[tuple[dict, dict]]:
         seen.add(key)
         unique.append((component, advisory))
     return unique
+
+
+EPSS_URL = "https://api.first.org/data/v1/epss"
+CISA_KEV_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+_THREAT_INTEL = {"kev": None}
+
+
+def _enrich_threat_intel(pairs):
+    """Enrich CVE-backed findings with EPSS probability and CISA KEV evidence.
+
+    Feeds are cached by the shared HTTP cache. Missing feeds are recorded as
+    coverage errors; absence of enrichment is never represented as EPSS=0 or KEV=false.
+    """
+    cves = sorted({str(v.get("cve")) for _, v in pairs if str(v.get("cve") or "").startswith("CVE-")})
+    if not cves:
+        return pairs
+    epss = {}
+    try:
+        for start in range(0, len(cves), 100):
+            data = _http_json(EPSS_URL + "?" + urllib.parse.urlencode({"cve": ",".join(cves[start:start + 100])}), ttl=6 * 3600)
+            if data is None:
+                raise RuntimeError("EPSS feed unavailable")
+            for row in data.get("data") or []:
+                try:
+                    epss[row["cve"]] = float(row["epss"])
+                except (KeyError, TypeError, ValueError):
+                    continue
+        STATUS["sources"].add("FIRST EPSS")
+    except Exception as exc:
+        STATUS["errors"].add(f"EPSS enrichment unavailable: {type(exc).__name__}")
+
+    kev_ids = _THREAT_INTEL.get("kev")
+    kev_available = kev_ids is not None
+    if not kev_available:
+        try:
+            data = _http_json(CISA_KEV_URL, ttl=6 * 3600)
+            if data is None:
+                raise RuntimeError("CISA KEV feed unavailable")
+            kev_ids = {str(item.get("cveID")) for item in data.get("vulnerabilities") or [] if item.get("cveID")}
+            _THREAT_INTEL["kev"] = kev_ids
+            kev_available = True
+            STATUS["sources"].add("CISA KEV")
+        except Exception as exc:
+            STATUS["errors"].add(f"CISA KEV enrichment unavailable: {type(exc).__name__}")
+            kev_ids = set()
+
+    enriched = []
+    for component, advisory in pairs:
+        item = dict(advisory)
+        cve = item.get("cve")
+        if cve in epss:
+            item["epss"] = epss[cve]
+        if kev_available and cve:
+            item["kev"] = cve in kev_ids
+        enriched.append((component, item))
+    return enriched
+
 
 def _normalise(pairs):
     out = []
