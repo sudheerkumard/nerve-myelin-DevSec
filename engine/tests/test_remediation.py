@@ -36,3 +36,37 @@ def test_existing_scanner_remediation_is_preserved():
 def test_common_tls_title_without_cwe_still_gets_specific_guidance():
     result = enrich_finding({"engine": "sast", "title": "TLS certificate verification disabled"})
     assert "certificate-chain" in result["remediation"]
+
+
+def test_pypi_advisories_are_queried_when_osv_returns_no_matches(monkeypatch):
+    from myelin_engine import vulndb
+
+    component = {"ecosystem": "pypi", "name": "sample-lib", "version": "1.0",
+                 "file": "requirements.txt", "purl": "pkg:pypi/sample-lib@1.0", "scope": "required"}
+    advisory = {"id": "PYSEC-2026-1", "aliases": ["CVE-2026-1234"], "summary": "Example advisory",
+                "details": "", "_fixed": ["1.1"], "severity": [], "database_specific": {}}
+    monkeypatch.setattr(vulndb, "_osv", lambda comps: {})
+    monkeypatch.setattr(vulndb, "_pypi_vulns", lambda component: [advisory])
+    vulndb.STATUS["sources"].clear()
+    vulndb.STATUS["errors"].clear()
+
+    results = vulndb.vulnerabilities([component])
+    assert len(results) == 1
+    assert results[0][1]["id"] == "PYSEC-2026-1"
+    assert results[0][1]["fixed"] == "1.1"
+
+
+def test_osv_and_pypi_duplicate_advisories_are_deduplicated(monkeypatch):
+    from myelin_engine import vulndb
+
+    component = {"ecosystem": "pypi", "name": "sample-lib", "version": "1.0",
+                 "file": "requirements.txt", "purl": "pkg:pypi/sample-lib@1.0", "scope": "required"}
+    advisory = {"id": "PYSEC-2026-1", "aliases": ["CVE-2026-1234"], "summary": "Example advisory",
+                "details": "", "_fixed": ["1.1"], "severity": [], "database_specific": {}}
+    osv_doc = {"id": "PYSEC-2026-1", "aliases": ["CVE-2026-1234"], "summary": "Example advisory",
+               "details": "", "affected": [], "severity": [], "database_specific": {}}
+    monkeypatch.setattr(vulndb, "_osv", lambda comps: {0: [osv_doc]})
+    monkeypatch.setattr(vulndb, "_pypi_vulns", lambda component: [advisory])
+
+    results = vulndb.vulnerabilities([component])
+    assert len(results) == 1
