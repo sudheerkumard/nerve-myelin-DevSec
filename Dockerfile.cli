@@ -15,6 +15,7 @@ RUN apk add --no-cache git ca-certificates \
  && git clone --depth 1 --branch "v${GITLEAKS_VERSION}" https://github.com/gitleaks/gitleaks /src
 WORKDIR /src
 RUN go get golang.org/x/crypto@latest golang.org/x/text@latest golang.org/x/net@latest golang.org/x/sys@latest \
+      github.com/klauspost/compress@latest \
  && go mod tidy \
  && CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X github.com/zricethezav/gitleaks/v8/version.Version=v${GITLEAKS_VERSION}" \
       -o /usr/bin/gitleaks . \
