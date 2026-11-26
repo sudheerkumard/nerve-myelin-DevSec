@@ -55,7 +55,7 @@ def _cache_dir():
         return d
 
 
-def _http_json(url, body=None, ttl=CACHE_TTL):
+def _http_json(url, body=None, ttl=CACHE_TTL, headers=None):
     key = hashlib.sha256((url + "\n" + (json.dumps(body, sort_keys=True) if body else "")).encode()).hexdigest()
     path = os.path.join(_cache_dir(), key + ".json")
     try:
@@ -69,7 +69,7 @@ def _http_json(url, body=None, ttl=CACHE_TTL):
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(url, data=data, method="POST" if data else "GET",
                                  headers={"User-Agent": "NERvvE-DevSecOps", "Accept": "application/json",
-                                          **({"Content-Type": "application/json"} if data else {})})
+                                          **({"Content-Type": "application/json"} if data else {}), **(headers or {})})
     try:
         with urllib.request.urlopen(req, timeout=20) as r:  # myelin:ignore[NM-SAST-010] -- URLs are built from fixed OSV/PyPI/npm https endpoints or operator-set mirrors
             out = json.loads(r.read())
@@ -739,14 +739,91 @@ def vulnerabilities(comps: list[dict]) -> list[tuple[dict, dict]]:
 
 EPSS_URL = "https://api.first.org/data/v1/epss"
 CISA_KEV_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+NVD_API_URL = os.environ.get("MYELIN_NVD_URL", "https://services.nvd.nist.gov/rest/json/cves/2.0").rstrip("/")
+NVD_API_KEY = os.environ.get("NVD_API_KEY", "")
 _THREAT_INTEL = {"kev": None}
 
 
-def _enrich_threat_intel(pairs):
-    """Enrich CVE-backed findings with EPSS probability and CISA KEV evidence.
+def _nvd_cvss(cve_item):
+    """Return the strongest published NVD CVSS record without inventing a score."""
+    metrics = cve_item.get("metrics") or {}
+    for key in ("cvssMetricV40", "cvssMetricV31", "cvssMetricV30", "cvssMetricV2"):
+        rows = metrics.get(key) or []
+        if not rows:
+            continue
+        metric = rows[0].get("cvssData") or {}
+        score = metric.get("baseScore")
+        if score is not None:
+            return {"version": metric.get("version"), "score": score,
+                    "severity": metric.get("baseSeverity") or rows[0].get("baseSeverity"),
+                    "vector": metric.get("vectorString")}
+    return {}
 
-    Feeds are cached by the shared HTTP cache. Missing feeds are recorded as
-    coverage errors; absence of enrichment is never represented as EPSS=0 or KEV=false.
+
+def _nvd_record(cve):
+    headers = {"apiKey": NVD_API_KEY} if NVD_API_KEY else {}
+    url = NVD_API_URL + "?" + urllib.parse.urlencode({"cveId": cve})
+    data = _http_json(url, ttl=24 * 3600, headers=headers)
+    if not data:
+        return None
+    records = data.get("vulnerabilities") or []
+    if not records:
+        return None
+    c = records[0].get("cve") or {}
+    weaknesses = []
+    for weakness in c.get("weaknesses") or []:
+        for desc in weakness.get("description") or []:
+            value = desc.get("value", "")
+            if value.startswith("CWE-") and value not in weaknesses:
+                weaknesses.append(value)
+    refs = [r.get("url") for r in c.get("references") or [] if r.get("url")]
+    return {"cvss": _nvd_cvss(c), "cwes": weaknesses, "published": c.get("published"),
+            "modified": c.get("lastModified"), "references": refs[:30],
+            "source": "NVD", "vuln_status": c.get("vulnStatus")}
+
+def _enrich_nvd(pairs, cves):
+    """Add NVD CVSS vectors, CWE mappings and reference metadata; OSV remains authoritative for package ranges."""
+    records = {}
+    try:
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            results = list(pool.map(_safe, [lambda c=c: _nvd_record(c) for c in cves]))
+        records = {c: r for c, r in zip(cves, results) if r}
+        if any(r is not None for r in results):
+            STATUS["sources"].add("NVD CVE API 2.0")
+        if any(r is None for r in results):
+            # A valid no-record response is not a feed failure. Only transport errors
+            # are exposed by _safe as None, so do not infer completeness from record count.
+            pass
+    except Exception as exc:
+        STATUS["errors"].add(f"NVD enrichment unavailable: {type(exc).__name__}")
+        return pairs
+
+    enriched = []
+    for component, advisory in pairs:
+        item = dict(advisory)
+        record = records.get(item.get("cve"))
+        if record:
+            item["nvd"] = record
+            if record.get("cvss", {}).get("score") is not None:
+                item["nvd_cvss"] = record["cvss"]
+                if item.get("cvss") is None:
+                    item["cvss"] = record["cvss"]["score"]
+                    item["severity"] = str(record["cvss"].get("severity") or "UNKNOWN").lower()
+                    item["severity_known"] = True
+            if record.get("cwes"):
+                item["cwes"] = sorted(set((item.get("cwes") or []) + record["cwes"]))
+            if not item.get("cwe") and record.get("cwes"):
+                item["cwe"] = record["cwes"][0]
+            item["references"] = list(dict.fromkeys((item.get("references") or []) + record.get("references", [])))[:30]
+        enriched.append((component, item))
+    return enriched
+
+
+def _enrich_threat_intel(pairs):
+    """Enrich CVE-backed findings with EPSS, CISA KEV and NVD evidence.
+
+    Each source is independently cached. Missing enrichment remains unknown, never
+    represented as EPSS=0 or KEV=false. OSV affected ranges remain the package-match authority.
     """
     cves = sorted({str(v.get("cve")) for _, v in pairs if str(v.get("cve") or "").startswith("CVE-")})
     if not cves:
@@ -759,38 +836,44 @@ def _enrich_threat_intel(pairs):
                 raise RuntimeError("EPSS feed unavailable")
             for row in data.get("data") or []:
                 try:
-                    epss[row["cve"]] = float(row["epss"])
+                    epss[row["cve"]] = {"score": float(row["epss"]), "percentile": float(row["percentile"])}
                 except (KeyError, TypeError, ValueError):
                     continue
         STATUS["sources"].add("FIRST EPSS")
     except Exception as exc:
         STATUS["errors"].add(f"EPSS enrichment unavailable: {type(exc).__name__}")
 
-    kev_ids = _THREAT_INTEL.get("kev")
-    kev_available = kev_ids is not None
+    kev_records = _THREAT_INTEL.get("kev")
+    kev_available = kev_records is not None
     if not kev_available:
         try:
             data = _http_json(CISA_KEV_URL, ttl=6 * 3600)
             if data is None:
                 raise RuntimeError("CISA KEV feed unavailable")
-            kev_ids = {str(item.get("cveID")) for item in data.get("vulnerabilities") or [] if item.get("cveID")}
-            _THREAT_INTEL["kev"] = kev_ids
+            kev_records = {str(row.get("cveID")): {k: row.get(k) for k in (
+                "vendorProject", "product", "vulnerabilityName", "dateAdded", "dueDate",
+                "requiredAction", "knownRansomwareCampaignUse", "notes")}
+                for row in data.get("vulnerabilities") or [] if row.get("cveID")}
+            _THREAT_INTEL["kev"] = kev_records
             kev_available = True
             STATUS["sources"].add("CISA KEV")
         except Exception as exc:
             STATUS["errors"].add(f"CISA KEV enrichment unavailable: {type(exc).__name__}")
-            kev_ids = set()
+            kev_records = {}
 
     enriched = []
     for component, advisory in pairs:
         item = dict(advisory)
         cve = item.get("cve")
         if cve in epss:
-            item["epss"] = epss[cve]
+            item["epss"] = epss[cve]["score"]
+            item["epss_percentile"] = epss[cve]["percentile"]
         if kev_available and cve:
-            item["kev"] = cve in kev_ids
+            item["kev"] = cve in kev_records
+            if cve in kev_records:
+                item["kev_details"] = kev_records[cve]
         enriched.append((component, item))
-    return enriched
+    return _enrich_nvd(enriched, cves)
 
 
 def _normalise(pairs):
