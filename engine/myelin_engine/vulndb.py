@@ -183,7 +183,7 @@ def _pnpm_lock(text, rel):
     out = []
     packages = data.get("packages") or {}
     for raw_key, meta in packages.items():
-        key = str(raw_key).lstrip("/")
+        key = str(raw_key)
         # pnpm v5/v6: /name/version; pnpm v8+: name@version (peer suffix optional).
         key = re.sub(r"\([^)]*\)$", "", key)
         if key.startswith("/"):
