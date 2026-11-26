@@ -146,3 +146,11 @@ def test_grype_normalizer_preserves_package_and_fixed_version():
     assert findings[0]["engine"] == "sca"
     assert findings[0]["package"] == "sample-lib"
     assert findings[0]["fixed_version"] == "2.0.0"
+
+
+def test_malformed_nuget_xml_does_not_abort_other_lockfiles(tmp_path):
+    _write(tmp_path, "packages.config", "<packages><package")
+    _write(tmp_path, "Gemfile.lock", "GEM\n  specs:\n    rack (3.0.8)\n")
+    items = vulndb.parse_lockfiles(str(tmp_path))
+    assert any(x["ecosystem"] == "gem" and x["name"] == "rack" for x in items)
+    assert any("packages.config" in error for error in vulndb.STATUS["errors"])
