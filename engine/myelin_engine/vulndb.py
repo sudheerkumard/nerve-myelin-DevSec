@@ -288,22 +288,30 @@ def _nuget_lock(data, rel):
 
 def _npm_lock(data, rel):
     out = []
-    pk = data.get("packages")
-    if pk:
-        for path, meta in pk.items():
-            if not path or "node_modules/" not in path or not meta.get("version"):
+    packages = data.get("packages")
+    if packages is not None:
+        root = packages.get("") or {}
+        direct = set((root.get("dependencies") or {}).keys()) | set((root.get("optionalDependencies") or {}).keys())
+        dev = set((root.get("devDependencies") or {}).keys())
+        optional = set((root.get("optionalDependencies") or {}).keys())
+        for path, meta in packages.items():
+            if not path or "node_modules/" not in path or not (meta or {}).get("version"):
                 continue
-            name = meta.get("name") or path.split("node_modules/")[-1]
-            out.append(_c("npm", name, meta["version"], rel, "dev" if meta.get("dev") else "transitive"))
-    else:                                                     # lockfile v1
-        def walk(deps):
-            for n, meta in (deps or {}).items():
-                if meta.get("version"):
-                    out.append(_c("npm", n, meta["version"], rel, "dev" if meta.get("dev") else "transitive"))
-                walk(meta.get("dependencies"))
+            name = (meta or {}).get("name") or path.split("node_modules/")[-1]
+            if path == f"node_modules/{name}":
+                scope = "optional" if name in optional else "dev" if name in dev else "required" if name in direct else "transitive"
+            else:
+                scope = "dev" if (meta or {}).get("dev") else "transitive"
+            out.append(_c("npm", name, meta["version"], rel, scope))
+    else:  # lockfile v1: first-level entries are direct dependencies.
+        def walk(deps, depth=0):
+            for name, meta in (deps or {}).items():
+                if (meta or {}).get("version"):
+                    scope = ("dev" if meta.get("dev") else "optional" if meta.get("optional") else "required") if depth == 0 else "transitive"
+                    out.append(_c("npm", name, meta["version"], rel, scope))
+                walk((meta or {}).get("dependencies"), depth + 1)
         walk(data.get("dependencies"))
     return out
-
 
 def _yarn_lock(text, rel):
     out = []
