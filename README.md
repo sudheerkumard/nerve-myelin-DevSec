@@ -17,7 +17,7 @@ enforced from the developer's laptop through the pull request and pipeline gate 
 
 | Engine | What it covers |
 |---|---|
-| SCA + reachability | Open-source dependencies (npm, PyPI, Maven, Go) with import-graph reachability |
+| SCA + reachability | Open-source dependencies across npm, PyPI, Maven, Go, Rust, PHP, Ruby, Gradle, .NET, Hex, Dart and CocoaPods; OSV, PyPI, Trivy and Grype intelligence; EPSS, CISA KEV and import-graph reachability |
 | SAST | First-party code: injection, deserialisation, TLS, JWT, crypto |
 | Secrets | Code, history and pipeline definitions, with high-confidence and live-credential flags |
 | IaC | Terraform, Bicep/ARM, Kubernetes, Helm, Dockerfile |
