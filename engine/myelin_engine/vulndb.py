@@ -34,7 +34,7 @@ OSV_URL = os.environ.get("MYELIN_OSV_URL", "https://api.osv.dev").rstrip("/")
 PYPI_URL = os.environ.get("MYELIN_PYPI_URL", "https://pypi.org").rstrip("/")
 NPM_URL = os.environ.get("MYELIN_NPM_URL", "https://registry.npmjs.org").rstrip("/")
 OSV_ECO = {"pypi": "PyPI", "npm": "npm", "maven": "Maven", "go": "Go", "cargo": "crates.io", "nuget": "NuGet",
-           "gem": "RubyGems", "composer": "Packagist"}
+           "gem": "RubyGems", "composer": "Packagist", "hex": "Hex", "pub": "Pub", "cocoapods": "CocoaPods"}
 CACHE_TTL = 24 * 3600
 MAX_TRANSITIVE = 600
 STATUS = {"sources": set(), "errors": set()}     # what the last scan could reach, shown in reports
