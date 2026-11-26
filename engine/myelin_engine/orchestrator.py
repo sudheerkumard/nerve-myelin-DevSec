@@ -71,6 +71,7 @@ def _gitleaks_argv(p):
 EXTERNAL = {
     # tool: (argv builder, normaliser)
     "trivy": (_trivy_argv, normalize.trivy),
+    "grype": (lambda p: ["grype", f"dir:{p}", "--output", "json", "--quiet"], normalize.grype),
     "gitleaks": (_gitleaks_argv, normalize.gitleaks),
     "checkov": (lambda p: ["checkov", "-d", p, "-o", "json", "--quiet", "--skip-download", "--compact",
                            "--skip-path", "node_modules", "--skip-path", "tests"], normalize.checkov),   # never contacts a vendor service
