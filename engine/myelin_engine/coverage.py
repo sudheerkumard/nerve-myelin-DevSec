@@ -175,7 +175,7 @@ def build(inv: dict, engines: list[str], tools_used: list[str], findings: list[d
                   "examined": f"{components} components from {len(inv.get('manifests') or [])} manifest/lock files" if has_deps else "",
                   "depth": "Known vulnerabilities (CVE/GHSA/OSV) with CVSS, EPSS, CISA KEV and import reachability"
                            + (" — offline: bundled advisory data only" if (intel or {}).get("offline") else ""),
-                  "tools": tools_for("sca", ["OSV"] + (["trivy"] if "trivy" in tools_used else [])),
+                  "tools": tools_for("sca", ["OSV"] + [t for t in ("trivy", "grype") if t in tools_used]),
                   "errors": (intel or {}).get("errors") or []}
     cov["license"] = {"applicable": components > 0, "assessed": "license" in engines and components > 0,
                       "examined": f"{components} components" if components else "", "depth": "Licence of every component against the policy",
