@@ -73,3 +73,14 @@ NERvvE combines multiple analysis methods because vulnerability detection is not
 - **Cloud, identity and runtime posture:** configuration, excessive privilege, exposure and runtime detections through the corresponding collectors and integrations.
 
 No static scanner can guarantee detection of every vulnerability. Dynamic behavior, unsupported languages, proprietary package sources, generated code, platform-specific dependency resolution, unreachable code and vulnerabilities not yet disclosed in an advisory feed can all create blind spots. NERvvE therefore reports the files, ecosystems, scanners, intelligence sources, errors and partial-coverage status. Missing data is not reported as a clean bill of health.
+
+
+## Advisory precision, exploit evidence and VEX
+
+OSV affected-version records can express explicit version lists and ecosystem, semantic-version or Git commit ranges. A correct matcher must evaluate the range type and event sequence, not compare version strings lexicographically or assume every advisory has a simple fixed version. In particular, `last_affected` is inclusive while `fixed` identifies the first non-affected version. Git ranges require repository ancestry and cannot be treated as ordinary package versions. See the [OSV schema](https://ossf.github.io/osv-schema/).
+
+NVD enrichment now retains reference classifications (including exploit and patch references) and NVD's CISA catalog fields when supplied. These are evidence links and metadata, not proof that an exploit works against the scanned application. CISA KEV is a catalog of vulnerabilities known to have been exploited; its dates and required actions should remain visible to operators. The canonical feed schema is maintained in the [CISA KEV data repository](https://github.com/cisagov/kev-data).
+
+VEX is a separate product-context assertion, not another vulnerability feed. A future VEX workflow should accept CycloneDX VEX or CSAF VEX statements, validate issuer, product identity, component identity, vulnerability identifier, status, justification and timestamp, and preserve the original signed/source document. It must never auto-mark a finding `not_affected` merely because static reachability was not detected. CycloneDX describes VEX as exploitability information for a component in the context of a product: https://www.cyclonedx.org/capabilities/vex/.
+
+Operational rule: a missing exploit reference does not mean no exploit exists; a missing KEV entry does not mean not exploitable; and an unobserved import path does not prove non-reachability. Keep these states separate in the finding model and risk prioritisation.

@@ -776,9 +776,25 @@ def _nvd_record(cve):
             value = desc.get("value", "")
             if value.startswith("CWE-") and value not in weaknesses:
                 weaknesses.append(value)
-    refs = [r.get("url") for r in c.get("references") or [] if r.get("url")]
+    references = c.get("references") or []
+    refs = [r.get("url") for r in references if r.get("url")]
+    tagged = {"exploit": [], "patch": [], "third_party_advisory": []}
+    for ref in references:
+        url = ref.get("url")
+        if not url:
+            continue
+        tags = {str(tag).lower() for tag in ref.get("tags") or []}
+        if "exploit" in tags:
+            tagged["exploit"].append(url)
+        if "patch" in tags:
+            tagged["patch"].append(url)
+        if "third party advisory" in tags:
+            tagged["third_party_advisory"].append(url)
     return {"cvss": _nvd_cvss(c), "cwes": weaknesses, "published": c.get("published"),
-            "modified": c.get("lastModified"), "references": refs[:30],
+            "modified": c.get("lastModified"), "references": refs[:30], "reference_types": tagged,
+            "cisa_exploit_add": c.get("cisaExploitAdd"), "cisa_action_due": c.get("cisaActionDue"),
+            "cisa_required_action": c.get("cisaRequiredAction"),
+            "cisa_vulnerability_name": c.get("cisaVulnerabilityName"),
             "source": "NVD", "vuln_status": c.get("vulnStatus")}
 
 def _enrich_nvd(pairs, cves):
