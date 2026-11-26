@@ -59,8 +59,8 @@ The command line prints the same record:
 ```text
   Assessed: sast, sca, license, supply, secrets, iac, cicd
     sast     44 source files: JavaScript (44)                     NERvvE pattern rules, opengrep 1.33.0
-    sca      1110 components from 2 manifest/lock files           OSV, trivy 0.76.0
-    secrets  96 files and git history                             NERvvE secret rules, gitleaks 8.30.1, trivy 0.76.0
+    sca      1110 components from 2 manifest/lock files           OSV, trivy 0.76.2
+    secrets  96 files and git history                             NERvvE secret rules, gitleaks 8.30.1, trivy 0.76.2
   Not assessed: aibom (no AI models, agents or MCP servers)
 ```
 

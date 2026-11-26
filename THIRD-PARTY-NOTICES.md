@@ -33,7 +33,8 @@ The complete, generated list of Python components (name, version, licence, proje
 | Bandit (PyCQA) | Apache-2.0 | https://github.com/PyCQA/bandit |
 | Cosign (Sigstore, The Linux Foundation), CLI image only | Apache-2.0 | https://github.com/sigstore/cosign |
 
-These programs are copied unmodified from their official releases (Opengrep: release binary verified by SHA-256) and run
+These programs are copied unmodified from their official releases (Opengrep: release binary verified by SHA-256; Gitleaks:
+built from its release tag with updated `golang.org/x` dependencies and a current Go toolchain) and run
 as separate processes; NERvvE DevSecOps does not link to them. Opengrep is distributed under the GNU Lesser General Public
 License v2.1: its complete corresponding source code is available from the project page above for the bundled version
 (see `OPENGREP_VERSION` in the Dockerfiles), and you may replace the binary with your own build.

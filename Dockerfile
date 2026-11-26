@@ -11,11 +11,23 @@
 # Release builds pin the base image by digest (ARG PY_BASE=python:3.12-slim@sha256:...) and are signed with cosign.
 ARG PY_BASE=python:3.12-slim
 # Deep-scanning toolchain (all open source, see THIRD-PARTY-NOTICES.md). Pinned; Opengrep binaries checked by SHA-256.
-ARG TRIVY_IMAGE=aquasec/trivy:0.76.0
-ARG GITLEAKS_IMAGE=zricethezav/gitleaks:v8.30.1
+ARG TRIVY_IMAGE=aquasec/trivy:0.76.2
 
 FROM ${TRIVY_IMAGE} AS trivy
-FROM ${GITLEAKS_IMAGE} AS gitleaks
+# Gitleaks (MIT) built from its release tag with a current Go toolchain and patched golang.org/x modules: the upstream
+# release binary is built with an older Go and older x/crypto, which the image scan rejects.
+FROM golang:1.27-alpine AS gitleaks
+ARG GITLEAKS_VERSION=8.30.1
+COPY config/certs/ /tmp/extra-ca/
+RUN apk add --no-cache git ca-certificates \
+ && if ls /tmp/extra-ca/*.crt >/dev/null 2>&1; then cp /tmp/extra-ca/*.crt /usr/local/share/ca-certificates/ && update-ca-certificates; fi \
+ && git clone --depth 1 --branch "v${GITLEAKS_VERSION}" https://github.com/gitleaks/gitleaks /src
+WORKDIR /src
+RUN go get golang.org/x/crypto@latest golang.org/x/text@latest golang.org/x/net@latest golang.org/x/sys@latest \
+ && go mod tidy \
+ && CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X github.com/zricethezav/gitleaks/v8/version.Version=v${GITLEAKS_VERSION}" \
+      -o /usr/bin/gitleaks . \
+ && /usr/bin/gitleaks version
 
 # ---------- scanners stage: Opengrep (LGPL-2.1) and Checkov (Apache-2.0) in their own virtualenv ----------
 FROM ${PY_BASE} AS scanners
