@@ -100,7 +100,7 @@ def _applies(tool, inv, engines):
     if tool == "gitleaks":
         return "secrets" in engines
     if tool == "grype":
-        return "sca" in engines
+        return "sca" in engines and bool(inv.get("manifests"))
     if tool == "trivy":
         return bool({"sca", "secrets", "iac"} & set(engines))
     return True
