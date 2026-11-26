@@ -109,3 +109,18 @@ def test_failed_tool_is_reported_not_hidden():
     assert tool["error"] == "opengrep failed: timeout"
     html = R.render({"findings": [err], "coverage": cov, "repo": "r", "tools": ["myelin-builtin", "opengrep"]})
     assert "Tool errors" in html and "opengrep" in html
+
+
+def test_dependency_duplicates_from_osv_trivy_and_grype_preserve_all_sources(tmp_path):
+    osv = {"engine": "sca", "rule_id": "GHSA-aaaa", "cve": "CVE-2024-1", "advisory": "GHSA-aaaa",
+           "aliases": ["CVE-2024-1"], "package": "lodash", "version": "4.17.20", "ecosystem": "npm"}
+    trivy = {"engine": "sca", "rule_id": "CVE-2024-1", "cve": "CVE-2024-1",
+             "package": "lodash", "version": "4.17.20", "ecosystem": "npm", "source_tool": "trivy"}
+    grype = {"engine": "sca", "rule_id": "GHSA-aaaa", "cve": "CVE-2024-1",
+             "package": "lodash", "version": "4.17.20", "ecosystem": "npm", "source_tool": "grype"}
+    other = dict(grype, rule_id="CVE-2024-9", cve="CVE-2024-9")
+    out = orchestrator._merge_duplicates(str(tmp_path), [osv, trivy, grype, other])
+    assert len(out) == 2
+    primary = next(f for f in out if f["rule_id"] == "GHSA-aaaa")
+    assert primary["scanner_sources"] == ["grype", "trivy"]
+    assert any(f["rule_id"] == "CVE-2024-9" for f in out)
