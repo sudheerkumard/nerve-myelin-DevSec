@@ -170,3 +170,20 @@ def test_npm_lockfile_distinguishes_direct_dev_and_transitive_packages(tmp_path)
     assert found[("express", "4.18.2")] == "required"
     assert found[("jest", "29.7.0")] == "dev"
     assert found[("cookie", "0.6.0")] == "transitive"
+
+
+def test_local_workspace_packages_are_not_reported_as_registry_dependencies(tmp_path):
+    _write(tmp_path, "uv.lock", """version = 1
+[[package]]
+name = "workspace-app"
+version = "0.1.0"
+source = { editable = "." }
+
+[[package]]
+name = "httpx"
+version = "0.27.0"
+source = { registry = "https://pypi.org/simple" }
+""")
+    items = vulndb.parse_lockfiles(str(tmp_path))
+    assert not any(x["name"] == "workspace-app" for x in items)
+    assert any(x["name"] == "httpx" for x in items)
