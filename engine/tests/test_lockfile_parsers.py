@@ -154,3 +154,19 @@ def test_malformed_nuget_xml_does_not_abort_other_lockfiles(tmp_path):
     items = vulndb.parse_lockfiles(str(tmp_path))
     assert any(x["ecosystem"] == "gem" and x["name"] == "rack" for x in items)
     assert any("packages.config" in error for error in vulndb.STATUS["errors"])
+
+
+def test_npm_lockfile_distinguishes_direct_dev_and_transitive_packages(tmp_path):
+    _write(tmp_path, "package-lock.json", json.dumps({
+        "lockfileVersion": 3,
+        "packages": {
+            "": {"dependencies": {"express": "^4.18.0"}, "devDependencies": {"jest": "^29.0.0"}},
+            "node_modules/express": {"version": "4.18.2"},
+            "node_modules/jest": {"version": "29.7.0", "dev": True},
+            "node_modules/express/node_modules/cookie": {"version": "0.6.0"}
+        }}))
+    items = vulndb.parse_lockfiles(str(tmp_path))
+    found = {(x["name"], x["version"]): x["scope"] for x in items}
+    assert found[("express", "4.18.2")] == "required"
+    assert found[("jest", "29.7.0")] == "dev"
+    assert found[("cookie", "0.6.0")] == "transitive"
