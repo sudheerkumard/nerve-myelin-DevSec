@@ -10,7 +10,7 @@ import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-from . import coverage, vulndb
+from . import coverage, vulndb, remediation
 from . import (ai_security, builtin_rules, cd_posture, cicd_posture, crypto_inventory, iac_checks, normalize, repo_posture, sbom,
                secrets, suppress, supply_chain)
 from .scoring import enrich
@@ -182,6 +182,7 @@ def scan(path: str, repo: str = "local", engines: list[str] | None = None, use_e
     findings, ignored = suppress.apply(path, findings)      # .myelinignore + governed inline suppressions
     seen, uniq = set(), []
     for f in findings:
+        remediation.enrich_finding(f)
         enrich(f, criticality)
         if f["fingerprint"] not in seen:
             seen.add(f["fingerprint"])

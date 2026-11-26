@@ -450,25 +450,45 @@ def shutil_copy(src, dst, n=1 << 20):
 
 
 def vulnerabilities(comps: list[dict]) -> list[tuple[dict, dict]]:
-    """[(component, normalised vulnerability)] from OSV, falling back to PyPI for Python packages."""
+    """Return merged OSV and PyPI advisory evidence.
+
+    PyPI is queried for every Python component even when OSV responds successfully:
+    OSV and registry advisory datasets can differ, so a successful OSV response is
+    not proof that its result set is exhaustive for the package ecosystem.
+    """
     if not comps:
         return []
     if offline():
         found = _offline_osv(comps)
         if found is None:
+            STATUS["errors"].add("offline: no OSV export configured")
             return []
         return _normalise([(comps[i], v) for i, docs in found.items() for v in docs])
+
     found = _osv(comps)
     pairs = []
-    if found is None:                                          # OSV unreachable: Python fallback
-        for c in comps:
-            if c["ecosystem"] == "pypi":
-                pairs += [(c, v) for v in _pypi_vulns(c)]
-    else:
+    if found is not None:
         for i, docs in found.items():
-            pairs += [(comps[i], v) for v in docs]
-    return _normalise(pairs)
+            pairs.extend((comps[i], v) for v in docs)
+    else:
+        STATUS["errors"].add("OSV unavailable; using available ecosystem fallbacks")
 
+    # Independent PyPI enrichment avoids the previous blind spot where a reachable
+    # but incomplete OSV response suppressed PyPI-only advisories.
+    for c in comps:
+        if c.get("ecosystem") == "pypi":
+            pairs.extend((c, v) for v in _pypi_vulns(c))
+
+    normalised = _normalise(pairs)
+    unique, seen = [], set()
+    for component, advisory in normalised:
+        key = (component.get("ecosystem"), component.get("name"), component.get("version"),
+               advisory.get("id") or advisory.get("cve"))
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append((component, advisory))
+    return unique
 
 def _normalise(pairs):
     out = []
