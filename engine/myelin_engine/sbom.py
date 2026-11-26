@@ -194,7 +194,9 @@ def match_advisories(comps: list[dict], repo: str = "local", reachable_hint: set
         out.append({
             "engine": "sca", "rule_id": v["cve"] or v["id"], "cve": v["cve"], "advisory": v["id"], "aliases": v["aliases"],
             "title": f"{c['name']}@{c['version']}: {v['summary'] or v['id']}", "severity": v["severity"],
-            "cvss": v["cvss"], "epss": v.get("epss"), "kev": v.get("kev"), "cwe": v["cwe"], "package": c["name"], "version": c["version"],
+            "cvss": v["cvss"], "epss": v.get("epss"), "epss_percentile": v.get("epss_percentile"),
+            "kev": v.get("kev"), "kev_details": v.get("kev_details"), "cwe": v["cwe"],
+            "nvd_intelligence": v.get("nvd"), "package": c["name"], "version": c["version"],
             "fixed_version": v["fixed"], "file": c["file"], "repo": repo, "ecosystem": c["ecosystem"], "purl": c["purl"],
             "reachable": _reach(c["via"] or c["name"], reachable_hint), "exposure": "internet",
             "dependency_type": _dep_type(c), "introduced_by": c.get("via"), "autofix": bool(v["fixed"]),
