@@ -315,10 +315,17 @@ def _npm_lock(data, rel):
             if not path or "node_modules/" not in path or not (meta or {}).get("version"):
                 continue
             name = (meta or {}).get("name") or path.split("node_modules/")[-1]
-            if path == f"node_modules/{name}":
-                scope = "optional" if name in optional else "dev" if name in dev else "required" if name in direct else "transitive"
+            meta = meta or {}
+            # Lockfile package metadata is authoritative for dev/optional entries even
+            # when older or hand-authored lockfiles omit root dependency declarations.
+            if name in optional or meta.get("optional"):
+                scope = "optional"
+            elif name in dev or meta.get("dev"):
+                scope = "dev"
+            elif path == f"node_modules/{name}" and name in direct:
+                scope = "required"
             else:
-                scope = "dev" if (meta or {}).get("dev") else "transitive"
+                scope = "transitive"
             out.append(_c("npm", name, meta["version"], rel, scope))
     else:  # lockfile v1: first-level entries are direct dependencies.
         def walk(deps, depth=0):
@@ -760,13 +767,15 @@ def _enrich_threat_intel(pairs):
         STATUS["errors"].add(f"EPSS enrichment unavailable: {type(exc).__name__}")
 
     kev_ids = _THREAT_INTEL.get("kev")
-    if kev_ids is None:
+    kev_available = kev_ids is not None
+    if not kev_available:
         try:
             data = _http_json(CISA_KEV_URL, ttl=6 * 3600)
             if data is None:
                 raise RuntimeError("CISA KEV feed unavailable")
             kev_ids = {str(item.get("cveID")) for item in data.get("vulnerabilities") or [] if item.get("cveID")}
             _THREAT_INTEL["kev"] = kev_ids
+            kev_available = True
             STATUS["sources"].add("CISA KEV")
         except Exception as exc:
             STATUS["errors"].add(f"CISA KEV enrichment unavailable: {type(exc).__name__}")
@@ -778,7 +787,7 @@ def _enrich_threat_intel(pairs):
         cve = item.get("cve")
         if cve in epss:
             item["epss"] = epss[cve]
-        if kev_ids is not None and cve:
+        if kev_available and cve:
             item["kev"] = cve in kev_ids
         enriched.append((component, item))
     return enriched
