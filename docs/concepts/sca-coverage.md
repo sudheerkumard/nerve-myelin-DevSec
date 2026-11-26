@@ -39,4 +39,4 @@ The Docker runtime now includes a pinned Grype release. Offline deployments must
 
 ## Regression tests
 
-engine/tests/test_lockfile_parsers.py covers modern and legacy pnpm keys, Cargo, Composer, RubyGems, Gradle, NuGet, uv, PDM, malformed lockfile isolation and Grype normalization/selection.
+`engine/tests/test_lockfile_parsers.py` covers modern and legacy pnpm keys, Cargo, Composer, RubyGems, Gradle, NuGet, uv, PDM, malformed lockfile isolation and Grype normalization/selection.
