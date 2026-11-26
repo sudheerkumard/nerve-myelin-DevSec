@@ -173,6 +173,10 @@ def _python_toml_lock(path, rel, kind):
         name, version = item.get("name"), item.get("version")
         if not name or not version:
             continue
+        source = item.get("source") or {}
+        # Workspace/editable/path dependencies are first-party local code, not registry packages.
+        if any(key in source for key in ("editable", "directory", "path")) or source.get("type") in ("directory", "file", "path"):
+            continue
         groups = item.get("groups") or []
         category = item.get("category")
         dev = category == "dev" or (bool(groups) and all(g not in ("default", "main") for g in groups))
