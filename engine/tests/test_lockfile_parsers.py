@@ -133,6 +133,7 @@ def test_grype_is_selected_for_source_dependency_scans():
     inventory = {"languages": {"Python": 2}, "manifests": ["poetry.lock"], "files": 3}
     assert orchestrator._applies("grype", inventory, ["sca"])
     assert not orchestrator._applies("grype", inventory, ["secrets"])
+    assert not orchestrator._applies("grype", {**inventory, "manifests": []}, ["sca"])
 
 
 def test_grype_normalizer_preserves_package_and_fixed_version():
