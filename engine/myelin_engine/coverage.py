@@ -122,7 +122,7 @@ def tool_version(tool: str) -> str:
 
 DOMAIN_TOOLS = {
     "sast": ("NERvvE pattern rules", "opengrep", "semgrep", "bandit"),
-    "sca": ("OSV", "trivy"),
+    "sca": ("OSV", "trivy", "grype"),
     "license": ("NERvvE licence policy",),
     "secrets": ("NERvvE secret rules", "gitleaks", "trivy"),
     "iac": ("NERvvE IaC rules", "checkov", "trivy"),
