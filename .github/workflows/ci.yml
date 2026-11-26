@@ -33,6 +33,10 @@ jobs:
       - name: Migrations apply cleanly and are reversible-safe
         working-directory: backend
         run: python -c "from tests.pg import provision, drop; u = provision(); drop(u['db'])"
+      - name: Scanner engine unit and lockfile coverage tests
+        env:
+          PYTHONPATH: engine
+        run: python -m pytest -q engine/tests --junitxml=engine-test-results.xml
       - name: Build demo snapshot and clean enterprise console
         run: |
           python scripts/build_console.py

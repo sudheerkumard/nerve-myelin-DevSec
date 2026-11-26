@@ -26,6 +26,7 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
 
 OSV_URL = os.environ.get("MYELIN_OSV_URL", "https://api.osv.dev").rstrip("/")
@@ -93,7 +94,11 @@ def norm_name(eco, name):
 
 # ------------------------------------------------------------------ lockfiles
 def parse_lockfiles(root: str) -> list[dict]:
-    """Exact (incl. transitive) versions from lockfiles. Returns components with scope direct|transitive|dev."""
+    """Extract exact package versions from supported lockfiles.
+
+    Each parser is isolated so one malformed/unsupported lockfile cannot discard
+    inventory from other ecosystems. Components retain the source lockfile path.
+    """
     out = []
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames if d not in {".git", "node_modules", ".venv", "venv", "vendor"}]
@@ -101,43 +106,216 @@ def parse_lockfiles(root: str) -> list[dict]:
             p = os.path.join(dirpath, fn)
             rel = os.path.relpath(p, root)
             try:
-                if fn == "package-lock.json":
-                    out += _npm_lock(json.load(open(p, encoding="utf-8")), rel)
+                if fn in ("package-lock.json", "npm-shrinkwrap.json"):
+                    with open(p, encoding="utf-8") as fh:
+                        out += _npm_lock(json.load(fh), rel)
                 elif fn == "yarn.lock":
-                    out += _yarn_lock(open(p, encoding="utf-8", errors="ignore").read(), rel)
-                elif fn == "poetry.lock":
-                    for m in re.finditer(r'\[\[package\]\]\s*\nname = "([^"]+)"\s*\nversion = "([^"]+)"(?:[^\[]*?category = "(\w+)")?',
-                                         open(p, encoding="utf-8").read()):
-                        out.append(_c("pypi", m.group(1), m.group(2), rel, "dev" if m.group(3) == "dev" else "transitive"))
+                    with open(p, encoding="utf-8", errors="ignore") as fh:
+                        out += _yarn_lock(fh.read(), rel)
+                elif fn == "pnpm-lock.yaml":
+                    with open(p, encoding="utf-8") as fh:
+                        out += _pnpm_lock(fh.read(), rel)
+                elif fn in ("poetry.lock", "uv.lock", "pdm.lock"):
+                    out += _python_toml_lock(p, rel, fn)
                 elif fn == "Pipfile.lock":
-                    data = json.load(open(p, encoding="utf-8"))
+                    with open(p, encoding="utf-8") as fh:
+                        data = json.load(fh)
                     for sect, scope in (("default", "transitive"), ("develop", "dev")):
                         for n, v in (data.get(sect) or {}).items():
                             if str(v.get("version", "")).startswith("=="):
                                 out.append(_c("pypi", n, v["version"][2:], rel, scope))
-            except (OSError, ValueError, KeyError, TypeError):
+                elif fn == "Cargo.lock":
+                    out += _cargo_lock(p, rel)
+                elif fn == "composer.lock":
+                    with open(p, encoding="utf-8") as fh:
+                        data = json.load(fh)
+                    for section, scope in (("packages", "transitive"), ("packages-dev", "dev")):
+                        for item in data.get(section) or []:
+                            if item.get("name") and item.get("version"):
+                                out.append(_c("composer", item["name"], str(item["version"]).lstrip("v"), rel, scope))
+                elif fn == "Gemfile.lock":
+                    with open(p, encoding="utf-8", errors="ignore") as fh:
+                        out += _gem_lock(fh.read(), rel)
+                elif fn == "gradle.lockfile":
+                    with open(p, encoding="utf-8", errors="ignore") as fh:
+                        out += _gradle_lock(fh.read(), rel)
+                elif fn == "packages.lock.json":
+                    with open(p, encoding="utf-8") as fh:
+                        out += _nuget_lock(json.load(fh), rel)
+                elif fn == "packages.config":
+                    out += _nuget_packages_config(p, rel)
+            except (OSError, ValueError, KeyError, TypeError, ImportError, ET.ParseError):
+                STATUS["errors"].add(f"lockfile parse: {rel}")
                 continue
+    # Keep one exact component per ecosystem/name/version while preserving first evidence path.
+    unique, seen = [], set()
+    for component in out:
+        key = (component["ecosystem"], component["name"], component["version"])
+        if key not in seen:
+            seen.add(key)
+            unique.append(component)
+    return unique
+
+
+def _python_toml_lock(path, rel, kind):
+    try:
+        import tomllib
+    except ImportError:
+        try:
+            import tomli as tomllib
+        except ImportError:
+            STATUS["errors"].add(f"TOML lock parser unavailable: {rel}")
+            return []
+    with open(path, "rb") as fh:
+        data = tomllib.load(fh)
+    out = []
+    for item in data.get("package") or []:
+        name, version = item.get("name"), item.get("version")
+        if not name or not version:
+            continue
+        source = item.get("source") or {}
+        # Workspace/editable/path dependencies are first-party local code, not registry packages.
+        if any(key in source for key in ("editable", "directory", "path")) or source.get("type") in ("directory", "file", "path"):
+            continue
+        groups = item.get("groups") or []
+        category = item.get("category")
+        dev = category == "dev" or (bool(groups) and all(g not in ("default", "main") for g in groups))
+        out.append(_c("pypi", name, str(version), rel, "dev" if dev else "transitive"))
     return out
 
+
+def _nuget_packages_config(path, rel):
+    root = ET.parse(path).getroot()
+    out = []
+    for item in root.findall(".//package"):
+        name, version = item.get("id"), item.get("version")
+        if name and version:
+            scope = "dev" if item.get("developmentDependency", "").lower() == "true" else "transitive"
+            out.append(_c("nuget", name, version, rel, scope))
+    return out
+
+def _pnpm_lock(text, rel):
+    try:
+        import yaml
+        data = yaml.safe_load(text) or {}
+    except Exception as exc:
+        STATUS["errors"].add(f"pnpm lock parse: {rel}: {type(exc).__name__}")
+        return []
+    out = []
+    packages = data.get("packages") or {}
+    for raw_key, meta in packages.items():
+        key = str(raw_key)
+        # pnpm v5/v6: /name/version; pnpm v8+: name@version (peer suffix optional).
+        key = re.sub(r"\([^)]*\)$", "", key)
+        if key.startswith("/"):
+            parts = key.strip("/").split("/")
+            if len(parts) >= 3 and parts[0].startswith("@"):
+                name, version = "/".join(parts[:2]), parts[2]
+            elif len(parts) >= 2:
+                name, version = parts[0], parts[1]
+            else:
+                continue
+        elif key.startswith("@"):
+            marker = key.rfind("@")
+            if marker <= key.find("/"):
+                continue
+            name, version = key[:marker], key[marker + 1:]
+        else:
+            marker = key.rfind("@")
+            if marker <= 0:
+                continue
+            name, version = key[:marker], key[marker + 1:]
+        version = version.split("_", 1)[0]
+        if name and version and re.match(r"^[0-9]", version):
+            dev = bool((meta or {}).get("dev"))
+            out.append(_c("npm", name, version, rel, "dev" if dev else "transitive"))
+    # v9 stores package snapshots separately; packages remains authoritative for package identity.
+    return out
+
+
+def _cargo_lock(path, rel):
+    try:
+        import tomllib
+    except ImportError:
+        try:
+            import tomli as tomllib
+        except ImportError:
+            STATUS["errors"].add(f"cargo lock parser unavailable: {rel}")
+            return []
+    with open(path, "rb") as fh:
+        data = tomllib.load(fh)
+    return [_c("cargo", item["name"], str(item["version"]), rel, "transitive")
+            for item in data.get("package") or []
+            if item.get("name") and item.get("version") and item.get("source", "").startswith("registry+")]
+
+
+def _gem_lock(text, rel):
+    out, in_specs = [], False
+    for line in text.splitlines():
+        if line.strip() == "specs:":
+            in_specs = True
+            continue
+        if in_specs and line and not line.startswith(" "):
+            in_specs = False
+        if not in_specs:
+            continue
+        match = re.match(r"^    ([A-Za-z0-9_.-]+) \(([^)]+)\)", line)
+        if match:
+            out.append(_c("gem", match.group(1), match.group(2), rel, "transitive"))
+    return out
+
+
+def _gradle_lock(text, rel):
+    out = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        coordinate = line.split("=", 1)[0]
+        parts = coordinate.split(":")
+        if len(parts) == 3 and all(parts):
+            out.append(_c("maven", f"{parts[0]}:{parts[1]}", parts[2], rel, "transitive"))
+    return out
+
+
+def _nuget_lock(data, rel):
+    out = []
+    for framework, packages in (data.get("dependencies") or {}).items():
+        if not isinstance(packages, dict):
+            continue
+        for name, meta in packages.items():
+            version = (meta or {}).get("resolved") or (meta or {}).get("version")
+            if version:
+                out.append(_c("nuget", name, str(version).split(",", 1)[0], rel,
+                              "dev" if (meta or {}).get("type") == "Direct" else "transitive"))
+    return out
 
 def _npm_lock(data, rel):
     out = []
-    pk = data.get("packages")
-    if pk:
-        for path, meta in pk.items():
-            if not path or "node_modules/" not in path or not meta.get("version"):
+    packages = data.get("packages")
+    if packages is not None:
+        root = packages.get("") or {}
+        direct = set((root.get("dependencies") or {}).keys()) | set((root.get("optionalDependencies") or {}).keys())
+        dev = set((root.get("devDependencies") or {}).keys())
+        optional = set((root.get("optionalDependencies") or {}).keys())
+        for path, meta in packages.items():
+            if not path or "node_modules/" not in path or not (meta or {}).get("version"):
                 continue
-            name = meta.get("name") or path.split("node_modules/")[-1]
-            out.append(_c("npm", name, meta["version"], rel, "dev" if meta.get("dev") else "transitive"))
-    else:                                                     # lockfile v1
-        def walk(deps):
-            for n, meta in (deps or {}).items():
-                if meta.get("version"):
-                    out.append(_c("npm", n, meta["version"], rel, "dev" if meta.get("dev") else "transitive"))
-                walk(meta.get("dependencies"))
+            name = (meta or {}).get("name") or path.split("node_modules/")[-1]
+            if path == f"node_modules/{name}":
+                scope = "optional" if name in optional else "dev" if name in dev else "required" if name in direct else "transitive"
+            else:
+                scope = "dev" if (meta or {}).get("dev") else "transitive"
+            out.append(_c("npm", name, meta["version"], rel, scope))
+    else:  # lockfile v1: first-level entries are direct dependencies.
+        def walk(deps, depth=0):
+            for name, meta in (deps or {}).items():
+                if (meta or {}).get("version"):
+                    scope = ("dev" if meta.get("dev") else "optional" if meta.get("optional") else "required") if depth == 0 else "transitive"
+                    out.append(_c("npm", name, meta["version"], rel, scope))
+                walk((meta or {}).get("dependencies"), depth + 1)
         walk(data.get("dependencies"))
     return out
-
 
 def _yarn_lock(text, rel):
     out = []

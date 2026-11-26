@@ -28,7 +28,7 @@ DEEP_SAST = {"Python", "JavaScript", "TypeScript", "Java", "Go", "C#", "PHP", "R
 # languages the built-in pattern rules cover
 PATTERN_SAST = {"Python", "JavaScript", "TypeScript", "Java", "Kotlin", "Go", "C#", "PHP", "Ruby"}
 
-MANIFESTS = ("requirements*.txt", "Pipfile", "Pipfile.lock", "poetry.lock", "pyproject.toml", "setup.py", "uv.lock",
+MANIFESTS = ("requirements*.txt", "Pipfile", "Pipfile.lock", "poetry.lock", "pdm.lock", "pyproject.toml", "setup.py", "uv.lock",
              "package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "npm-shrinkwrap.json",
              "pom.xml", "build.gradle", "build.gradle.kts", "gradle.lockfile", "go.mod", "go.sum", "Cargo.toml",
              "Cargo.lock", "Gemfile", "Gemfile.lock", "composer.json", "composer.lock", "*.csproj", "packages.config",
@@ -122,7 +122,7 @@ def tool_version(tool: str) -> str:
 
 DOMAIN_TOOLS = {
     "sast": ("NERvvE pattern rules", "opengrep", "semgrep", "bandit"),
-    "sca": ("OSV", "trivy"),
+    "sca": ("OSV", "trivy", "grype"),
     "license": ("NERvvE licence policy",),
     "secrets": ("NERvvE secret rules", "gitleaks", "trivy"),
     "iac": ("NERvvE IaC rules", "checkov", "trivy"),
@@ -175,7 +175,7 @@ def build(inv: dict, engines: list[str], tools_used: list[str], findings: list[d
                   "examined": f"{components} components from {len(inv.get('manifests') or [])} manifest/lock files" if has_deps else "",
                   "depth": "Known vulnerabilities (CVE/GHSA/OSV) with CVSS, EPSS, CISA KEV and import reachability"
                            + (" — offline: bundled advisory data only" if (intel or {}).get("offline") else ""),
-                  "tools": tools_for("sca", ["OSV"] + (["trivy"] if "trivy" in tools_used else [])),
+                  "tools": tools_for("sca", ["OSV"] + [t for t in ("trivy", "grype") if t in tools_used]),
                   "errors": (intel or {}).get("errors") or []}
     cov["license"] = {"applicable": components > 0, "assessed": "license" in engines and components > 0,
                       "examined": f"{components} components" if components else "", "depth": "Licence of every component against the policy",

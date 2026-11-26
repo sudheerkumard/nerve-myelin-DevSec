@@ -12,8 +12,10 @@
 ARG PY_BASE=python:3.12-slim
 # Deep-scanning toolchain (all open source, see THIRD-PARTY-NOTICES.md). Pinned; Opengrep binaries checked by SHA-256.
 ARG TRIVY_IMAGE=aquasec/trivy:0.76.2
+ARG GRYPE_IMAGE=anchore/grype:v0.122.1
 
 FROM ${TRIVY_IMAGE} AS trivy
+FROM ${GRYPE_IMAGE} AS grype
 # Gitleaks (MIT) built from its release tag with a current Go toolchain and patched golang.org/x modules: the upstream
 # release binary is built with an older Go and older x/crypto, which the image scan rejects.
 FROM golang:1.27-alpine AS gitleaks
@@ -88,11 +90,12 @@ COPY --from=build /usr/local/share/ca-certificates/ /usr/local/share/ca-certific
 RUN update-ca-certificates >/dev/null
 COPY --from=build /venv /venv
 COPY --from=trivy /usr/local/bin/trivy /usr/local/bin/trivy
+COPY --from=grype /grype /usr/local/bin/grype
 COPY --from=gitleaks /usr/bin/gitleaks /usr/local/bin/gitleaks
 COPY --from=scanners /usr/local/bin/opengrep /usr/local/bin/opengrep
 COPY --from=scanners /opt/checkov /opt/checkov
 RUN ln -s /opt/checkov/bin/checkov /usr/local/bin/checkov \
- && trivy --version >/dev/null && gitleaks version >/dev/null && checkov --version >/dev/null
+ && trivy --version >/dev/null && grype version >/dev/null && gitleaks version >/dev/null && checkov --version >/dev/null
 WORKDIR /opt/myelin
 COPY --chown=root:root engine engine
 COPY --chown=root:root backend backend
