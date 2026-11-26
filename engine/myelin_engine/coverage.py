@@ -28,7 +28,7 @@ DEEP_SAST = {"Python", "JavaScript", "TypeScript", "Java", "Go", "C#", "PHP", "R
 # languages the built-in pattern rules cover
 PATTERN_SAST = {"Python", "JavaScript", "TypeScript", "Java", "Kotlin", "Go", "C#", "PHP", "Ruby"}
 
-MANIFESTS = ("requirements*.txt", "Pipfile", "Pipfile.lock", "poetry.lock", "pyproject.toml", "setup.py", "uv.lock",
+MANIFESTS = ("requirements*.txt", "Pipfile", "Pipfile.lock", "poetry.lock", "pdm.lock", "pyproject.toml", "setup.py", "uv.lock",
              "package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "npm-shrinkwrap.json",
              "pom.xml", "build.gradle", "build.gradle.kts", "gradle.lockfile", "go.mod", "go.sum", "Cargo.toml",
              "Cargo.lock", "Gemfile", "Gemfile.lock", "composer.json", "composer.lock", "*.csproj", "packages.config",
