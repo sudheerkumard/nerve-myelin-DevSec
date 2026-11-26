@@ -43,6 +43,17 @@ The Docker runtime now includes a pinned Grype release. Offline deployments must
 
 ## Vulnerability intelligence and coverage status
 
+The advisory correlation pipeline combines package-aware affected-version matching with independent CVE context. OSV remains the package/version matching source; NVD is enrichment, not a replacement for ecosystem-specific affected ranges.
+
+- **OSV.dev**: package/ecosystem/version queries and affected ranges, including advisories aggregated from upstream sources such as GitHub Security Advisories where available.
+- **NVD CVE API 2.0**: CVSS v2/v3/v4 metrics when published, vector strings, CWE weakness mappings, publication/modification timestamps, references and vulnerability status. NVD lookups are cached for 24 hours. Set `NVD_API_KEY` to use the authenticated API quota; without a key, rate limits can delay enrichment. An NVD record is not assumed to exist for every advisory.
+- **FIRST EPSS**: daily exploitation probability and percentile for CVE-backed findings. Attribute FIRST when presenting these scores.
+- **CISA KEV**: known-exploited status plus catalog context such as date added, remediation due date, ransomware-campaign use and required action.
+- **PyPI**: independent Python package advisory fallback, queried even when OSV responds.
+
+NVD CVSS is used as the finding score only when the advisory did not already provide a score. Existing ecosystem advisory severity is retained, and NVD data is preserved separately for auditability. A missing score, CWE or enrichment record remains unknown rather than being guessed.
+
+
 Online CVE-backed findings are enriched with the FIRST EPSS probability and CISA Known Exploited Vulnerabilities (KEV) status when those feeds are reachable. Feed results are cached. If either source is unavailable, the report records the enrichment error and leaves the corresponding value unknown rather than assigning a misleading zero probability or false exploitation status.
 
 The built-in inventory also parses Hex (mix.lock), Dart (pubspec.lock) and CocoaPods (Podfile.lock) package records. Their package coordinates are queried against OSV where the ecosystem is supported, while Trivy and Grype provide independent artifact and source-tree analysis.
