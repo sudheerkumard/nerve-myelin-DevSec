@@ -26,6 +26,7 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
 
 OSV_URL = os.environ.get("MYELIN_OSV_URL", "https://api.osv.dev").rstrip("/")
@@ -114,8 +115,8 @@ def parse_lockfiles(root: str) -> list[dict]:
                 elif fn == "pnpm-lock.yaml":
                     with open(p, encoding="utf-8") as fh:
                         out += _pnpm_lock(fh.read(), rel)
-                elif fn == "poetry.lock":
-                    out += _poetry_lock(p, rel)
+                elif fn in ("poetry.lock", "uv.lock", "pdm.lock"):
+                    out += _python_toml_lock(p, rel, fn)
                 elif fn == "Pipfile.lock":
                     with open(p, encoding="utf-8") as fh:
                         data = json.load(fh)
@@ -141,6 +142,8 @@ def parse_lockfiles(root: str) -> list[dict]:
                 elif fn == "packages.lock.json":
                     with open(p, encoding="utf-8") as fh:
                         out += _nuget_lock(json.load(fh), rel)
+                elif fn == "packages.config":
+                    out += _nuget_packages_config(p, rel)
             except (OSError, ValueError, KeyError, TypeError, ImportError):
                 STATUS["errors"].add(f"lockfile parse: {rel}")
                 continue
@@ -154,24 +157,38 @@ def parse_lockfiles(root: str) -> list[dict]:
     return unique
 
 
-def _poetry_lock(path, rel):
+def _python_toml_lock(path, rel, kind):
     try:
         import tomllib
     except ImportError:
         try:
             import tomli as tomllib
         except ImportError:
-            STATUS["errors"].add(f"poetry lock parser unavailable: {rel}")
+            STATUS["errors"].add(f"TOML lock parser unavailable: {rel}")
             return []
     with open(path, "rb") as fh:
         data = tomllib.load(fh)
     out = []
     for item in data.get("package") or []:
-        if item.get("name") and item.get("version"):
-            out.append(_c("pypi", item["name"], str(item["version"]), rel,
-                          "dev" if item.get("category") == "dev" else "transitive"))
+        name, version = item.get("name"), item.get("version")
+        if not name or not version:
+            continue
+        groups = item.get("groups") or []
+        category = item.get("category")
+        dev = category == "dev" or (bool(groups) and all(g not in ("default", "main") for g in groups))
+        out.append(_c("pypi", name, str(version), rel, "dev" if dev else "transitive"))
     return out
 
+
+def _nuget_packages_config(path, rel):
+    root = ET.parse(path).getroot()
+    out = []
+    for item in root.findall(".//package"):
+        name, version = item.get("id"), item.get("version")
+        if name and version:
+            scope = "dev" if item.get("developmentDependency", "").lower() == "true" else "transitive"
+            out.append(_c("nuget", name, version, rel, scope))
+    return out
 
 def _pnpm_lock(text, rel):
     try:
