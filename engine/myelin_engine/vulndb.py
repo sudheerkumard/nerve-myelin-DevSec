@@ -790,8 +790,14 @@ def _nvd_record(cve):
             tagged["patch"].append(url)
         if "third party advisory" in tags:
             tagged["third_party_advisory"].append(url)
+    metrics = c.get("metrics") or {}
+    # NVD added structured SSVC and CVE-record affected-product data in 2026.
+    # Preserve source payloads rather than guessing a priority from unknown fields.
+    ssvc = metrics.get("ssvcMetricV203") or metrics.get("ssvcMetricV2") or []
+    affected = c.get("affected") or []
     return {"cvss": _nvd_cvss(c), "cwes": weaknesses, "published": c.get("published"),
             "modified": c.get("lastModified"), "references": refs[:30], "reference_types": tagged,
+            "ssvc": ssvc, "affected_products": affected[:100],
             "cisa_exploit_add": c.get("cisaExploitAdd"), "cisa_action_due": c.get("cisaActionDue"),
             "cisa_required_action": c.get("cisaRequiredAction"),
             "cisa_vulnerability_name": c.get("cisaVulnerabilityName"),

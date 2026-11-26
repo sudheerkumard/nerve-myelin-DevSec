@@ -320,3 +320,31 @@ def test_nvd_exploit_patch_and_cisa_catalog_context(monkeypatch):
     assert result["nvd"]["reference_types"]["patch"] == ["https://example.test/patch"]
     assert result["nvd"]["cisa_action_due"] == "2025-02-01"
     assert result["nvd"]["cisa_required_action"] == "Apply vendor mitigations"
+
+
+def test_nvd_record_preserves_ssvc_and_affected_product_evidence(monkeypatch):
+    from myelin_engine import vulndb
+
+    payload = {"vulnerabilities": [{"cve": {
+        "published": "2026-01-01T00:00:00.000",
+        "lastModified": "2026-02-01T00:00:00.000",
+        "vulnStatus": "Analyzed",
+        "metrics": {
+            "cvssMetricV40": [{"cvssData": {"version": "4.0", "baseScore": 9.3,
+                "baseSeverity": "CRITICAL", "vectorString": "CVSS:4.0/AV:N"}}],
+            "ssvcMetricV203": [{"other": {"content": "SSVC source record"}}],
+        },
+        "weaknesses": [{"description": [{"value": "CWE-89"}]}],
+        "references": [{"url": "https://example.test/exploit", "tags": ["Exploit"]}],
+        "affected": [{"vendor": "example", "product": "sample", "versions": [{"version": "1.0", "status": "affected"}]}],
+        "cisaExploitAdd": "2026-01-10",
+        "cisaActionDue": "2026-02-10",
+        "cisaRequiredAction": "Apply vendor mitigations",
+        "cisaVulnerabilityName": "Sample vulnerability",
+    }}]}
+    monkeypatch.setattr(vulndb, "_http_json", lambda *args, **kwargs: payload)
+    record = vulndb._nvd_record("CVE-2026-1234")
+    assert record["cvss"]["version"] == "4.0"
+    assert record["ssvc"] == payload["vulnerabilities"][0]["cve"]["metrics"]["ssvcMetricV203"]
+    assert record["affected_products"][0]["product"] == "sample"
+    assert record["reference_types"]["exploit"] == ["https://example.test/exploit"]
