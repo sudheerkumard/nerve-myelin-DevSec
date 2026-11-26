@@ -296,3 +296,27 @@ def test_nvd_unavailable_does_not_invent_cvss_or_cwe(monkeypatch):
     assert result["cvss"] is None
     assert result["severity_known"] is False
     assert "cwe" not in result
+
+
+def test_nvd_exploit_patch_and_cisa_catalog_context(monkeypatch):
+    from myelin_engine import vulndb
+
+    component = vulndb._c("npm", "sample", "1.0.0", "package-lock.json", "required")
+    advisory = {"id": "GHSA-test", "cve": "CVE-2025-1234", "cvss": None,
+                "severity": "medium", "severity_known": False}
+    record = {
+        "cvss": {"version": "3.1", "score": 8.8, "severity": "HIGH", "vector": "CVSS:3.1/AV:N"},
+        "cwes": ["CWE-79"], "references": ["https://example.test/exploit", "https://example.test/patch"],
+        "reference_types": {"exploit": ["https://example.test/exploit"],
+                            "patch": ["https://example.test/patch"], "third_party_advisory": []},
+        "cisa_exploit_add": "2025-01-01", "cisa_action_due": "2025-02-01",
+        "cisa_required_action": "Apply vendor mitigations", "cisa_vulnerability_name": "Example RCE",
+        "published": "2025-01-01T00:00:00.000", "modified": "2025-01-02T00:00:00.000",
+        "source": "NVD", "vuln_status": "Analyzed",
+    }
+    monkeypatch.setattr(vulndb, "_nvd_record", lambda cve: record)
+    result = vulndb._enrich_nvd([(component, advisory)], ["CVE-2025-1234"])[0][1]
+    assert result["nvd"]["reference_types"]["exploit"] == ["https://example.test/exploit"]
+    assert result["nvd"]["reference_types"]["patch"] == ["https://example.test/patch"]
+    assert result["nvd"]["cisa_action_due"] == "2025-02-01"
+    assert result["nvd"]["cisa_required_action"] == "Apply vendor mitigations"
