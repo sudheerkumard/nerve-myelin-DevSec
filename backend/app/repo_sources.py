@@ -206,7 +206,7 @@ def execute(src: dict, token: str | None, decide) -> dict:
         decision = decide([f for f in res["findings"] if f.get("engine") != "meta"])
         res["decision"], res["commit"], res["branch"] = decision, commit, src.get("branch") or "default"
         res["summary"] = _summary(res, decision)
-        res["engines"] = list(CODE_ENGINES)
+        res["engines"] = res.get("engines") or list(CODE_ENGINES)     # domains actually assessed (see engine coverage)
         return res
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
@@ -237,7 +237,7 @@ def start_scan(repo, store_factory, tenant_id, src, actor, *, token_resolver, de
                         f["code_url"] = link
             store = store_factory()
             sid, _ = store.add_scan(src["name"], res["branch"], res["commit"], fs, res["sbom"], res["decision"], actor,
-                                    scanned_engines=CODE_ENGINES, stats=res.get("stats"))
+                                    scanned_engines=CODE_ENGINES, stats=res.get("stats"))   # engines run: absent findings are fixed
             if on_scanned:
                 on_scanned(store, getattr(store, "last_delta", None))
             keep = {**res, "findings": res["findings"][:3000]}

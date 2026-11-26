@@ -42,6 +42,14 @@ dast:
   allowPrivateNetworks: false      # true for self-hosted installations that test internal APIs
   requireVerification: true        # targets must publish /.well-known/myelin-verification.txt before hosted scans
   maxRequests: 1500
+  # Deep DAST with an OWASP ZAP daemon in the namespace (spider + passive scan on verified targets; active scan only
+  # where active checks are enabled). The API key comes from the platform secret (key MYELIN_ZAP_API_KEY).
+  zap:
+    enabled: false
+    image: ghcr.io/zaproxy/zaproxy:stable
+    resources:
+      requests: { cpu: 500m, memory: 1Gi }
+      limits: { cpu: "2", memory: 3Gi }
 
 # ---- Secrets. Values never live in this file; the app resolves references at runtime. ----
 secrets:
@@ -99,8 +107,13 @@ networkPolicy:
   egressHttpsCidrs: ["0.0.0.0/0"]  # IdP, GitHub, cloud APIs; narrow to provider ranges or an egress proxy where possible  # myelin:ignore[NM-IAC-003] -- egress-only on 443 for IdP/GitHub/cloud APIs; customers narrow or route via egress proxy
 
 resources:
-  requests: { cpu: 250m, memory: 512Mi }
-  limits: { cpu: "2", memory: 2Gi }
+  requests: { cpu: 500m, memory: 1Gi }
+  limits: { cpu: "4", memory: 4Gi }        # deep scans (Opengrep, Checkov, Trivy) run inside the API pod
+
+# Repository scanning: scratch space for snapshots and the scanners' cache (Trivy vulnerability database ~1 GB)
+scanning:
+  tmpSize: 2Gi
+  cacheSize: 4Gi
 
 autoscaling: { enabled: true, minReplicas: 3, maxReplicas: 12, targetCPU: 70 }
 podDisruptionBudget: { enabled: true, minAvailable: 2 }

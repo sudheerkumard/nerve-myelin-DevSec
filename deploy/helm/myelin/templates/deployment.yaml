@@ -75,6 +75,11 @@ spec:
             - { name: MYELIN_DAST_ALLOW_PRIVATE, value: {{ .Values.dast.allowPrivateNetworks | quote }} }
             - { name: MYELIN_DAST_REQUIRE_VERIFICATION, value: {{ .Values.dast.requireVerification | quote }} }
             - { name: MYELIN_DAST_MAX_REQUESTS, value: {{ .Values.dast.maxRequests | quote }} }
+            {{- if .Values.dast.zap.enabled }}
+            - { name: MYELIN_ZAP_URL, value: "http://{{ include "myelin.name" . }}-zap:8090" }
+            - name: MYELIN_ZAP_API_KEY
+              valueFrom: { secretKeyRef: { name: {{ .Values.secrets.name }}, key: MYELIN_ZAP_API_KEY } }
+            {{- end }}
             {{- include "myelin.secretEnv" . | nindent 12 }}
           securityContext: {{- include "myelin.containerSecurity" . | nindent 12 }}
           startupProbe:   { httpGet: { path: /healthz, port: http }, periodSeconds: 5, failureThreshold: 24 }
@@ -83,12 +88,14 @@ spec:
           resources: {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
             - { name: tmp, mountPath: /tmp }
+            - { name: scan-cache, mountPath: /var/lib/myelin/cache }
             - { name: config, mountPath: /etc/myelin, readOnly: true }
             {{- if .Values.evidence.persistence.enabled }}
             - { name: evidence, mountPath: /var/lib/myelin/evidence }
             {{- end }}
       volumes:
-        - { name: tmp, emptyDir: { sizeLimit: 256Mi } }
+        - { name: tmp, emptyDir: { sizeLimit: {{ .Values.scanning.tmpSize | default "2Gi" }} } }            # repository snapshots under scan
+        - { name: scan-cache, emptyDir: { sizeLimit: {{ .Values.scanning.cacheSize | default "4Gi" }} } }  # scanner unpack + vulnerability databases
         - { name: config, configMap: { name: {{ include "myelin.name" . }}-config } }
         {{- if .Values.evidence.persistence.enabled }}
         - { name: evidence, persistentVolumeClaim: { claimName: {{ include "myelin.name" . }}-evidence } }

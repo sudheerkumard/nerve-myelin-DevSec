@@ -86,6 +86,16 @@ which one is in use.
 Settings → Resources → Proxies (Docker Engine: `/etc/systemd/system/docker.service.d/http-proxy.conf`), then
 build again.
 
+### Your first scans
+
+- The first repository scan downloads the Trivy vulnerability database (about 1 GB) into the scanner cache volume, so it
+  takes a few minutes; later scans reuse it. Behind HTTPS inspection this needs the company certificate in
+  `config/certs` (section 3).
+- Each scan lists the areas it actually examined and the tools it used; the report contains only those areas. See
+  [how scanning works](../concepts/scanning.md).
+- For deep live-application testing, start the stack with OWASP ZAP: `start-enterprise.ps1 -Dast` on Windows, or the
+  `dast` Compose profile elsewhere. ZAP tests only targets whose owner verified them.
+
 ## 4. Users and organisations
 
 Every console user must belong to exactly **one organisation (tenant)** that exists on the platform. Data is isolated

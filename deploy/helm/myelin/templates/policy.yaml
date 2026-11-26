@@ -33,6 +33,10 @@ spec:
         - ipBlock: { cidr: {{ . }} }
       {{- end }}
       ports: [{ port: 443, protocol: TCP }]
+    {{- if .Values.dast.zap.enabled }}
+    - to: [{ podSelector: { matchLabels: { app.kubernetes.io/name: {{ include "myelin.name" . }}-zap } } }]
+      ports: [{ port: 8090, protocol: TCP }]
+    {{- end }}
 {{- end }}
 {{- if .Values.autoscaling.enabled }}
 ---

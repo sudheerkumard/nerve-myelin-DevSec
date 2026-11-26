@@ -9,15 +9,15 @@ Everything below ships in the current release and is covered by automated tests
 
 | Engine | Covers |
 |---|---|
-| Code (SAST) | 40 rules + Bandit for Python, JavaScript/TypeScript, Java/Kotlin, Go, C#/.NET, PHP and Ruby |
-| Open source (SCA) | npm, PyPI, Maven, Go and more from manifests, lockfiles and SBOMs; import-level reachability; fix versions |
-| Secrets | 15 provider formats; opt-in confirmation with the issuing provider |
-| Infrastructure as Code | Dockerfile, Compose, Kubernetes, Helm, Terraform, Bicep (29 rules + Checkov) |
+| Code (SAST) | Data-flow (taint) analysis with Opengrep and the NERvvE rule pack (78 rules) for Python, JavaScript/TypeScript, Java, Go, C#, PHP and Ruby; 40 pattern rules (also Kotlin); Bandit for Python. See [how scanning works](../concepts/scanning.md) |
+| Open source (SCA) | npm, PyPI, Maven, Go and more from manifests, lockfiles and SBOMs (OSV and Trivy databases); import-level reachability; fix versions |
+| Secrets | 15 provider formats plus Gitleaks and Trivy (git history when the repository is cloned with git); opt-in confirmation with the issuing provider |
+| Infrastructure as Code | Dockerfile, Compose, Kubernetes, Helm, Terraform, Bicep (29 rules + Checkov + Trivy) |
 | Containers | Image OS and language packages (Trivy / Grype) |
 | CI and CD posture | GitHub Actions, Azure Pipelines, GitLab CI, Argo CD, Flux, Helm, Tekton, cloud build services |
 | Supply-chain defence | Malicious and look-alike packages, AI-hallucinated names, worms, dependency confusion, cooldown |
 | AI application security | LLM, agent, RAG and MCP risks; AI coding-agent rule files |
-| Live application testing | Read-only checks, crawler, multi-user authorisation tests, authorised active checks |
+| Live application testing | Read-only checks, crawler, multi-user authorisation tests, authorised active checks; OWASP ZAP spider, passive and (authorised) active scanning |
 | Cloud posture | Azure, AWS, Google Cloud (67 checks) |
 | Kubernetes posture | Pod Security Standards, RBAC, exposure, isolation (25 checks) |
 | Identities | Effective privilege, MFA, keys, dormant, external and public access (14 checks) |

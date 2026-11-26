@@ -1,0 +1,207 @@
+# Copyright (c) 2026 Sudheer Kumar.
+# SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
+# NERvvE DevSecOps SAST rules for Ruby (Rails, Sinatra). Original work: not derived from the semgrep-rules registry.
+rules:
+  - id: nervve.ruby.sql-injection
+    mode: taint
+    languages: [ruby]
+    severity: ERROR
+    message: >-
+      SQL fragment built from request parameters. An attacker can read or change any data the database account
+      can reach. Use placeholders (where("id = ?", params[:id])) or hash conditions.
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+      confidence: high
+      category: injection
+    pattern-sources: &rb_sources
+      - pattern-either:
+          - pattern: params
+          - pattern: params[...]
+          - pattern: request.params
+          - pattern: request.query_string
+          - pattern: request.body
+          - pattern: request.headers[...]
+          - pattern: cookies[...]
+          - pattern: ARGV
+    pattern-sanitizers: &rb_sanitizers
+      - pattern-either:
+          - pattern: $X.to_i
+          - pattern: $X.to_f
+          - pattern: Integer(...)
+          - pattern: ERB::Util.html_escape(...)
+          - pattern: CGI.escapeHTML(...)
+          - pattern: Shellwords.escape(...)
+          - pattern: File.basename(...)
+          - pattern: ActiveRecord::Base.sanitize_sql(...)
+          - pattern: sanitize_sql(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $M.where($Q, ...)
+              - pattern: $M.find_by_sql($Q, ...)
+              - pattern: $M.order($Q)
+              - pattern: $M.group($Q)
+              - pattern: $M.having($Q, ...)
+              - pattern: $M.joins($Q)
+              - pattern: $M.select($Q)
+              - pattern: $M.pluck($Q)
+              - pattern: $CONN.execute($Q)
+              - pattern: $CONN.exec_query($Q, ...)
+              - pattern: ActiveRecord::Base.connection.execute($Q)
+          - focus-metavariable: $Q
+          - pattern-not: '"..."'
+
+  - id: nervve.ruby.command-injection
+    mode: taint
+    languages: [ruby]
+    severity: ERROR
+    message: >-
+      Shell command built from request parameters. An attacker can run commands as the application. Pass a
+      program and separate arguments (system("ping", "-c", "1", host)) and allow-list values.
+    metadata:
+      cwe: "CWE-78"
+      owasp: "A03:2021 Injection"
+      confidence: high
+      category: injection
+    pattern-sources: *rb_sources
+    pattern-sanitizers: *rb_sanitizers
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: system($CMD)
+              - pattern: exec($CMD)
+              - pattern: spawn($CMD)
+              - pattern: '`...`'
+              - pattern: '%x(...)'
+              - pattern: IO.popen($CMD, ...)
+              - pattern: Open3.capture2($CMD, ...)
+              - pattern: Open3.capture3($CMD, ...)
+              - pattern: Open3.popen3($CMD, ...)
+              - pattern: Kernel.open($CMD, ...)
+              - pattern: open($CMD, ...)
+
+  - id: nervve.ruby.code-injection
+    mode: taint
+    languages: [ruby]
+    severity: ERROR
+    message: >-
+      Request data is evaluated as Ruby code or used to pick a method or class (eval, instance_eval, send,
+      constantize). An attacker can run arbitrary code. Map input to an allow-list instead.
+    metadata:
+      cwe: "CWE-94"
+      owasp: "A03:2021 Injection"
+      confidence: high
+      category: injection
+    pattern-sources: *rb_sources
+    pattern-sinks:
+      - pattern-either:
+          - pattern: eval(...)
+          - pattern: instance_eval(...)
+          - pattern: class_eval(...)
+          - pattern: $O.send($M, ...)
+          - pattern: $O.public_send($M, ...)
+          - pattern: $X.constantize
+          - pattern: $X.safe_constantize
+          - pattern: Object.const_get(...)
+
+  - id: nervve.ruby.unsafe-deserialisation
+    mode: taint
+    languages: [ruby]
+    severity: ERROR
+    message: >-
+      Request data is deserialised with Marshal or unsafe YAML, which can run code. Use JSON, or YAML.safe_load.
+    metadata:
+      cwe: "CWE-502"
+      owasp: "A08:2021 Software and Data Integrity Failures"
+      confidence: high
+      category: injection
+    pattern-sources: *rb_sources
+    pattern-sinks:
+      - pattern-either:
+          - pattern: Marshal.load(...)
+          - pattern: Marshal.restore(...)
+          - pattern: YAML.load(...)
+          - pattern: YAML.unsafe_load(...)
+          - pattern: Psych.load(...)
+          - pattern: Oj.load(...)
+
+  - id: nervve.ruby.path-traversal
+    mode: taint
+    languages: [ruby]
+    severity: WARNING
+    message: >-
+      File path built from request parameters. An attacker can read files outside the intended folder. Use
+      File.basename or resolve the path and check it stays under the base directory.
+    metadata:
+      cwe: "CWE-22"
+      owasp: "A01:2021 Broken Access Control"
+      confidence: high
+      category: injection
+    pattern-sources: *rb_sources
+    pattern-sanitizers: *rb_sanitizers
+    pattern-sinks:
+      - pattern-either:
+          - pattern: send_file(...)
+          - pattern: send_data(File.read(...), ...)
+          - pattern: File.read(...)
+          - pattern: File.open(...)
+          - pattern: File.write(...)
+          - pattern: IO.read(...)
+          - pattern: 'render(file: $X, ...)'
+
+  - id: nervve.ruby.open-redirect
+    mode: taint
+    languages: [ruby]
+    severity: WARNING
+    message: >-
+      Redirect to a location from request parameters, usable for phishing. Redirect only to paths, or pass
+      allow_other_host: false (Rails 7).
+    metadata:
+      cwe: "CWE-601"
+      owasp: "A01:2021 Broken Access Control"
+      confidence: high
+      category: injection
+    pattern-sources: *rb_sources
+    pattern-sinks:
+      - patterns:
+          - pattern: redirect_to($LOC, ...)
+          - pattern-not: 'redirect_to($LOC, ..., allow_other_host: false, ...)'
+          - focus-metavariable: $LOC
+      - pattern: redirect($LOC)
+
+  - id: nervve.ruby.xss
+    mode: taint
+    languages: [ruby]
+    severity: WARNING
+    message: >-
+      Request data is marked HTML-safe or rendered inline without escaping (cross-site scripting). Let the view
+      escape it, or sanitize it with the Rails sanitize helper.
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021 Injection"
+      confidence: high
+      category: injection
+    pattern-sources: *rb_sources
+    pattern-sanitizers: *rb_sanitizers
+    pattern-sinks:
+      - pattern-either:
+          - pattern: $X.html_safe
+          - pattern: raw(...)
+          - pattern: 'render(inline: ...)'
+          - pattern: 'render(html: ...)'
+          - pattern: 'render(text: ...)'
+
+  - id: nervve.ruby.ssl-verify-none
+    languages: [ruby]
+    severity: ERROR
+    message: >-
+      TLS certificate verification is disabled (VERIFY_NONE), so any machine on the network path can impersonate
+      the server. Use OpenSSL::SSL::VERIFY_PEER with the required CA.
+    metadata:
+      cwe: "CWE-295"
+      owasp: "A02:2021 Cryptographic Failures"
+      confidence: high
+      category: crypto
+    pattern-either:
+      - pattern: OpenSSL::SSL::VERIFY_NONE

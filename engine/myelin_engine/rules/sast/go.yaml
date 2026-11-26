@@ -1,0 +1,281 @@
+# Copyright (c) 2026 Sudheer Kumar.
+# SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
+# NERvvE DevSecOps SAST rules for Go (net/http, gorilla/mux, Gin, Echo, Fiber). Original work: not derived from
+# the semgrep-rules registry.
+rules:
+  - id: nervve.go.sql-injection
+    mode: taint
+    languages: [go]
+    severity: ERROR
+    message: >-
+      SQL statement built from untrusted request data. An attacker can read or change any data the database
+      account can reach. Use placeholders (db.Query("... WHERE id = $1", id)) instead of fmt.Sprintf or "+".
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+      confidence: high
+      category: injection
+    pattern-sources: &go_sources
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  func $H(..., $R *http.Request, ...) { ... }
+              - pattern-inside: |
+                  func ($RECV $RT) $H(..., $R *http.Request, ...) { ... }
+              - pattern-inside: |
+                  func(..., $R *http.Request, ...) { ... }
+          - pattern-either:
+              - pattern: $R.URL.Query()
+              - pattern: $R.FormValue(...)
+              - pattern: $R.PostFormValue(...)
+              - pattern: $R.Form
+              - pattern: $R.PostForm
+              - pattern: $R.Header.Get(...)
+              - pattern: $R.Header
+              - pattern: $R.Body
+              - pattern: $R.URL.Path
+              - pattern: $R.URL.RawQuery
+              - pattern: $R.Cookie(...)
+              - pattern: $R.PathValue(...)
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  func $H(..., $C *gin.Context, ...) { ... }
+              - pattern-inside: |
+                  func(..., $C *gin.Context, ...) { ... }
+              - pattern-inside: |
+                  func $H(..., $C echo.Context, ...) error { ... }
+              - pattern-inside: |
+                  func(..., $C echo.Context, ...) error { ... }
+              - pattern-inside: |
+                  func $H(..., $C *fiber.Ctx, ...) error { ... }
+              - pattern-inside: |
+                  func(..., $C *fiber.Ctx, ...) error { ... }
+          - pattern-either:
+              - pattern: $C.Query(...)
+              - pattern: $C.DefaultQuery(...)
+              - pattern: $C.Param(...)
+              - pattern: $C.Params(...)
+              - pattern: $C.PostForm(...)
+              - pattern: $C.GetHeader(...)
+              - pattern: $C.QueryParam(...)
+              - pattern: $C.FormValue(...)
+              - pattern: $C.Body()
+      - pattern: mux.Vars(...)
+      - pattern: os.Args
+    pattern-sanitizers: &go_sanitizers
+      - pattern-either:
+          - pattern: strconv.Atoi(...)
+          - pattern: strconv.ParseInt(...)
+          - pattern: strconv.ParseUint(...)
+          - pattern: strconv.ParseFloat(...)
+          - pattern: strconv.ParseBool(...)
+          - pattern: uuid.Parse(...)
+          - pattern: html.EscapeString(...)
+          - pattern: template.HTMLEscapeString(...)
+          - pattern: url.QueryEscape(...)
+          - pattern: filepath.Base(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $DB.Query($Q, ...)
+              - pattern: $DB.QueryRow($Q, ...)
+              - pattern: $DB.Exec($Q, ...)
+              - pattern: $DB.Prepare($Q)
+              - pattern: $DB.Raw($Q, ...)
+              - pattern: $DB.Select($DEST, $Q, ...)
+              - pattern: $DB.Get($DEST, $Q, ...)
+              - pattern: $DB.QueryContext($CTX, $Q, ...)
+              - pattern: $DB.QueryRowContext($CTX, $Q, ...)
+              - pattern: $DB.ExecContext($CTX, $Q, ...)
+              - pattern: $DB.PrepareContext($CTX, $Q)
+          - focus-metavariable: $Q
+          - pattern-not: '"..."'
+
+  - id: nervve.go.command-injection
+    mode: taint
+    languages: [go]
+    severity: ERROR
+    message: >-
+      Operating-system command built from untrusted input. An attacker can run commands as the service. Pass a
+      fixed program and separate arguments to exec.Command, never "sh -c", and allow-list values.
+    metadata:
+      cwe: "CWE-78"
+      owasp: "A03:2021 Injection"
+      confidence: high
+      category: injection
+    pattern-sources: *go_sources
+    pattern-sanitizers: *go_sanitizers
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: exec.Command($PROG, ...)
+              - pattern: exec.CommandContext($CTX, $PROG, ...)
+          - focus-metavariable: $PROG
+      - patterns:
+          - pattern-either:
+              - pattern: exec.Command("$SH", "-c", $CMD, ...)
+              - pattern: exec.CommandContext($CTX, "$SH", "-c", $CMD, ...)
+          - metavariable-regex:
+              metavariable: $SH
+              regex: ^(sh|bash|/bin/sh|/bin/bash|zsh|cmd|cmd.exe|powershell)$
+          - focus-metavariable: $CMD
+
+  - id: nervve.go.path-traversal
+    mode: taint
+    languages: [go]
+    severity: WARNING
+    message: >-
+      File path built from untrusted input. An attacker can read or overwrite files outside the intended folder.
+      Clean the path, join it to the base and check the result still has the base prefix, or use os.Root (Go 1.24+).
+    metadata:
+      cwe: "CWE-22"
+      owasp: "A01:2021 Broken Access Control"
+      confidence: high
+      category: injection
+    pattern-sources: *go_sources
+    pattern-sanitizers: *go_sanitizers
+    pattern-sinks:
+      - pattern-either:
+          - pattern: os.Open(...)
+          - pattern: os.OpenFile(...)
+          - pattern: os.ReadFile(...)
+          - pattern: os.WriteFile(...)
+          - pattern: os.Remove(...)
+          - pattern: os.RemoveAll(...)
+          - pattern: os.Create(...)
+          - pattern: ioutil.ReadFile(...)
+          - pattern: ioutil.WriteFile(...)
+          - pattern: http.ServeFile($W, $REQ, ...)
+
+  - id: nervve.go.ssrf
+    mode: taint
+    languages: [go]
+    severity: WARNING
+    message: >-
+      Server-side request to a URL taken from untrusted input (SSRF). An attacker can reach internal services and
+      cloud metadata endpoints. Allow-list the destination host and scheme.
+    metadata:
+      cwe: "CWE-918"
+      owasp: "A10:2021 Server-Side Request Forgery"
+      confidence: high
+      category: injection
+    pattern-sources: *go_sources
+    pattern-sanitizers: *go_sanitizers
+    pattern-sinks:
+      - pattern-either:
+          - pattern: http.Get(...)
+          - pattern: http.Post(...)
+          - pattern: http.Head(...)
+          - pattern: http.PostForm(...)
+          - pattern: http.NewRequest($M, $URL, ...)
+          - pattern: http.NewRequestWithContext($CTX, $M, $URL, ...)
+
+  - id: nervve.go.open-redirect
+    mode: taint
+    languages: [go]
+    severity: WARNING
+    message: >-
+      Redirect to a location taken from untrusted input, usable for phishing. Redirect only to relative paths or
+      an allow-list of hosts.
+    metadata:
+      cwe: "CWE-601"
+      owasp: "A01:2021 Broken Access Control"
+      confidence: high
+      category: injection
+    pattern-sources: *go_sources
+    pattern-sanitizers: *go_sanitizers
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: http.Redirect($W, $REQ, $LOC, ...)
+              - pattern: $C.Redirect($CODE, $LOC)
+          - focus-metavariable: $LOC
+
+  - id: nervve.go.xss
+    mode: taint
+    languages: [go]
+    severity: WARNING
+    message: >-
+      Untrusted input is written into an HTML response without escaping (cross-site scripting), or marked safe
+      with template.HTML. Use html/template with normal values, or html.EscapeString.
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021 Injection"
+      confidence: high
+      category: injection
+    pattern-sources: *go_sources
+    pattern-sanitizers: *go_sanitizers
+    pattern-sinks:
+      - pattern-either:
+          - pattern: template.HTML(...)
+          - pattern: template.JS(...)
+          - pattern: template.HTMLAttr(...)
+          - patterns:
+              - pattern-either:
+                  - pattern: fmt.Fprintf($W, $FMT, ...)
+                  - pattern: fmt.Fprint($W, ...)
+                  - pattern: io.WriteString($W, ...)
+                  - pattern: $W.Write([]byte(...))
+              - pattern-inside: |
+                  func $H($W http.ResponseWriter, $REQ *http.Request) { ... }
+
+  - id: nervve.go.tls-verification-disabled
+    languages: [go]
+    severity: ERROR
+    message: >-
+      TLS certificate verification is disabled (InsecureSkipVerify), so any machine on the network path can
+      impersonate the server. Remove it and add the required CA to RootCAs.
+    metadata:
+      cwe: "CWE-295"
+      owasp: "A02:2021 Cryptographic Failures"
+      confidence: high
+      category: crypto
+    pattern-either:
+      - pattern: 'tls.Config{..., InsecureSkipVerify: true, ...}'
+      - pattern: $CFG.InsecureSkipVerify = true
+
+  - id: nervve.go.weak-crypto
+    languages: [go]
+    severity: WARNING
+    message: >-
+      Broken or weak cryptography (MD5, SHA-1, DES, 3DES or RC4). Use SHA-256 or better, AES-GCM, and a password
+      hashing function (bcrypt, argon2, scrypt) for passwords.
+    metadata:
+      cwe: "CWE-327"
+      owasp: "A02:2021 Cryptographic Failures"
+      confidence: high
+      category: crypto
+    pattern-either:
+      - pattern: md5.New()
+      - pattern: md5.Sum(...)
+      - pattern: sha1.New()
+      - pattern: sha1.Sum(...)
+      - pattern: des.NewCipher(...)
+      - pattern: des.NewTripleDESCipher(...)
+      - pattern: rc4.NewCipher(...)
+
+  - id: nervve.go.weak-random
+    languages: [go]
+    severity: INFO
+    message: >-
+      math/rand is predictable. If this value is a token, password, nonce or key, use crypto/rand.
+    metadata:
+      cwe: "CWE-338"
+      owasp: "A02:2021 Cryptographic Failures"
+      confidence: low
+      category: crypto
+    patterns:
+      - pattern-either:
+          - pattern: rand.Int()
+          - pattern: rand.Intn(...)
+          - pattern: rand.Read(...)
+          - pattern: rand.Int63()
+      - pattern-inside: |
+          import "math/rand"
+          ...
+      - pattern-inside: |
+          func $F(...) $RET { ... }
+      - metavariable-regex:
+          metavariable: $F
+          regex: (?i).*(token|secret|password|nonce|salt|otp|session|key).*

@@ -126,10 +126,13 @@ services:
       MYELIN_LICENSE: ${MYELIN_LICENSE:-}       # evaluation or production licence for NERvvE DevSecOps
       MYELIN_EVIDENCE_STORE: file:///var/lib/myelin/evidence
       VAULT_ADDR: http://vault:8200                  # resolves vault:// identity references for live scans
+      MYELIN_ZAP_URL: ${MYELIN_ZAP_URL:-}            # http://zap:8090 with the "dast" profile: deep DAST through OWASP ZAP
+      MYELIN_ZAP_API_KEY: ${MYELIN_ZAP_API_KEY:-}
       VAULT_TOKEN_FILE: /run/vault/api-token         # read-only token, re-issued by start-enterprise.ps1
     volumes:
       - ./deploy/compose/identity-providers.compose.yaml:/etc/myelin/identity-providers.yaml:ro
       - evidence:/var/lib/myelin/evidence
+      - scancache:/var/lib/myelin/cache            # scanner unpack + vulnerability databases (kept between restarts)
       - cabundle:/etc/myelin/ca:ro
       - vault_token:/run/vault:ro
     depends_on:
@@ -157,15 +160,25 @@ services:
       edge:
         aliases: [myelin.localtest.me, auth.localtest.me]   # containers reach the same issuer URL as browsers
 
-  edge-ca:   # one-shot: combine system roots with the local Caddy CA so the API can verify the IdP over TLS
+  zap:   # OWASP ZAP daemon for deep DAST (optional: docker compose --profile dast up -d). Only the API can reach its API.
+    image: ghcr.io/zaproxy/zaproxy:stable
+    profiles: ["dast"]
+    command: ["zap.sh", "-daemon", "-host", "0.0.0.0", "-port", "8090", "-config", "api.key=${MYELIN_ZAP_API_KEY:-}",
+              "-config", "api.addrs.addr.name=.*", "-config", "api.addrs.addr.regex=true", "-config", "api.disablekey=false"]
+    environment:
+      JAVA_OPTS: -Xmx2g
+    restart: unless-stopped
+    networks: [edge]          # reaches the targets; no published port
+
+  edge-ca:   # one-shot: system roots + local Caddy CA (IdP over TLS) + company root certificates in config/certs (HTTPS inspection)
     image: alpine:3.20
-    command: ["sh", "-c", "cat /etc/ssl/certs/ca-certificates.crt /caddy/caddy/pki/authorities/local/root.crt > /out/bundle.pem && chmod 444 /out/bundle.pem"]
-    volumes: ["caddy_data:/caddy:ro", "cabundle:/out"]
+    command: ["sh", "-c", "cat /etc/ssl/certs/ca-certificates.crt /caddy/caddy/pki/authorities/local/root.crt > /out/bundle.pem && for c in /extra/*.crt; do [ -f \"$$c\" ] && { cat \"$$c\"; echo; } >> /out/bundle.pem; done; chmod 444 /out/bundle.pem"]
+    volumes: ["caddy_data:/caddy:ro", "cabundle:/out", "./config/certs:/extra:ro"]
     depends_on: { edge: { condition: service_healthy } }
     restart: "no"
     network_mode: none
 
-volumes: { pgdata: {}, evidence: {}, caddy_data: {}, caddy_config: {}, cabundle: {}, openbao_data: {}, vault_token: {} }
+volumes: { pgdata: {}, evidence: {}, scancache: {}, caddy_data: {}, caddy_config: {}, cabundle: {}, openbao_data: {}, vault_token: {} }
 networks:
   data: { internal: true }   # database has no route to or from the host
   edge: {}

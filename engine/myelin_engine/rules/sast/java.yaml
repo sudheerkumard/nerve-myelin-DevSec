@@ -1,0 +1,352 @@
+# Copyright (c) 2026 Sudheer Kumar.
+# SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
+# NERvvE DevSecOps SAST rules for Java and Kotlin (Servlet API, Spring MVC / WebFlux, JAX-RS).
+# Original work: not derived from the semgrep-rules registry.
+rules:
+  - id: nervve.java.sql-injection
+    mode: taint
+    languages: [java]
+    severity: ERROR
+    message: >-
+      SQL statement built from untrusted request data. An attacker can read or change any data the database
+      account can reach. Use a PreparedStatement with ? placeholders, or named parameters in JPA/JdbcTemplate.
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+      confidence: high
+      category: injection
+    pattern-sources: &java_sources
+      - pattern-either:
+          - pattern: (HttpServletRequest $R).getParameter(...)
+          - pattern: (HttpServletRequest $R).getParameterValues(...)
+          - pattern: (HttpServletRequest $R).getParameterMap()
+          - pattern: (HttpServletRequest $R).getHeader(...)
+          - pattern: (HttpServletRequest $R).getQueryString()
+          - pattern: (HttpServletRequest $R).getRequestURI()
+          - pattern: (HttpServletRequest $R).getCookies()
+          - pattern: (HttpServletRequest $R).getInputStream()
+          - pattern: (HttpServletRequest $R).getReader()
+          - pattern: (javax.servlet.http.HttpServletRequest $R).getParameter(...)
+          - pattern: (jakarta.servlet.http.HttpServletRequest $R).getParameter(...)
+      - patterns:
+          # Spring MVC / JAX-RS handler parameters bound from the request
+          - pattern-either:
+              - pattern-inside: $RET $M(..., @$ANN $T $P, ...) { ... }
+              - pattern-inside: $RET $M(..., @$ANN(...) $T $P, ...) { ... }
+          - metavariable-regex:
+              metavariable: $ANN
+              regex: ^(RequestParam|PathVariable|RequestHeader|RequestBody|CookieValue|ModelAttribute|QueryParam|PathParam|FormParam|HeaderParam|MatrixParam)$
+          - pattern: $P
+    pattern-sanitizers: &java_sanitizers
+      - pattern-either:
+          - pattern: Integer.parseInt(...)
+          - pattern: Long.parseLong(...)
+          - pattern: Integer.valueOf(...)
+          - pattern: Long.valueOf(...)
+          - pattern: UUID.fromString(...)
+          - pattern: org.owasp.encoder.Encode.$F(...)
+          - pattern: Encode.$F(...)
+          - pattern: org.apache.commons.text.StringEscapeUtils.escapeHtml4(...)
+          - pattern: HtmlUtils.htmlEscape(...)
+          - pattern: FilenameUtils.getName(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: (java.sql.Statement $S).$M($Q, ...)
+              - pattern: (Statement $S).$M($Q, ...)
+              - pattern: (Connection $C).prepareStatement($Q, ...)
+              - pattern: (java.sql.Connection $C).prepareStatement($Q, ...)
+              - pattern: (Connection $C).prepareCall($Q, ...)
+              - pattern: (EntityManager $E).createQuery($Q, ...)
+              - pattern: (EntityManager $E).createNativeQuery($Q, ...)
+              - pattern: (JdbcTemplate $J).$M($Q, ...)
+              - pattern: (NamedParameterJdbcTemplate $J).$M($Q, ...)
+              - pattern: (Session $H).createQuery($Q, ...)
+              - pattern: (Session $H).createSQLQuery($Q, ...)
+              - pattern: $S.executeQuery($Q)
+              - pattern: $S.executeUpdate($Q)
+              - pattern: $S.addBatch($Q)
+          - focus-metavariable: $Q
+
+  - id: nervve.java.command-injection
+    mode: taint
+    languages: [java]
+    severity: ERROR
+    message: >-
+      Operating-system command built from untrusted input. An attacker can run commands as the application user.
+      Use ProcessBuilder with a fixed program and separate arguments, never "sh -c", and allow-list values.
+    metadata:
+      cwe: "CWE-78"
+      owasp: "A03:2021 Injection"
+      confidence: high
+      category: injection
+    pattern-sources: *java_sources
+    pattern-sanitizers: *java_sanitizers
+    pattern-sinks:
+      - pattern-either:
+          - pattern: Runtime.getRuntime().exec(...)
+          - pattern: (Runtime $RT).exec(...)
+          - pattern: new ProcessBuilder(...)
+          - pattern: (ProcessBuilder $PB).command(...)
+
+  - id: nervve.java.path-traversal
+    mode: taint
+    languages: [java]
+    severity: WARNING
+    message: >-
+      File path built from untrusted input. An attacker can read or overwrite files outside the intended folder
+      with "../" sequences. Normalise the path and check it starts with the base directory (path.normalize()
+      .startsWith(base)), or map identifiers to files.
+    metadata:
+      cwe: "CWE-22"
+      owasp: "A01:2021 Broken Access Control"
+      confidence: high
+      category: injection
+    pattern-sources: *java_sources
+    pattern-sanitizers: *java_sanitizers
+    pattern-sinks:
+      - pattern-either:
+          - pattern: new File(...)
+          - pattern: new java.io.File(...)
+          - pattern: new FileInputStream(...)
+          - pattern: new FileOutputStream(...)
+          - pattern: new FileReader(...)
+          - pattern: new FileWriter(...)
+          - pattern: Paths.get(...)
+          - pattern: Path.of(...)
+          - pattern: Files.$M(...)
+          - pattern: new ClassPathResource(...)
+
+  - id: nervve.java.ssrf
+    mode: taint
+    languages: [java]
+    severity: WARNING
+    message: >-
+      Server-side request to a URL taken from untrusted input (SSRF). An attacker can reach internal services and
+      cloud metadata endpoints. Allow-list the host and scheme before connecting.
+    metadata:
+      cwe: "CWE-918"
+      owasp: "A10:2021 Server-Side Request Forgery"
+      confidence: high
+      category: injection
+    pattern-sources: *java_sources
+    pattern-sanitizers: *java_sanitizers
+    pattern-sinks:
+      - pattern-either:
+          - pattern: new URL(...)
+          - pattern: new java.net.URL(...)
+          - pattern: URI.create(...)
+          - pattern: (RestTemplate $RT).$M(...)
+          - pattern: (WebClient $W).get().uri(...)
+          - pattern: HttpRequest.newBuilder(...)
+          - pattern: (HttpRequest.Builder $B).uri(...)
+          - pattern: new HttpGet(...)
+          - pattern: new HttpPost(...)
+
+  - id: nervve.java.open-redirect
+    mode: taint
+    languages: [java]
+    severity: WARNING
+    message: >-
+      Redirect to a location taken from untrusted input. Attackers use it for phishing that appears to come from
+      this site. Redirect only to relative paths or an allow-list of hosts.
+    metadata:
+      cwe: "CWE-601"
+      owasp: "A01:2021 Broken Access Control"
+      confidence: high
+      category: injection
+    pattern-sources: *java_sources
+    pattern-sanitizers: *java_sanitizers
+    pattern-sinks:
+      - pattern-either:
+          - pattern: (HttpServletResponse $RS).sendRedirect(...)
+          - pattern: (HttpServletResponse $RS).setHeader("Location", ...)
+          - pattern: new RedirectView(...)
+          - pattern: '"redirect:" + $X'
+
+  - id: nervve.java.xss
+    mode: taint
+    languages: [java]
+    severity: WARNING
+    message: >-
+      Untrusted input is written to the HTTP response without HTML encoding (cross-site scripting). Encode it with
+      the OWASP Java Encoder (Encode.forHtml) or render through an escaping template.
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021 Injection"
+      confidence: high
+      category: injection
+    pattern-sources: *java_sources
+    pattern-sanitizers: *java_sanitizers
+    pattern-sinks:
+      - pattern-either:
+          - pattern: (HttpServletResponse $RS).getWriter().print(...)
+          - pattern: (HttpServletResponse $RS).getWriter().println(...)
+          - pattern: (HttpServletResponse $RS).getWriter().write(...)
+          - pattern: (PrintWriter $W).print(...)
+          - pattern: (PrintWriter $W).println(...)
+          - pattern: (PrintWriter $W).write(...)
+
+  - id: nervve.java.xpath-injection
+    mode: taint
+    languages: [java]
+    severity: WARNING
+    message: >-
+      XPath expression built from untrusted input. An attacker can change the query to read other nodes or bypass
+      authentication. Use XPathVariableResolver with variables instead of concatenation.
+    metadata:
+      cwe: "CWE-643"
+      owasp: "A03:2021 Injection"
+      confidence: high
+      category: injection
+    pattern-sources: *java_sources
+    pattern-sanitizers: *java_sanitizers
+    pattern-sinks:
+      - pattern-either:
+          - pattern: (XPath $X).evaluate(...)
+          - pattern: (XPath $X).compile(...)
+
+  - id: nervve.java.ldap-injection
+    mode: taint
+    languages: [java]
+    severity: WARNING
+    message: >-
+      LDAP search filter built from untrusted input. An attacker can alter the filter to bypass authentication.
+      Escape values (for example LdapEncoder.filterEncode) or use parameterised filters.
+    metadata:
+      cwe: "CWE-90"
+      owasp: "A03:2021 Injection"
+      confidence: high
+      category: injection
+    pattern-sources: *java_sources
+    pattern-sanitizers: *java_sanitizers
+    pattern-sinks:
+      - pattern-either:
+          - pattern: (DirContext $D).search(...)
+          - pattern: (InitialDirContext $D).search(...)
+          - pattern: (LdapTemplate $L).search(...)
+
+  - id: nervve.java.unsafe-deserialisation
+    languages: [java]
+    severity: ERROR
+    message: >-
+      Java native deserialisation (ObjectInputStream.readObject, XMLDecoder) or polymorphic Jackson typing can
+      run code from crafted input. Use a data format such as JSON without default typing, or an ObjectInputFilter
+      allow-list.
+    metadata:
+      cwe: "CWE-502"
+      owasp: "A08:2021 Software and Data Integrity Failures"
+      confidence: medium
+      category: deserialisation
+    pattern-either:
+      - patterns:
+          - pattern: (ObjectInputStream $O).readObject()
+          - pattern-not-inside: |
+              $O.setObjectInputFilter(...);
+              ...
+      - pattern: new XMLDecoder(...).readObject()
+      - pattern: (ObjectMapper $M).enableDefaultTyping(...)
+      - pattern: (ObjectMapper $M).activateDefaultTyping(...)
+      - pattern: new XStream().fromXML(...)
+
+  - id: nervve.java.xxe
+    languages: [java]
+    severity: WARNING
+    message: >-
+      An XML parser is created without disabling DOCTYPE declarations or external entities (XXE). Set
+      "http://apache.org/xml/features/disallow-doctype-decl" to true, or disable external entities and DTDs.
+    metadata:
+      cwe: "CWE-611"
+      owasp: "A05:2021 Security Misconfiguration"
+      confidence: medium
+      category: xml
+    patterns:
+      - pattern-either:
+          - pattern: DocumentBuilderFactory.newInstance()
+          - pattern: SAXParserFactory.newInstance()
+          - pattern: XMLInputFactory.newInstance()
+          - pattern: XMLInputFactory.newFactory()
+          - pattern: TransformerFactory.newInstance()
+      - pattern-not-inside: |
+          $F = $FACT.newInstance();
+          ...
+          $F.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+      - pattern-not-inside: |
+          $F = $FACT.newInstance();
+          ...
+          $F.setProperty(XMLInputFactory.SUPPORT_DTD, false);
+      - pattern-not-inside: |
+          $F = $FACT.newInstance();
+          ...
+          $F.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
+      - pattern-not-inside: |
+          $F = $FACT.newInstance();
+          ...
+          $F.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+      - pattern-not-inside: |
+          $F = $FACT.newFactory();
+          ...
+          $F.setProperty(XMLInputFactory.SUPPORT_DTD, false);
+
+  - id: nervve.java.tls-verification-disabled
+    languages: [java]
+    severity: ERROR
+    message: >-
+      TLS certificate or host-name verification is disabled (trust-all TrustManager or HostnameVerifier), so any
+      machine on the network path can impersonate the server. Use the default verifiers and a trust store with
+      the required CA.
+    metadata:
+      cwe: "CWE-295"
+      owasp: "A02:2021 Cryptographic Failures"
+      confidence: high
+      category: crypto
+    pattern-either:
+      - pattern: |
+          public void checkServerTrusted(...) {}
+      - pattern: |
+          public X509Certificate[] getAcceptedIssuers() { return null; }
+      - pattern: (HostnameVerifier $H) -> true
+      - pattern: new NoopHostnameVerifier()
+      - pattern: NoopHostnameVerifier.INSTANCE
+      - pattern: SSLConnectionSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER
+      - pattern: |
+          public boolean verify(String $H, SSLSession $S) { return true; }
+
+  - id: nervve.java.weak-crypto
+    languages: [java]
+    severity: WARNING
+    message: >-
+      Broken or weak cryptography (DES, 3DES, RC4, Blowfish, ECB mode, MD5 or SHA-1). Use AES/GCM/NoPadding for
+      encryption, SHA-256 or better for hashing and a password hashing function for passwords.
+    metadata:
+      cwe: "CWE-327"
+      owasp: "A02:2021 Cryptographic Failures"
+      confidence: high
+      category: crypto
+    patterns:
+      - pattern-either:
+          - pattern: Cipher.getInstance("$ALG", ...)
+          - pattern: MessageDigest.getInstance("$ALG", ...)
+          - pattern: KeyGenerator.getInstance("$ALG", ...)
+      - metavariable-regex:
+          metavariable: $ALG
+          regex: (?i)^((DES|DESede|TripleDES|RC2|RC4|ARCFOUR|Blowfish)(/.*)?|MD2|MD4|MD5|SHA-?1|AES|.*/ECB/.*)$
+
+  - id: nervve.java.insecure-random
+    languages: [java]
+    severity: INFO
+    message: >-
+      java.util.Random is predictable. If this value is a token, session id, password or key, use
+      java.security.SecureRandom.
+    metadata:
+      cwe: "CWE-338"
+      owasp: "A02:2021 Cryptographic Failures"
+      confidence: low
+      category: crypto
+    patterns:
+      - pattern: new java.util.Random(...)
+      - pattern-inside: |
+          $T $F(...) { ... }
+      - metavariable-regex:
+          metavariable: $F
+          regex: (?i).*(token|secret|password|nonce|salt|otp|session|key).*

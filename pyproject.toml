@@ -17,3 +17,6 @@ myelin = "myelin_engine.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["engine"]
+
+[tool.setuptools.package-data]
+myelin_engine = ["rules/sast/*.yaml", "data/*", "data/**/*"]

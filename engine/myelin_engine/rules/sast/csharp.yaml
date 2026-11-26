@@ -1,0 +1,260 @@
+# Copyright (c) 2026 Sudheer Kumar.
+# SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
+# NERvvE DevSecOps SAST rules for C# (ASP.NET Core, ASP.NET MVC / Web API). Original work: not derived from the
+# semgrep-rules registry.
+rules:
+  - id: nervve.csharp.sql-injection
+    mode: taint
+    languages: [csharp]
+    severity: ERROR
+    message: >-
+      SQL statement built from untrusted request data. An attacker can read or change any data the database
+      account can reach. Use SqlParameter / parameterised queries, or FromSqlInterpolated in Entity Framework.
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+      confidence: high
+      category: injection
+    pattern-sources: &cs_sources
+      - pattern-either:
+          - pattern: Request.Query[...]
+          - pattern: Request.Form[...]
+          - pattern: Request.QueryString[...]
+          - pattern: Request.Params[...]
+          - pattern: Request.Headers[...]
+          - pattern: Request.Cookies[...]
+          - pattern: Request.Body
+          - pattern: HttpContext.Request.Query[...]
+          - pattern: $CTX.Request.Query[...]
+          - pattern: $CTX.Request.Form[...]
+      - patterns:
+          # MVC / Web API action parameters are bound from the request
+          - pattern-either:
+              - pattern-inside: |
+                  [$VERB(...)]
+                  public $RET $ACTION(..., $T $P, ...) { ... }
+              - pattern-inside: |
+                  [$VERB]
+                  public $RET $ACTION(..., $T $P, ...) { ... }
+              - pattern-inside: |
+                  public $RET $ACTION(..., [$BIND] $T $P, ...) { ... }
+              - pattern-inside: |
+                  public $RET $ACTION(..., [$BIND(...)] $T $P, ...) { ... }
+          - metavariable-regex:
+              metavariable: $VERB
+              regex: ^(HttpGet|HttpPost|HttpPut|HttpPatch|HttpDelete|Route)$
+          - pattern: $P
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  public $RET $ACTION(..., [$BIND] $T $P, ...) { ... }
+              - pattern-inside: |
+                  public $RET $ACTION(..., [$BIND(...)] $T $P, ...) { ... }
+          - metavariable-regex:
+              metavariable: $BIND
+              regex: ^(FromQuery|FromRoute|FromForm|FromBody|FromHeader)$
+          - pattern: $P
+    pattern-sanitizers: &cs_sanitizers
+      - pattern-either:
+          - pattern: int.Parse(...)
+          - pattern: long.Parse(...)
+          - pattern: Guid.Parse(...)
+          - pattern: Convert.ToInt32(...)
+          - pattern: HtmlEncoder.Default.Encode(...)
+          - pattern: HttpUtility.HtmlEncode(...)
+          - pattern: WebUtility.HtmlEncode(...)
+          - pattern: Path.GetFileName(...)
+          - pattern: Uri.EscapeDataString(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: new SqlCommand($Q, ...)
+              - pattern: new SqliteCommand($Q, ...)
+              - pattern: new NpgsqlCommand($Q, ...)
+              - pattern: new MySqlCommand($Q, ...)
+              - pattern: new OracleCommand($Q, ...)
+              - pattern: $CMD.CommandText = $Q
+              - pattern: $DB.Database.ExecuteSqlRaw($Q, ...)
+              - pattern: $SET.FromSqlRaw($Q, ...)
+              - pattern: $CONN.Query($Q, ...)
+              - pattern: $CONN.Execute($Q, ...)
+              - pattern: $CONN.QueryAsync($Q, ...)
+              - pattern: $CONN.ExecuteAsync($Q, ...)
+          - focus-metavariable: $Q
+
+  - id: nervve.csharp.command-injection
+    mode: taint
+    languages: [csharp]
+    severity: ERROR
+    message: >-
+      Process started with a command line built from untrusted input. An attacker can run commands as the
+      application. Use a fixed FileName with ArgumentList entries, never cmd.exe /c, and allow-list values.
+    metadata:
+      cwe: "CWE-78"
+      owasp: "A03:2021 Injection"
+      confidence: high
+      category: injection
+    pattern-sources: *cs_sources
+    pattern-sanitizers: *cs_sanitizers
+    pattern-sinks:
+      - pattern-either:
+          - pattern: Process.Start(...)
+          - pattern: System.Diagnostics.Process.Start(...)
+          - pattern: new ProcessStartInfo(...)
+          - pattern: $PSI.Arguments = $X
+          - pattern: $PSI.FileName = $X
+
+  - id: nervve.csharp.path-traversal
+    mode: taint
+    languages: [csharp]
+    severity: WARNING
+    message: >-
+      File path built from untrusted input. An attacker can read or overwrite files outside the intended folder.
+      Use Path.GetFullPath and check the result starts with the base directory.
+    metadata:
+      cwe: "CWE-22"
+      owasp: "A01:2021 Broken Access Control"
+      confidence: high
+      category: injection
+    pattern-sources: *cs_sources
+    pattern-sanitizers: *cs_sanitizers
+    pattern-sinks:
+      - pattern-either:
+          - pattern: File.$M(...)
+          - pattern: System.IO.File.$M(...)
+          - pattern: new FileStream(...)
+          - pattern: new StreamReader(...)
+          - pattern: new StreamWriter(...)
+          - pattern: PhysicalFile(...)
+          - pattern: Directory.Delete(...)
+
+  - id: nervve.csharp.ssrf
+    mode: taint
+    languages: [csharp]
+    severity: WARNING
+    message: >-
+      Server-side request to a URL taken from untrusted input (SSRF). An attacker can reach internal services and
+      cloud metadata endpoints. Allow-list the destination host and scheme.
+    metadata:
+      cwe: "CWE-918"
+      owasp: "A10:2021 Server-Side Request Forgery"
+      confidence: high
+      category: injection
+    pattern-sources: *cs_sources
+    pattern-sanitizers: *cs_sanitizers
+    pattern-sinks:
+      - pattern-either:
+          - pattern: $HTTP.GetAsync(...)
+          - pattern: $HTTP.GetStringAsync(...)
+          - pattern: $HTTP.PostAsync(...)
+          - pattern: $HTTP.SendAsync(...)
+          - pattern: WebRequest.Create(...)
+          - pattern: new Uri(...)
+          - pattern: new WebClient().DownloadString(...)
+
+  - id: nervve.csharp.open-redirect
+    mode: taint
+    languages: [csharp]
+    severity: WARNING
+    message: >-
+      Redirect to a location taken from untrusted input, usable for phishing. Use LocalRedirect or check
+      Url.IsLocalUrl before redirecting.
+    metadata:
+      cwe: "CWE-601"
+      owasp: "A01:2021 Broken Access Control"
+      confidence: high
+      category: injection
+    pattern-sources: *cs_sources
+    pattern-sanitizers: *cs_sanitizers
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: Redirect($LOC)
+              - pattern: Response.Redirect($LOC, ...)
+              - pattern: RedirectPermanent($LOC)
+          - pattern-not-inside: |
+              if (Url.IsLocalUrl($LOC)) { ... }
+          - focus-metavariable: $LOC
+
+  - id: nervve.csharp.xss
+    mode: taint
+    languages: [csharp]
+    severity: WARNING
+    message: >-
+      Untrusted input is written as raw HTML (Html.Raw, HtmlString, Response.Write, Content(..., "text/html")),
+      which allows cross-site scripting. Let Razor encode the value, or encode it with HtmlEncoder.
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021 Injection"
+      confidence: high
+      category: injection
+    pattern-sources: *cs_sources
+    pattern-sanitizers: *cs_sanitizers
+    pattern-sinks:
+      - pattern-either:
+          - pattern: Html.Raw(...)
+          - pattern: new HtmlString(...)
+          - pattern: Response.Write(...)
+          - pattern: Response.WriteAsync(...)
+          - pattern: Content($X, "text/html", ...)
+
+  - id: nervve.csharp.unsafe-deserialisation
+    languages: [csharp]
+    severity: ERROR
+    message: >-
+      An insecure .NET serializer (BinaryFormatter, NetDataContractSerializer, LosFormatter, SoapFormatter) or
+      Json.NET TypeNameHandling other than None can run code from crafted input. Use System.Text.Json or
+      TypeNameHandling.None.
+    metadata:
+      cwe: "CWE-502"
+      owasp: "A08:2021 Software and Data Integrity Failures"
+      confidence: high
+      category: deserialisation
+    pattern-either:
+      - pattern: new BinaryFormatter()
+      - pattern: new NetDataContractSerializer(...)
+      - pattern: new LosFormatter(...)
+      - pattern: new SoapFormatter(...)
+      - pattern: new ObjectStateFormatter(...)
+      - pattern: TypeNameHandling.All
+      - pattern: TypeNameHandling.Objects
+      - pattern: TypeNameHandling.Auto
+      - pattern: TypeNameHandling.Arrays
+
+  - id: nervve.csharp.tls-verification-disabled
+    languages: [csharp]
+    severity: ERROR
+    message: >-
+      TLS certificate validation always succeeds, so any machine on the network path can impersonate the server.
+      Remove the callback and trust the required CA in the certificate store.
+    metadata:
+      cwe: "CWE-295"
+      owasp: "A02:2021 Cryptographic Failures"
+      confidence: high
+      category: crypto
+    pattern-either:
+      - pattern: $X.ServerCertificateValidationCallback += (...) => true;
+      - pattern: $X.ServerCertificateValidationCallback = (...) => true;
+      - pattern: $X.ServerCertificateCustomValidationCallback = (...) => true;
+      - pattern: HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+
+  - id: nervve.csharp.weak-crypto
+    languages: [csharp]
+    severity: WARNING
+    message: >-
+      Broken or weak cryptography (MD5, SHA1, DES, TripleDES, RC2 or ECB mode). Use SHA256 or better and AesGcm.
+    metadata:
+      cwe: "CWE-327"
+      owasp: "A02:2021 Cryptographic Failures"
+      confidence: high
+      category: crypto
+    pattern-either:
+      - pattern: MD5.Create()
+      - pattern: SHA1.Create()
+      - pattern: new MD5CryptoServiceProvider()
+      - pattern: new SHA1CryptoServiceProvider()
+      - pattern: DES.Create()
+      - pattern: TripleDES.Create()
+      - pattern: RC2.Create()
+      - pattern: new DESCryptoServiceProvider()
+      - pattern: $C.Mode = CipherMode.ECB

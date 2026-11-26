@@ -33,6 +33,7 @@ ENGINES = [
     ("cicd", "CI/CD pipeline & deployment", "Build pipelines and continuous delivery: script injection, unpinned actions, token scope, "
                                             "GitOps (Argo CD / Flux), approvals, release integrity."),
     ("license", "Licence compliance", "Third-party licences that conflict with the organisation's policy."),
+    ("supply", "Software supply chain", "Known-malicious, typosquatted or unpublished packages, install scripts and dependency confusion."),
     ("aibom", "AI components (AI-BOM)", "Models, prompts and agents: unpinned models, remote code, prompt injection, excessive agency."),
     ("dast", "Live application & API testing (DAST)", "Transport security, headers, authentication enforcement and multi-user authorisation "
                                                      "(object, property and function level) against the running service."),
@@ -222,7 +223,7 @@ def _heat(matrix):
         ok = 100 * m["clear"] / tot
         rows.append(f'<div class="hr"><div class="hr-l"><b>{_e(m["name"])}</b><span>{_e(m["version"])}</span></div><div class="hr-c">{cells}</div>'
                     f'<div class="hr-v"><b>{m["gaps"]}</b> gaps · {ok:.0f}% clear</div></div>')
-    leg = "".join(f'<span><i style="background:{STATUS[k][1]}"></i>{STATUS[k][0]}</span>' for k in STATUS)
+    leg = "".join(f'<span><i style="background:{STATUS[k][1]}"></i>{STATUS[k][0]}</span>' for k in STATUS if k != "not_tested")
     return '<div class="heat">' + "".join(rows) + f'</div><div class="mini-leg">{leg}</div>'
 
 
@@ -260,8 +261,20 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
     sev = Counter(f.get("severity", "info") for f in fs)
     by_eng = Counter(f.get("engine") for f in fs)
     comps = (result.get("sbom") or {}).get("components") or []
-    engines_run = ["dast"] if dast else (result.get("engines") or CODE_AREAS)
-    matrix = FW.matrix(fs, engines_run)
+    cov = {} if dast else (result.get("coverage") or {})
+    if dast:
+        engines_run = ["dast"]
+    elif cov:                                   # what the scan actually examined (engine coverage record)
+        engines_run = [k for k, c in cov.items() if c.get("assessed")]
+    else:                                       # scans recorded before coverage existed
+        engines_run = list(result.get("engines") or sorted({f.get("engine") for f in fs_all if f.get("engine")}))
+    # Only controls an assessed area tests are reported; frameworks with none are left out
+    matrix = []
+    for m in FW.matrix(fs, engines_run):
+        m["controls"] = [c for c in m["controls"] if c["status"] != "not_tested"]
+        m["not_tested"] = 0
+        if m["controls"] or m["id"] == "cwe25":
+            matrix.append(m)
     risk, rcol, rink, rtext = _risk(fs)
     d = result.get("decision") or {}
     repo = result.get("repo") or (result.get("name") if dast else None) or ("application" if dast else "repository")
@@ -303,14 +316,14 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
     for i, m in enumerate(matrix):
         tot = len(m["controls"])
         parts = [("Gap", m["gaps"], STATUS["gap"][1]), ("Observation", m["observations"], STATUS["observation"][1]),
-                 ("No issues found", m["clear"], STATUS["clear"][1]), ("Not assessed", m["not_tested"], STATUS["not_tested"][1])]
+                 ("No issues found", m["clear"], STATUS["clear"][1])]
         if m["id"] == "cwe25":
             fw_rows.append(f'<tr><td><a href="#fw-{m["id"]}"><b>{_e(m["name"])}</b></a><div class="muted">{_e(m["version"])}</div></td>'
-                           f'<td colspan="5">{tot} of the 25 weaknesses present ({sum(c["count"] for c in m["controls"])} findings)</td></tr>')
+                           f'<td colspan="4">{tot} of the 25 weaknesses present ({sum(c["count"] for c in m["controls"])} findings)</td></tr>')
         else:
             fw_rows.append(f'<tr><td><a href="#fw-{m["id"]}"><b>{_e(m["name"])}</b></a><div class="muted">{_e(m["version"])}</div></td>'
                            f'<td class="num">{m["gaps"]}</td><td class="num">{m["observations"]}</td><td class="num">{m["clear"]}</td>'
-                           f'<td class="num">{m["not_tested"]}</td><td style="width:30%">{_stack(parts, tot)}</td></tr>')
+                           f'<td style="width:34%">{_stack(parts, tot)}</td></tr>')
         crow = []
         for c in m["controls"]:
             lab, col, ic = STATUS[c["status"]]
@@ -418,8 +431,12 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
         f'<td class="num">{_e(f.get("cvss") if f.get("cvss") is not None else "—")}</td>'
         f'<td class="num">{_pct(f.get("epss"))}</td>'
         f'<td>{"<b class=dn>Yes</b>" if f.get("kev") else "No"}</td><td>{"Yes" if f.get("reachable") else "—"}</td></tr>' for f in vulns)
-    cve_section = "" if dast else (
-        '<section id="cve"><h2><span class="no">9</span>Vulnerability register (CVE)</h2>'
+    has_cve = not dast and "sca" in engines_run
+    has_sbom = not dast and bool(comps)
+    no_cve, no_sbom = "9", ("10" if has_cve else "9")
+    no_method = "9" if dast else str(9 + has_cve + has_sbom)
+    cve_section = "" if not has_cve else (
+        f'<section id="cve"><h2><span class="no">{no_cve}</span>Vulnerability register (CVE)</h2>'
         '<p class="lede">Every known vulnerability found in third-party components. Each identifier links to the public record '
         '(NVD for CVEs, GitHub Advisory Database or OSV for other advisories).</p>'
         + (f'<table><thead><tr><th>CVE / advisory</th><th>Severity</th><th>Package</th><th>Installed</th><th>Fixed in</th>'
@@ -437,14 +454,23 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
            ("4", "Top risks", "top"), ("5", "Risk by area", "areas"), ("6", "Framework & compliance alignment", "fw"),
            ("7", "Remediation roadmap", "road"), ("8", "Detailed findings", "det"), ("9", "Vulnerability register (CVE)", "cve"),
            ("10", "Software bill of materials", "sbom"), ("11", "Methodology", "method"), ("A", "Appendix — definitions", "app"), ("B", "Attestation & disclaimer", "att")]
-    eng_cov = "".join(
-        f'<tr><td><b>{_e(n)}</b><div class="muted">{_e(w)}</div></td><td class="nowrap">{"<span class=st style=--c:#0ca30c>✓</span> Assessed" if k in engines_run else "<span class=st style=--c:#c3c2b7>–</span> Not in scope"}</td>'
-        f'<td class="num">{by_eng[k] if k in engines_run else "—"}</td></tr>' for k, n, w in ENGINES if (k == "dast") == dast)
-    if not dast:
+    names = {k: (n, w) for k, n, w in ENGINES}
+
+    def _tools(c):
+        return ", ".join(_e(t["name"]) + (f' <span class="muted">{_e(t["version"])}</span>' if t.get("version") else "")
+                         + (' <b class="dn">failed</b>' if t.get("error") else "") for t in c.get("tools") or [])
+    eng_cov = ""
+    for k in [k for k, *_ in ENGINES if k in engines_run]:
+        n, w = names[k]
+        c = cov.get(k) or {}
+        detail = " · ".join(x for x in (c.get("examined"), c.get("depth")) if x) or w
+        eng_cov += (f'<tr><td><a href="#d-{k}"><b>{_e(n)}</b></a><div class="muted">{_e(detail)}</div>'
+                    + (f'<div class="muted">Not covered: {_e(", ".join(c["not_covered"]))}</div>' if c.get("not_covered") else "")
+                    + f'</td><td>{_tools(c) if c else "<span class=muted>—</span>"}</td><td class="num">{by_eng[k]}</td></tr>')
+    if not dast and comps:
         eng_cov += (f'<tr><td><a href="#sbom"><b>Software bill of materials (SBOM)</b></a><div class="muted">Inventory of every third-party component '
                     f'(direct and transitive) with version, licence and package URL; exported as CycloneDX 1.5.</div></td>'
-                    f'<td class="nowrap"><span class=st style=--c:#0ca30c>✓</span> Assessed</td>'
-                    f'<td class="num">{len(comps)} component{"" if len(comps) == 1 else "s"}</td></tr>')
+                    f'<td>CycloneDX 1.5</td><td class="num">{len(comps)} component{"" if len(comps) == 1 else "s"}</td></tr>')
     if comps:
         sbom_body = (f'<div class="grid2"><div class="panel"><h4>Licences</h4>{_bars(lic_top, total=len(comps))}</div>'
                      f'<div class="panel"><h4>Ecosystems</h4>{_bars(eco.most_common(8), total=len(comps))}'
@@ -453,8 +479,8 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
                      f'<table><thead><tr><th>Component</th><th>Version</th><th>Licence</th><th>Type</th><th>Vulnerabilities</th></tr></thead><tbody>{sbom_rows}</tbody></table>')
     else:
         sbom_body = '<p class="muted">No dependency manifests were found in the repository.</p>'
-    sbom_section = "" if dast else (
-        f'<section id="sbom" class="pb"><h2><span class="no">10</span>Software bill of materials</h2>'
+    sbom_section = "" if not has_sbom else (
+        f'<section id="sbom" class="pb"><h2><span class="no">{no_sbom}</span>Software bill of materials</h2>'
         f'<p class="lede">{len(comps)} third-party components were inventoried, including transitive dependencies. '
         f'The machine-readable CycloneDX 1.5 SBOM is available from the NERvvE DevSecOps console.</p>{sbom_body}</section>')
     if dast:
@@ -468,9 +494,14 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
         method_rows = [
             ("Approach", "Automated dynamic testing of the running service from the outside, as real users: transport security, security headers, "
                          "authentication enforcement and, with several test identities, object-, property- and function-level authorisation."),
-            ("Safety", "Read-only: GET, HEAD and OPTIONS requests only; no data was created, changed or deleted. Requests were locked to the target host."
+            ("Safety", "Read-only: GET, HEAD and OPTIONS requests only (the ZAP spider does not submit forms); no data was created, changed or "
+                       "deleted. Requests were locked to the target host."
                        if safe else "Includes active testing; attack payloads were sent to the target with the owner's authorisation."),
             ("Ownership", "Testing ran only after the target's owner proved control of the host (verification file)."),
+            *([("OWASP ZAP", f'OWASP ZAP {_e((result.get("stats") or {}).get("zap", {}).get("version", ""))}: the spider explored '
+                             f'{(result.get("stats") or {}).get("zap", {}).get("urls", 0)} URLs and every response was analysed by the passive scanner'
+                             + ("; the active scanner then sent attack payloads with the owner's authorisation." if (result.get("stats") or {}).get("zap", {}).get("mode") == "active" else "."))]
+              if "zap" in (result.get("tools") or []) else []),
             ("Prioritisation", "NERvvE DevSecOps Risk Score (0–100) combines severity, exploitability, exposure and asset criticality; it sets the priority (P0–P3)."),
             ("Limitations", "Automated testing does not replace manual penetration testing of business logic, chained attacks or write operations. "
                             "Results reflect the state of the service at the time of testing."),
@@ -480,14 +511,33 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
                       f'<tr><th>Snapshot</th><td>{_e(result.get("branch") or "default branch")}{", commit " + _e(commit) if commit else ""}. '
                       f'The source was retrieved read-only for the duration of the scan and was not retained.</td></tr>'
                       f'<tr><th>Assessment date</th><td>{when} (automated, {_e(result.get("duration_s"))} s)</td></tr>'
-                      f'<tr><th>Components inventoried</th><td>{len(comps)} ({dep.get("direct", 0)} direct, {dep.get("transitive", 0)} transitive)</td></tr>')
+                      + (f'<tr><th>Components inventoried</th><td>{len(comps)} ({dep.get("direct", 0)} direct, {dep.get("transitive", 0)} transitive)</td></tr>'
+                         if comps else ""))
+        area_names = [names[k][0] for k in [k for k, *_ in ENGINES if k in engines_run]]
+        versions = result.get("tool_versions") or {}
+        tool_list = ["NERvvE DevSecOps built-in rules"] + [f"{t} {versions.get(t, '')}".strip() for t in (result.get("tools") or [])
+                                                            if t != "myelin-builtin"]
+        depth = []
+        for k in engines_run:
+            c = cov.get(k) or {}
+            if c.get("depth"):
+                depth.append(f"{names[k][0]}: {c['depth']}.")
         method_rows = [
-            ("Approach", "Automated static assessment of the repository snapshot: source code, dependency manifests and lockfiles, infrastructure "
-                         "and deployment definitions, and CI/CD pipeline configuration. No code was executed and no live system was tested."),
-            ("Analysis engines", ", ".join(result.get("tools") or ["myelin-builtin"])),
-            ("Vulnerability intelligence", f'{srcs}{" — offline mode (bundled data)" if intel.get("offline") else ""}. CVSS v3 base scores; '
-                                           f'EPSS exploit probability; CISA KEV catalogue.'
-                                           + (f' Unavailable during this scan: {", ".join(intel["errors"])}.' if intel.get("errors") else "")),
+            ("Approach", "Automated static assessment of the repository snapshot. Areas examined: " + (", ".join(area_names) or "none")
+                         + ". No code was executed and no live system was tested."),
+            ("Analysis engines", ", ".join(tool_list)),
+        ]
+        if depth:
+            method_rows.append(("Depth of analysis", " ".join(depth)))
+        if "sca" in engines_run:
+            method_rows.append(("Vulnerability intelligence", f'{srcs}{" — offline mode (bundled data)" if intel.get("offline") else ""}. CVSS v3 base scores; '
+                                                             f'EPSS exploit probability; CISA KEV catalogue.'
+                                                             + (f' Unavailable during this scan: {", ".join(intel["errors"])}.' if intel.get("errors") else "")))
+        failed = sorted({t["name"] for c in cov.values() for t in c.get("tools") or [] if t.get("error")})
+        if failed:
+            method_rows.append(("Tool errors", "These tools did not complete and their results are missing from this report: " + ", ".join(failed)
+                                + ". The areas they serve were assessed by the remaining engines only."))
+        method_rows += [
             ("Prioritisation", "NERvvE DevSecOps Risk Score (0–100) combines severity, exploit likelihood, known exploitation, reachability from "
                                "first-party code, exposure and asset criticality. The score sets the priority (P0–P3) and the remediation target."),
             ("Noise control", "Duplicate results from different engines are merged; findings in tests, fixtures and vendored code are "
@@ -495,11 +545,24 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
             ("Limitations", "Static analysis identifies likely weaknesses and may miss issues in business logic, runtime configuration or code "
                             "not present in the repository. Results reflect the snapshot above only."),
         ]
-    method_section = (f'<section id="method"><h2><span class="no">{"9" if dast else "11"}</span>Methodology</h2><table class="kv">'
+    terms = [("CWE", "Common Weakness Enumeration identifier of the weakness type.")]
+    if has_cve or dast:
+        terms = [("CVE", "Common Vulnerabilities and Exposures identifier of a publicly disclosed vulnerability."), *terms,
+                 ("CVSS", "Common Vulnerability Scoring System base score (0–10).")]
+    if has_cve:
+        terms += [("EPSS", "Exploit Prediction Scoring System: probability of exploitation in the next 30 days."),
+                  ("KEV", "Listed in the CISA Known Exploited Vulnerabilities catalogue.")]
+    if has_sbom:
+        terms.append(("SBOM", "Software bill of materials — inventory of third-party components (CycloneDX)."))
+    if any(f.get("dataflow") for f in fs):
+        terms.append(("Data flow", "The finding was confirmed by following untrusted input from where it enters the application to the "
+                                   "dangerous operation (taint analysis); the evidence shows the path."))
+    terms_html = "".join(f"<tr><th>{_e(a)}</th><td>{_e(b)}</td></tr>" for a, b in terms)
+    method_section = (f'<section id="method"><h2><span class="no">{no_method}</span>Methodology</h2><table class="kv">'
                       + "".join(f"<tr><th>{_e(a)}</th><td>{_e(b)}</td></tr>" for a, b in method_rows) + "</table></section>")
-    if dast:
-        toc = [t for t in toc if t[2] not in ("sbom", "cve")]
-        toc = [("9", t[1], t[2]) if t[2] == "method" else t for t in toc]
+    toc = [t for t in toc if (t[2] != "cve" or has_cve) and (t[2] != "sbom" or has_sbom)]
+    toc = [((no_cve if t[2] == "cve" else no_sbom if t[2] == "sbom" else no_method), t[1], t[2])
+           if t[2] in ("cve", "sbom", "method") else t for t in toc]
     subtitle = ("Live application and API security assessment — transport, authentication and multi-user authorisation" if dast
                 else "Source code, open-source supply chain, infrastructure and CI/CD pipeline security assessment")
     lede_tail = (f'{result.get("requests", 0)} requests to the running service' if dast else f'{len(comps)} third-party components')
@@ -697,7 +760,8 @@ a{{color:#1c5cab}}
 <tr><th>Findings excluded</th><td>{excluded} (fixed, accepted risk, false positive or governed suppression)</td></tr>
 </table>
 <h3>Areas assessed</h3>
-<table><thead><tr><th>Area</th><th>Coverage</th><th class="num">Result</th></tr></thead><tbody>{eng_cov}</tbody></table>
+<p class="muted">Only areas that apply to this {"service" if dast else "repository"} and were examined are listed.</p>
+<table><thead><tr><th>Area and coverage</th><th>Analysis tools</th><th class="num">Findings</th></tr></thead><tbody>{eng_cov}</tbody></table>
 </section>
 
 <section id="top"><h2><span class="no">4</span>Top risks</h2>
@@ -714,12 +778,12 @@ a{{color:#1c5cab}}
 
 <section id="fw" class="pb"><h2><span class="no">6</span>Framework &amp; compliance alignment</h2>
 <p class="lede">Each finding is mapped to the controls it bears on. A control is shown as a <b>gap</b> when critical or high-severity findings are open against it,
-an <b>observation</b> when only medium or low findings are open, <b>no issues found</b> when an assessed area tests for it and found nothing, and
-<b>not assessed</b> when no area in scope tests it.</p>
+an <b>observation</b> when only medium or low findings are open, and <b>no issues found</b> when an assessed area tests for it and found nothing.
+Only controls tested by the areas assessed in this scan are listed.</p>
 <div class="note">Automated evidence supports — but does not by itself establish — compliance with a standard. Controls that depend on process, people or
 physical security are outside the scope of this assessment.</div>
 <h3>6.1 Summary</h3>
-<table><thead><tr><th>Framework</th><th class="num">Gaps</th><th class="num">Observ.</th><th class="num">No issues</th><th class="num">Not assessed</th><th>Controls</th></tr></thead>
+<table><thead><tr><th>Framework</th><th class="num">Gaps</th><th class="num">Observ.</th><th class="num">No issues</th><th>Controls tested</th></tr></thead>
 <tbody>{"".join(fw_rows)}</tbody></table>
 {"".join(fw_detail)}
 </section>
@@ -753,12 +817,7 @@ physical security are outside the scope of this assessment.</div>
 <table><tbody>{"".join(f"<tr><td><b>{p}</b></td><td>{lab}</td><td>fix within {days} days</td></tr>" for p, (lab, days) in PRIORITY.items())}</tbody></table>
 <h3>Terms</h3>
 <table class="kv">
-<tr><th>CVE</th><td>Common Vulnerabilities and Exposures identifier of a publicly disclosed vulnerability.</td></tr>
-<tr><th>CWE</th><td>Common Weakness Enumeration identifier of the weakness type.</td></tr>
-<tr><th>CVSS</th><td>Common Vulnerability Scoring System base score (0–10).</td></tr>
-<tr><th>EPSS</th><td>Exploit Prediction Scoring System: probability of exploitation in the next 30 days.</td></tr>
-<tr><th>KEV</th><td>Listed in the CISA Known Exploited Vulnerabilities catalogue.</td></tr>
-<tr><th>SBOM</th><td>Software bill of materials — inventory of third-party components (CycloneDX).</td></tr>
+{terms_html}
 </table>
 </section>
 

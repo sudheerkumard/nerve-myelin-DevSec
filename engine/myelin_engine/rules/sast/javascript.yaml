@@ -1,0 +1,445 @@
+# Copyright (c) 2026 Sudheer Kumar.
+# SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
+# NERvvE DevSecOps SAST rules for JavaScript and TypeScript (Node.js: Express, Koa, Fastify, Next.js API routes;
+# browser DOM). Original work: not derived from the semgrep-rules registry.
+rules:
+  - id: nervve.js.sql-injection
+    mode: taint
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      SQL statement built from untrusted request data. An attacker can read or change any data the database
+      account can reach. Use placeholders (db.query("... WHERE id = ?", [id])) or the query builder's bindings.
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+      confidence: high
+      category: injection
+    pattern-sources: &js_sources
+      - patterns:
+          - pattern-either:
+              - pattern: $REQ.query
+              - pattern: $REQ.body
+              - pattern: $REQ.params
+              - pattern: $REQ.headers
+              - pattern: $REQ.cookies
+              - pattern: $REQ.originalUrl
+              - pattern: $REQ.header(...)
+              - pattern: $REQ.param(...)
+              - pattern: $REQ.request.query
+              - pattern: $REQ.request.body
+          - metavariable-regex:
+              metavariable: $REQ
+              regex: ^(req|request|ctx|context|event|r)$
+      - pattern: process.argv
+      - patterns:
+          # Express / Koa / Fastify handlers: the first argument is the request
+          - pattern-either:
+              - pattern-inside: $APP.$METHOD($PATH, ..., function ($REQ, $RES, ...) {...})
+              - pattern-inside: $APP.$METHOD($PATH, ..., ($REQ, $RES, ...) => {...})
+              - pattern-inside: $APP.$METHOD($PATH, ..., async function ($REQ, $RES, ...) {...})
+              - pattern-inside: $APP.$METHOD($PATH, ..., async ($REQ, $RES, ...) => {...})
+          - metavariable-regex:
+              metavariable: $METHOD
+              regex: ^(get|post|put|patch|delete|all|use|route|options|head)$
+          - pattern-either:
+              - pattern: $REQ.query
+              - pattern: $REQ.body
+              - pattern: $REQ.params
+              - pattern: $REQ.headers
+              - pattern: $REQ.cookies
+    pattern-sanitizers: &js_sanitizers
+      - pattern-either:
+          - pattern: parseInt(...)
+          - pattern: parseFloat(...)
+          - pattern: Number(...)
+          - pattern: Boolean(...)
+          - pattern: encodeURIComponent(...)
+          - pattern: escape(...)
+          - pattern: validator.escape(...)
+          - pattern: validator.isInt(...)
+          - pattern: DOMPurify.sanitize(...)
+          - pattern: sanitizeHtml(...)
+          - pattern: path.basename(...)
+          - pattern: $X.length
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $DB.query($Q, ...)
+              - pattern: $DB.execute($Q, ...)
+              - pattern: $DB.raw($Q, ...)
+              - pattern: $DB.$queryRawUnsafe($Q, ...)
+              - pattern: $DB.$executeRawUnsafe($Q, ...)
+              - pattern: $DB.sequelize.query($Q, ...)
+              - pattern: $KNEX.whereRaw($Q, ...)
+          - focus-metavariable: $Q
+          # a bare string literal with placeholders is fine; only flag strings built from data
+          - pattern-not: '"..."'
+
+  - id: nervve.js.command-injection
+    mode: taint
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      Operating-system command built from untrusted input. An attacker can run any command as the server process.
+      Use child_process.execFile/spawn with a fixed program and an argument array (no shell), and allow-list values.
+    metadata:
+      cwe: "CWE-78"
+      owasp: "A03:2021 Injection"
+      confidence: high
+      category: injection
+    pattern-sources: *js_sources
+    pattern-sanitizers: *js_sanitizers
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: child_process.exec($CMD, ...)
+              - pattern: child_process.execSync($CMD, ...)
+              - pattern: exec($CMD, ...)
+              - pattern: execSync($CMD, ...)
+              - pattern: $CP.exec($CMD, ...)
+              - pattern: $CP.execSync($CMD, ...)
+              - pattern: 'child_process.spawn($CMD, $ARGS, {..., shell: true, ...})'
+              - pattern: 'spawn($CMD, $ARGS, {..., shell: true, ...})'
+          - focus-metavariable: $CMD
+
+  - id: nervve.js.code-injection
+    mode: taint
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      Untrusted input is executed as JavaScript (eval, Function, vm, setTimeout with a string). An attacker can run
+      any code with the server's or the page's privileges. Parse data with JSON.parse instead.
+    metadata:
+      cwe: "CWE-95"
+      owasp: "A03:2021 Injection"
+      confidence: high
+      category: injection
+    pattern-sources: *js_sources
+    pattern-sanitizers: *js_sanitizers
+    pattern-sinks:
+      - pattern-either:
+          - pattern: eval(...)
+          - pattern: new Function(...)
+          - pattern: Function(...)
+          - pattern: vm.runInNewContext(...)
+          - pattern: vm.runInThisContext(...)
+          - pattern: vm.runInContext(...)
+          - pattern: new vm.Script(...)
+          - patterns:
+              - pattern-either:
+                  - pattern: setTimeout($CODE, ...)
+                  - pattern: setInterval($CODE, ...)
+              - focus-metavariable: $CODE
+
+  - id: nervve.js.path-traversal
+    mode: taint
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: >-
+      File path built from untrusted input. An attacker can read or overwrite files outside the intended folder
+      with "../" sequences. Resolve the path with path.resolve and check it starts with the base directory.
+    metadata:
+      cwe: "CWE-22"
+      owasp: "A01:2021 Broken Access Control"
+      confidence: high
+      category: injection
+    pattern-sources: *js_sources
+    pattern-sanitizers: *js_sanitizers
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: fs.$FN($P, ...)
+              - pattern: fsp.$FN($P, ...)
+              - pattern: fs.promises.$FN($P, ...)
+              - pattern: $RES.sendFile($P, ...)
+              - pattern: $RES.download($P, ...)
+              - pattern: require($P)
+          - metavariable-regex:
+              metavariable: $FN
+              regex: ^(readFile|readFileSync|writeFile|writeFileSync|appendFile|appendFileSync|createReadStream|createWriteStream|unlink|unlinkSync|rm|rmSync|readdir|readdirSync|open|openSync|stat)$
+          - focus-metavariable: $P
+      - patterns:
+          - pattern-either:
+              - pattern: $RES.sendFile($P, ...)
+              - pattern: $RES.download($P, ...)
+              - pattern: require($P)
+          - pattern-not: '$RES.sendFile($P, {..., root: $ROOT, ...})'
+          - focus-metavariable: $P
+
+  - id: nervve.js.ssrf
+    mode: taint
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: >-
+      Server-side request to a URL taken from untrusted input (SSRF). An attacker can reach internal services and
+      cloud metadata endpoints. Allow-list the destination host and protocol before making the request.
+    metadata:
+      cwe: "CWE-918"
+      owasp: "A10:2021 Server-Side Request Forgery"
+      confidence: high
+      category: injection
+    pattern-sources: *js_sources
+    pattern-sanitizers: *js_sanitizers
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: fetch($URL, ...)
+              - pattern: axios($URL, ...)
+              - pattern: axios.$M($URL, ...)
+              - pattern: http.get($URL, ...)
+              - pattern: https.get($URL, ...)
+              - pattern: http.request($URL, ...)
+              - pattern: https.request($URL, ...)
+              - pattern: got($URL, ...)
+              - pattern: got.$M($URL, ...)
+              - pattern: request($URL, ...)
+              - pattern: needle.get($URL, ...)
+          - focus-metavariable: $URL
+
+  - id: nervve.js.open-redirect
+    mode: taint
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: >-
+      Redirect to a location taken from untrusted input. Attackers use it to send users to phishing pages that
+      appear to come from this site. Redirect only to relative paths or an allow-list of hosts.
+    metadata:
+      cwe: "CWE-601"
+      owasp: "A01:2021 Broken Access Control"
+      confidence: high
+      category: injection
+    pattern-sources: *js_sources
+    pattern-sanitizers: *js_sanitizers
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $RES.redirect($LOC)
+              - pattern: $RES.redirect($CODE, $LOC)
+              - pattern: $CTX.redirect($LOC)
+              - pattern: '$RES.writeHead($CODE, {..., Location: $LOC, ...})'
+              - pattern: $RES.setHeader("Location", $LOC)
+          - focus-metavariable: $LOC
+
+  - id: nervve.js.reflected-xss
+    mode: taint
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: >-
+      Untrusted request data is written into an HTML response without escaping (reflected cross-site scripting).
+      Render through a template engine that escapes by default, or escape the value before sending it.
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021 Injection"
+      confidence: high
+      category: injection
+    pattern-sources: *js_sources
+    pattern-sanitizers: *js_sanitizers
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $RES.send($BODY)
+              - pattern: $RES.write($BODY)
+              - pattern: $RES.end($BODY)
+          - focus-metavariable: $BODY
+          - pattern-either:
+              - pattern: '"$HTML" + $X'
+              - pattern: $X + "$HTML"
+              - pattern: '`$HTML`'
+          - metavariable-regex:
+              metavariable: $HTML
+              regex: (?s).*<[a-zA-Z!/].*
+
+  - id: nervve.js.dom-xss
+    mode: taint
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: >-
+      Data from the page URL, a message event or storage is written into the DOM as HTML (DOM-based cross-site
+      scripting). Use textContent, or sanitise with DOMPurify before assigning HTML.
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021 Injection"
+      confidence: high
+      category: injection
+    pattern-sources:
+      - pattern-either:
+          - pattern: location.hash
+          - pattern: location.search
+          - pattern: location.href
+          - pattern: window.location.hash
+          - pattern: window.location.search
+          - pattern: window.location.href
+          - pattern: document.URL
+          - pattern: document.documentURI
+          - pattern: document.referrer
+          - pattern: document.cookie
+          - pattern: window.name
+          - pattern: new URLSearchParams(...).get(...)
+          - pattern: $E.data
+          - pattern: localStorage.getItem(...)
+          - pattern: sessionStorage.getItem(...)
+    pattern-sanitizers: *js_sanitizers
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $EL.innerHTML = $V
+              - pattern: $EL.outerHTML = $V
+              - pattern: document.write($V)
+              - pattern: document.writeln($V)
+              - pattern: $EL.insertAdjacentHTML($POS, $V)
+              - pattern: $($V)
+              - pattern: $EL.html($V)
+              - pattern: eval($V)
+              - pattern: '<$TAG dangerouslySetInnerHTML={{__html: $V}} />'
+          - focus-metavariable: $V
+
+  - id: nervve.js.nosql-injection
+    mode: taint
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: >-
+      A MongoDB query uses an object taken directly from the request. Attackers can send operators such as
+      {"$ne": null} or {"$where": ...} to bypass checks. Cast fields to the expected type (String(...)) or
+      validate the body with a schema.
+    metadata:
+      cwe: "CWE-943"
+      owasp: "A03:2021 Injection"
+      confidence: high
+      category: injection
+    pattern-sources: *js_sources
+    pattern-sanitizers:
+      - pattern: String(...)
+      - pattern: mongoSanitize(...)
+      - pattern: sanitize(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $M.find($Q, ...)
+              - pattern: $M.findOne($Q, ...)
+              - pattern: $M.findOneAndUpdate($Q, ...)
+              - pattern: $M.updateOne($Q, ...)
+              - pattern: $M.deleteOne($Q, ...)
+              - pattern: $M.deleteMany($Q, ...)
+              - pattern: $M.countDocuments($Q, ...)
+              - pattern: '$M.find({$where: $Q})'
+          - focus-metavariable: $Q
+
+  - id: nervve.js.insecure-deserialisation
+    mode: taint
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      Untrusted data is deserialised with a library that can execute code (node-serialize, serialize-to-js,
+      js-yaml load with the full schema). Use JSON.parse, or yaml.load with the default safe schema.
+    metadata:
+      cwe: "CWE-502"
+      owasp: "A08:2021 Software and Data Integrity Failures"
+      confidence: high
+      category: injection
+    pattern-sources: *js_sources
+    pattern-sinks:
+      - pattern-either:
+          - pattern: serialize.unserialize(...)
+          - pattern: require("node-serialize").unserialize(...)
+          - pattern: unserialize(...)
+          - pattern: 'yaml.load($X, {..., schema: yaml.DEFAULT_FULL_SCHEMA, ...})'
+          - pattern: yaml.loadAll(...)
+
+  - id: nervve.js.prototype-pollution
+    mode: taint
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: >-
+      An object is merged or assigned with keys taken from the request. Keys such as "__proto__" or "constructor"
+      change the prototype of every object (prototype pollution), which can lead to privilege escalation or code
+      execution. Reject those keys or use Object.create(null) / Map.
+    metadata:
+      cwe: "CWE-1321"
+      owasp: "A03:2021 Injection"
+      confidence: high
+      category: injection
+    pattern-sources: *js_sources
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: _.merge($T, $SRC, ...)
+              - pattern: _.defaultsDeep($T, $SRC, ...)
+              - pattern: merge($T, $SRC, ...)
+              - pattern: deepmerge($T, $SRC, ...)
+              - pattern: $OBJ[$K1][$K2] = $V
+          - focus-metavariable: $SRC
+
+  - id: nervve.js.tls-verification-disabled
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      TLS certificate verification is disabled, so anyone on the network path can impersonate the server. Remove
+      rejectUnauthorized: false / NODE_TLS_REJECT_UNAUTHORIZED=0 and supply the CA certificate instead.
+    metadata:
+      cwe: "CWE-295"
+      owasp: "A02:2021 Cryptographic Failures"
+      confidence: high
+      category: crypto
+    pattern-either:
+      - pattern: '{..., rejectUnauthorized: false, ...}'
+      - pattern: process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"
+      - pattern: process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = "0"
+
+  - id: nervve.js.jwt-unverified
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      A JSON Web Token is decoded without verification, or verification accepts the "none" algorithm. Anyone can
+      forge tokens. Use jwt.verify with the key and an explicit algorithms list.
+    metadata:
+      cwe: "CWE-347"
+      owasp: "A02:2021 Cryptographic Failures"
+      confidence: high
+      category: crypto
+    pattern-either:
+      - pattern: 'jwt.verify($T, $K, {..., algorithms: [..., "none", ...], ...}, ...)'
+      - patterns:
+          - pattern: jwt.decode($T, ...)
+          - pattern-inside: |
+              function $F(...) { ... }
+          - pattern-not-inside: |
+              ...
+              jwt.verify(...)
+              ...
+
+  - id: nervve.js.weak-crypto
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: >-
+      Broken or weak cryptography (MD5/SHA-1 for security, DES, RC4 or ECB mode). Use SHA-256 or better for
+      hashing, AES-GCM for encryption, and bcrypt/argon2/scrypt for passwords.
+    metadata:
+      cwe: "CWE-327"
+      owasp: "A02:2021 Cryptographic Failures"
+      confidence: medium
+      category: crypto
+    patterns:
+      - pattern-either:
+          - pattern: crypto.createCipheriv("$ALG", ...)
+          - pattern: crypto.createCipher(...)
+          - pattern: crypto.createHash("$ALG")
+      - metavariable-regex:
+          metavariable: $ALG
+          regex: (?i)^(md5|sha1|des.*|rc4.*|aes-\d+-ecb|bf.*|blowfish.*)$
+
+  - id: nervve.js.insecure-cookie
+    languages: [javascript, typescript]
+    severity: INFO
+    message: >-
+      A session cookie is set without the Secure or HttpOnly flag, so it can be sent over plain HTTP or read by
+      injected scripts. Set secure: true, httpOnly: true and sameSite.
+    metadata:
+      cwe: "CWE-614"
+      owasp: "A05:2021 Security Misconfiguration"
+      confidence: medium
+      category: config
+    pattern-either:
+      - pattern: '$RES.cookie($N, $V, {..., httpOnly: false, ...})'
+      - pattern: '$RES.cookie($N, $V, {..., secure: false, ...})'
+      - pattern: 'session({..., cookie: {..., secure: false, ...}, ...})'

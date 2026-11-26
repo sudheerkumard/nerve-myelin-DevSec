@@ -62,8 +62,9 @@ myelin dast --target https://api.example.com --openapi spec.json   # only APIs y
 myelin attest --image myregistry/app@sha256:… --sbom sbom.cdx.json   # cosign keyless sign + SBOM attestation
 ```
 
-When Trivy, Semgrep, Gitleaks or Checkov are on PATH, NERvvE DevSecOps runs them alongside its built-in engines,
-normalises their output and removes duplicates. Ready-made pipeline templates are in [`ci-templates/`](ci-templates/).
+The platform and CLI images bundle Opengrep (with NERvvE's own data-flow rule pack), Trivy, Gitleaks, Checkov and Bandit,
+and run them alongside the built-in engines, normalising their output and removing duplicates. Each scan records which
+areas it actually examined; reports list only those (see docs/concepts/scanning.md). Ready-made pipeline templates are in [`ci-templates/`](ci-templates/).
 
 Apply supplier VEX or CSAF statements to a saved scan. An exact vulnerability ID and package URL are required, and
 imported `not_affected` evidence stays visible and never closes a finding by itself:

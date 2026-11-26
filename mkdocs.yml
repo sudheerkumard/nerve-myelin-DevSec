@@ -91,6 +91,7 @@ nav:
       - Data flow: getting-started/data-flow.md
       - Data model: getting-started/data-model.md
       - Anatomy of a finding: getting-started/anatomy-of-a-finding.md
+      - How scanning works: concepts/scanning.md
       - Risk score: concepts/risk-score.md
       - Attack paths: concepts/attack-paths.md
       - Windows evaluation: ENTERPRISE-WINDOWS.md

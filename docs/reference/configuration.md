@@ -17,7 +17,7 @@ Settings are read from the process environment, then the file named by `MYELIN_E
 | `MYELIN_API_KEYS` | `nm_demo_9f2c41e7b8` | Demo mode only: accepted API keys |
 | `MYELIN_API_KEY_PEPPER_REF` | `env://MYELIN_API_KEY_PEPPER` | Secret reference of the API-key hashing pepper |
 | `MYELIN_API_KEY` |  | CLI: integration API key |
-| `MYELIN_CACHE_DIR` |  | Engine cache directory (advisories, registry metadata) |
+| `MYELIN_CACHE_DIR` |  | Writable cache: advisories and registry metadata, the bundled scanners (Opengrep unpack, Trivy vulnerability database) |
 | `MYELIN_CA_FILE` |  | CLI: extra CA certificate |
 | `MYELIN_CLOUD_CREDENTIAL` |  | CLI: cloud credential JSON for `myelin cloud` |
 | `MYELIN_CONSOLE_PATH` | `(installation path)` | Console page served at / |
@@ -50,7 +50,7 @@ Settings are read from the process environment, then the file named by `MYELIN_E
 | `MYELIN_POLICY_FILE` |  | Default policy file (empty: built-in policy) |
 | `MYELIN_PUBLIC_URL` | `http://localhost:8080` | Public URL of the console (links in tickets and e-mails) |
 | `MYELIN_PYPI_URL` |  | PyPI registry for existence checks |
-| `MYELIN_SAST_RULES` |  | Extra SAST rule file |
+| `MYELIN_SAST_RULES` |  | Extra Opengrep/Semgrep rule file or folder you own or have licensed (added to the bundled NERvvE rule pack) |
 | `MYELIN_SCAN_CONCURRENCY` |  | Repository scans run in parallel |
 | `MYELIN_SCM_ALLOW_HTTP` |  | Allow plain-HTTP Git servers |
 | `MYELIN_SCM_ALLOW_PRIVATE` |  | Allow Git servers on private networks |
@@ -64,8 +64,11 @@ Settings are read from the process environment, then the file named by `MYELIN_E
 | `MYELIN_TENANT_PLAN` | `enterprise` | Demo tenant plan |
 | `MYELIN_TENANT_REGION` | `Azure Central India` | Demo tenant region label |
 | `MYELIN_TENANT_SSO` | `Entra ID (SAML` | Demo tenant SSO label |
+| `MYELIN_TRIVY_CACHE` |  | Trivy cache directory (default: MYELIN_CACHE_DIR/trivy) |
 | `MYELIN_VALIDATE_SECRETS` |  | 1 = confirm detected secrets with their provider (read-only) |
 | `MYELIN_WORKER_LEASE_SECONDS` | `900` | Job lease before another worker may retry |
 | `MYELIN_WORKER_MAX_ATTEMPTS` | `5` | Attempts before a job is marked failed |
 | `MYELIN_WORKER_POLL_SECONDS` | `5` | Worker polling interval |
 | `MYELIN_WORKER_TENANT_IDS` |  | Tenants the advisory worker processes (allowlist) |
+| `MYELIN_ZAP_API_KEY` |  | API key of the ZAP daemon |
+| `MYELIN_ZAP_URL` |  | OWASP ZAP daemon for deep DAST, for example http://zap:8090 |

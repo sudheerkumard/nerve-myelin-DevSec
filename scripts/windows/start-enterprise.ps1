@@ -8,7 +8,8 @@
 #   powershell -ExecutionPolicy Bypass -File scripts\windows\start-enterprise.ps1    # start / restart
 #   powershell -ExecutionPolicy Bypass -File scripts\windows\start-enterprise.ps1 -Stop
 #   powershell -ExecutionPolicy Bypass -File scripts\windows\start-enterprise.ps1 -Reset   # delete all data
-param([switch]$Stop, [switch]$Reset, [switch]$NoBrowser)
+#   powershell -ExecutionPolicy Bypass -File scripts\windows\start-enterprise.ps1 -Dast    # also run OWASP ZAP for deep DAST
+param([switch]$Stop, [switch]$Reset, [switch]$NoBrowser, [switch]$Dast)
 $ErrorActionPreference = "Stop"
 $Root = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 Set-Location $Root
@@ -31,6 +32,7 @@ function Dc {   # simple function on purpose: $args passes flags such as -d thro
 
 if ($Stop -or $Reset) {
   Step ($(if ($Reset) { "Stopping and DELETING all data" } else { "Stopping" }))
+  $Compose += @("--profile", "dast")     # include the optional ZAP service
   if ($Reset) { Dc down -v | Out-Null } else { Dc down | Out-Null }
   Ok "stopped"; exit 0
 }
@@ -85,7 +87,7 @@ function New-Key32 { $b = New-Object byte[] 32; $rng.GetBytes($b); [Convert]::To
 $required = [ordered]@{
   MYELIN_DB_OWNER_PASSWORD = { New-Secret 24 }; MYELIN_DB_APP_PASSWORD = { New-Secret 24 }; KEYCLOAK_DB_PASSWORD = { New-Secret 24 }
   KEYCLOAK_ADMIN_PASSWORD = { New-Secret 18 }; MYELIN_OIDC_CLIENT_SECRET = { New-Secret 32 }; MYELIN_SESSION_SECRET = { New-Secret 48 }
-  MYELIN_API_KEY_PEPPER = { New-Secret 48 }; MYELIN_EVIDENCE_SIGNING_KEY = { New-Key32 }
+  MYELIN_API_KEY_PEPPER = { New-Secret 48 }; MYELIN_EVIDENCE_SIGNING_KEY = { New-Key32 }; MYELIN_ZAP_API_KEY = { New-Secret 32 }
 }
 $existing = @{}
 if (Test-Path $EnvFile) {
@@ -100,6 +102,16 @@ if ($added.Count) {
   Set-Content -Path $EnvFile -Value ($out -join "`n") -Encoding ascii
   Ok "generated $($added.Count) secret(s) in $EnvFile (private; git-ignored)"
 } else { Ok "all secrets present in $EnvFile" }
+# Deep DAST: the OWASP ZAP service (compose profile "dast"); stays on once enabled
+if ($Dast -and $existing["MYELIN_ZAP_URL"] -ne "http://zap:8090") {
+  $content = (Get-Content $EnvFile | Where-Object { $_ -notmatch "^MYELIN_ZAP_URL=" }) + "MYELIN_ZAP_URL=http://zap:8090"
+  Set-Content -Path $EnvFile -Value ($content -join "`n") -Encoding ascii
+  $existing["MYELIN_ZAP_URL"] = "http://zap:8090"
+}
+if ($existing["MYELIN_ZAP_URL"]) {
+  $Compose += @("--profile", "dast")
+  Ok "OWASP ZAP enabled for deep DAST (first start downloads its image, about 1.5 GB)"
+}
 
 if (-not (Test-Path $LicTool)) {
   Ok "Community edition: no licence key needed (all features enabled)"

@@ -44,8 +44,19 @@ def run(target, spec=None, headers=None, identities=None, name=None, criticality
             stats.update(astats)
             tools.append("myelin-active")
     if zap:
-        say("OWASP ZAP " + ("active" if active else "baseline"))
-        findings += dast.zap_scan(target, spec, headers, active=active)
+        from . import zap_api
+        say("OWASP ZAP " + ("active scan" if active else "spider + passive scan"))
+        if zap_api.configured():                      # platform: ZAP daemon service
+            hdrs = dict(headers or {})
+            if identities and not hdrs:
+                first = (identities.get("identities") or [{}])[0]
+                hdrs = dict(first.get("headers") or {})
+            z = zap_api.Zap().scan(target, active=active, headers=hdrs,
+                                   spec_url=spec if isinstance(spec, str) and spec.startswith(("http://", "https://")) else None, say=say)
+            findings += zap_api.normalize(z["alerts"], dast._f)
+            stats["zap"] = {"urls": z["urls"], "mode": z["mode"], "complete": z["complete"], "version": z["version"]}
+        else:                                         # CLI: ZAP in Docker
+            findings += dast.zap_scan(target, spec, headers, active=active)
         tools.append("zap")
     name = name or urllib.parse.urlsplit(target).hostname
     seen, uniq = set(), []
@@ -57,8 +68,8 @@ def run(target, spec=None, headers=None, identities=None, name=None, criticality
             uniq.append(f)
     uniq.sort(key=lambda f: -f["mrs"])
     decision = policy.evaluate(uniq, policy_doc or policy.load(None))
-    mode = "zap-active" if (zap and active) else "active checks (authorised)" if probe else "zap-baseline" if zap else \
-        "safe (read-only) with crawling" if crawl else "safe (read-only)"
+    mode = "zap-active" if (zap and active) else "active checks (authorised)" if probe else \
+        "safe (read-only) with OWASP ZAP passive scan" if zap else "safe (read-only) with crawling" if crawl else "safe (read-only)"
     return {"repo": name, "target": target, "spec": spec if isinstance(spec, str) else None, "mode": mode,
             "identities": [i["name"] + f" ({i['role']})" for i in (identities or {}).get("identities", [])],
             "started_at": started.isoformat(timespec="seconds"), "duration_s": round(time.time() - t0, 2),

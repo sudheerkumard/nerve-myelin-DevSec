@@ -1,0 +1,50 @@
+{{- if .Values.dast.zap.enabled }}
+# Copyright (c) 2026 Sudheer Kumar.
+# SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
+# OWASP ZAP daemon (Apache-2.0) for deep DAST. Reachable only from the NERvvE DevSecOps API pods (NetworkPolicy below).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "myelin.name" . }}-zap
+  labels: { app.kubernetes.io/name: {{ include "myelin.name" . }}-zap, app.kubernetes.io/part-of: nervve-devsecops }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app.kubernetes.io/name: {{ include "myelin.name" . }}-zap } }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: {{ include "myelin.name" . }}-zap }
+    spec:
+      automountServiceAccountToken: false
+      securityContext: { runAsNonRoot: true, runAsUser: 1000, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: zap
+          image: {{ .Values.dast.zap.image | quote }}
+          args: ["zap.sh", "-daemon", "-host", "0.0.0.0", "-port", "8090", "-config", "api.key=$(ZAP_API_KEY)",
+                 "-config", "api.addrs.addr.name=.*", "-config", "api.addrs.addr.regex=true"]
+          env:
+            - name: ZAP_API_KEY
+              valueFrom: { secretKeyRef: { name: {{ .Values.secrets.name }}, key: MYELIN_ZAP_API_KEY } }
+          ports: [{ name: api, containerPort: 8090 }]
+          readinessProbe: { tcpSocket: { port: api }, initialDelaySeconds: 20, periodSeconds: 10 }
+          resources: {{- toYaml .Values.dast.zap.resources | nindent 12 }}
+          securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "myelin.name" . }}-zap
+spec:
+  selector: { app.kubernetes.io/name: {{ include "myelin.name" . }}-zap }
+  ports: [{ name: api, port: 8090, targetPort: api }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "myelin.name" . }}-zap-ingress
+spec:
+  podSelector: { matchLabels: { app.kubernetes.io/name: {{ include "myelin.name" . }}-zap } }
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ podSelector: { matchLabels: { app.kubernetes.io/name: myelin, app.kubernetes.io/component: api } } }]
+      ports: [{ port: 8090 }]
+{{- end }}

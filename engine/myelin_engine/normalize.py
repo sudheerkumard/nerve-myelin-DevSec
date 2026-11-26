@@ -30,22 +30,97 @@ def trivy(doc: dict, repo: str) -> list[dict]:
     return out
 
 
+# NERvvE taint rules that cover the same weakness as a built-in pattern rule: an inline suppression of either id
+# applies to both, and the deeper result replaces the pattern match on the same line
+SAST_EQUIVALENT = {
+    "nervve.python.sql-injection": "NM-SAST-001", "nervve.python.code-injection": "NM-SAST-002",
+    "nervve.python.command-injection": "NM-SAST-003", "nervve.python.tls-verification-disabled": "NM-SAST-004",
+    "nervve.python.insecure-deserialisation": "NM-SAST-006", "nervve.python.jwt-unverified": "NM-SAST-009",
+    "nervve.python.ssrf": "NM-SAST-010", "nervve.python.xxe": "NM-SAST-015",
+    "nervve.js.code-injection": "NM-SAST-017", "nervve.js.command-injection": "NM-SAST-018", "nervve.js.dom-xss": "NM-SAST-019",
+    "nervve.js.tls-verification-disabled": "NM-SAST-004", "nervve.js.jwt-unverified": "NM-SAST-009",
+    "nervve.java.sql-injection": "NM-SAST-021", "nervve.java.command-injection": "NM-SAST-022",
+    "nervve.java.unsafe-deserialisation": "NM-SAST-023", "nervve.java.weak-crypto": "NM-SAST-024",
+    "nervve.java.tls-verification-disabled": "NM-SAST-025", "nervve.java.xxe": "NM-SAST-026",
+    "nervve.go.sql-injection": "NM-SAST-027", "nervve.go.command-injection": "NM-SAST-028",
+    "nervve.go.tls-verification-disabled": "NM-SAST-029", "nervve.go.weak-crypto": "NM-SAST-030",
+    "nervve.csharp.sql-injection": "NM-SAST-031", "nervve.csharp.unsafe-deserialisation": "NM-SAST-032",
+    "nervve.csharp.tls-verification-disabled": "NM-SAST-033", "nervve.csharp.command-injection": "NM-SAST-034",
+    "nervve.php.sql-injection": "NM-SAST-035", "nervve.php.command-injection": "NM-SAST-036",
+    "nervve.php.code-injection": "NM-SAST-037", "nervve.php.file-inclusion": "NM-SAST-038",
+    "nervve.ruby.sql-injection": "NM-SAST-039", "nervve.ruby.command-injection": "NM-SAST-040",
+}
+
+
+CRITICAL_TAINT_CWE = {"CWE-78", "CWE-89", "CWE-94", "CWE-95", "CWE-98", "CWE-502", "CWE-1336"}
+
+
+def _split_message(msg: str) -> tuple[str, str]:
+    """'Title sentence. Impact. Remediation.' -> (title, remediation)"""
+    msg = " ".join((msg or "").split())
+    parts = re.split(r"(?<=[.!?])\s+(?=[A-Z])", msg)
+    title = parts[0].rstrip(".") if parts else msg
+    rest = [p for p in parts[1:] if not p.startswith(("An attacker", "Anyone", "Attackers", "That ", "This "))]
+    return title[:200], " ".join(rest)[:600]
+
+
 def semgrep(doc: dict, repo: str) -> list[dict]:
+    """Opengrep / Semgrep CE JSON. NERvvE rule ids are reported without the config-path prefix the engine adds."""
     out = []
     for r in doc.get("results") or []:
-        meta = (r.get("extra") or {}).get("metadata") or {}
+        extra = r.get("extra") or {}
+        meta = extra.get("metadata") or {}
         cwe = meta.get("cwe")
-        out.append({"engine": "sast", "rule_id": r.get("check_id"), "title": (r.get("extra") or {}).get("message", "")[:200],
-                    "severity": SEV.get((r.get("extra") or {}).get("severity"), "medium"), "file": r.get("path"),
-                    "line": (r.get("start") or {}).get("line"), "repo": repo, "cwe": cwe[0] if isinstance(cwe, list) and cwe else cwe,
-                    "source_tool": "semgrep"})
+        cwe = cwe[0] if isinstance(cwe, list) and cwe else cwe
+        if isinstance(cwe, str):
+            m = re.match(r"(CWE-\d+)", cwe)
+            cwe = m.group(1) if m else cwe
+        rid = r.get("check_id") or ""
+        if "nervve." in rid:
+            rid = rid[rid.index("nervve."):]
+        title, fix = _split_message(extra.get("message", ""))
+        sev = SEV.get(extra.get("severity"), "medium")
+        traced = bool(extra.get("dataflow_trace"))
+        if sev == "high" and traced and cwe in CRITICAL_TAINT_CWE:
+            sev = "critical"                      # proven flow from a request into code/command/SQL execution
+        f = {"engine": "sast", "rule_id": rid, "title": title, "severity": sev,
+             "file": r.get("path"), "line": (r.get("start") or {}).get("line"), "repo": repo, "cwe": cwe,
+             "owasp": meta.get("owasp"), "confidence": meta.get("confidence"), "source_tool": "opengrep",
+             "evidence": (extra.get("lines") or "").strip()[:300]}
+        if fix:
+            f["remediation"] = fix
+        if rid in SAST_EQUIVALENT:
+            f["rule_aliases"] = [SAST_EQUIVALENT[rid]]
+        if traced:
+            # the data flow starts at an HTTP request (or CLI input) and reaches the sink: exposed and reachable
+            f["dataflow"], f["reachable"], f["exposure"] = True, True, "internet"
+        trace = extra.get("dataflow_trace") or {}
+        src = trace.get("taint_source")
+        if isinstance(src, list) and len(src) > 1 and isinstance(src[1], list) and src[1] and isinstance(src[1][0], dict):
+            loc, code = src[1][0], (src[1][1] if len(src[1]) > 1 else "")
+            path = [str(v.get("content")) for v in trace.get("intermediate_vars") or [] if isinstance(v, dict)][:6]
+            f["taint_source"] = {"line": (loc.get("start") or {}).get("line"), "code": str(code)[:200], "via": path}
+            f["evidence"] = (f"untrusted input `{str(code)[:80]}` (line {(loc.get('start') or {}).get('line')})"
+                             + (f" → {' → '.join(path)}" if path else "") + f" → sink at line {f['line']}: " + f["evidence"])[:500]
+        if mode := meta.get("category"):
+            f["category"] = mode
+        out.append(f)
     return out
 
 
 def gitleaks(doc: list, repo: str) -> list[dict]:
-    return [{"engine": "secrets", "rule_id": d.get("RuleID"), "title": d.get("Description"), "severity": "critical",
-             "file": d.get("File"), "line": d.get("StartLine"), "repo": repo, "commit": d.get("Commit"),
-             "evidence": (d.get("Secret") or "")[:4] + "…", "source_tool": "gitleaks"} for d in (doc or [])]
+    """Gitleaks JSON. Findings from git history keep the commit; a secret removed from the current files is still
+    exposed to anyone with the history and must be rotated."""
+    out = []
+    for d in doc or []:
+        hist = bool(d.get("Commit"))
+        out.append({"engine": "secrets", "rule_id": d.get("RuleID"), "title": d.get("Description") or "Secret detected",
+                    "severity": "critical", "file": d.get("File"), "line": d.get("StartLine"), "repo": repo,
+                    "commit": d.get("Commit") or None,
+                    "evidence": (d.get("Secret") or d.get("Match") or "")[:4] + "…", "source_tool": "gitleaks",
+                    "remediation": "Revoke and rotate this credential now, then remove it from the code"
+                                   + (" and the git history (git filter-repo), as every clone still holds it." if hist else ".")})
+    return out
 
 
 _CHECKOV_HIGH = re.compile(r"(?i)public|0\.0\.0\.0|privileged|root|admin|encrypt|https|tls|ssl|secret|password|"

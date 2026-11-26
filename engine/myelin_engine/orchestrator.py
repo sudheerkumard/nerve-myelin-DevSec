@@ -2,45 +2,130 @@
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
 """Scan orchestrator: runs built-in engines + any installed OSS scanners, normalises, de-dupes, scores."""
 import json
+from collections import defaultdict
 import os
 import shutil
 import subprocess
+import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-from . import vulndb
+from . import coverage, vulndb
 from . import (ai_security, builtin_rules, cd_posture, cicd_posture, crypto_inventory, iac_checks, normalize, repo_posture, sbom,
                secrets, suppress, supply_chain)
 from .scoring import enrich
 
+RULES_DIR = os.path.join(os.path.dirname(__file__), "rules", "sast")
+CACHE_DIR = os.environ.get("MYELIN_CACHE_DIR") or os.path.join(tempfile.gettempdir(), "myelin-cache")
+TRIVY_CACHE = os.environ.get("MYELIN_TRIVY_CACHE") or os.path.join(CACHE_DIR, "trivy")
+
+
+def _tool_env():
+    """Scanners need a writable home and cache (Opengrep unpacks itself, Trivy keeps its vulnerability database); the
+    platform image has a read-only root file system, so both live in the cache volume."""
+    home = os.path.join(CACHE_DIR, "home")
+    os.makedirs(home, exist_ok=True)
+    return {**os.environ, "HOME": home, "XDG_CACHE_HOME": CACHE_DIR, "SEMGREP_SEND_METRICS": "off",
+            "OPENGREP_SEND_METRICS": "off", "CHECKOV_RUN_SCA_PACKAGE_SCAN_V2": "false", "BC_SKIP_MAPPING": "TRUE"}
+SAST_EXCLUDES = ["tests", "test", "__tests__", "spec", "testdata", "fixtures", "node_modules", "vendor", "dist", "build",
+                 ".venv", "venv", "*.min.js", "*.bundle.js", "*.map"]
+
+
+def _trivy_argv(p):
+    scanners = "vuln,misconfig,secret"
+    argv = ["trivy", "fs", "--quiet", "--format", "json", "--cache-dir", TRIVY_CACHE,
+            "--timeout", "15m", "--skip-dirs", "**/node_modules", "--skip-dirs", "**/.git"]
+    if vulndb.offline():
+        argv += ["--skip-db-update", "--skip-java-db-update", "--offline-scan", "--skip-check-update"]
+        if not os.path.exists(os.path.join(TRIVY_CACHE, "db", "trivy.db")):
+            scanners = "misconfig,secret"          # air-gapped without a mirrored database: OSV/bundled data covers SCA
+    return argv + ["--scanners", scanners, p]
+
+
+def _sast_argv(binary):
+    """Opengrep (or the Semgrep CE engine) with NERvvE's own rule pack, plus any rule set the customer owns or has
+    licensed (MYELIN_SAST_RULES). Never `--config auto` or the Semgrep Registry: those rules are under the Semgrep
+    Rules License v1.0, which forbids use in competing commercial products and SaaS."""
+    def build(p):
+        argv = [binary, "scan", "--json", "--quiet", "--config", RULES_DIR, "--timeout", "30", "--timeout-threshold", "3",
+                "--max-target-bytes", "2000000", "--jobs", str(max(1, min(4, os.cpu_count() or 1)))]
+        if binary == "opengrep":
+            argv += ["--taint-intrafile", "--dataflow-traces"]      # follow data through functions within a file
+        else:
+            argv += ["--metrics=off", "--disable-version-check"]
+        if SAST_RULES:
+            argv += ["--config", SAST_RULES]
+        for x in SAST_EXCLUDES:
+            argv += ["--exclude", x]
+        return argv + [p]
+    return build
+
+
+def _gitleaks_argv(p):
+    out = os.path.join(tempfile.mkdtemp(prefix="myelin-gl-"), "report.json")
+    mode = ["git", p] if os.path.isdir(os.path.join(p, ".git")) else ["dir", p]
+    return ["gitleaks", *mode, "--no-banner", "--no-color", "--redact=80", "--report-format", "json", "--report-path", out,
+            "--exit-code", "0", "--max-target-megabytes", "5"], out
+
+
 EXTERNAL = {
     # tool: (argv builder, normaliser)
-    "trivy": (lambda p: ["trivy", "fs", "--quiet", "--format", "json", "--scanners", "vuln,misconfig,secret", p], normalize.trivy),
-    "gitleaks": (lambda p: ["gitleaks", "detect", "--no-banner", "--source", p, "--report-format", "json", "--report-path", "/dev/stdout"], normalize.gitleaks),
-    "checkov": (lambda p: ["checkov", "-d", p, "-o", "json", "--quiet", "--skip-download"], normalize.checkov),   # never contacts a vendor service
+    "trivy": (_trivy_argv, normalize.trivy),
+    "gitleaks": (_gitleaks_argv, normalize.gitleaks),
+    "checkov": (lambda p: ["checkov", "-d", p, "-o", "json", "--quiet", "--skip-download", "--compact",
+                           "--skip-path", "node_modules", "--skip-path", "tests"], normalize.checkov),   # never contacts a vendor service
     # Bandit (Apache-2.0) ships with NERvvE DevSecOps for Python analysis; tests, virtualenvs and vendored code excluded
     "bandit": (lambda p: ["bandit", "-r", p, "-f", "json", "-q", "-x",
                           ",".join(f"{p}/{d}" for d in ("tests", "test", ".venv", "venv", "node_modules", "vendor", "build", "dist"))
                           + ",*/tests/*,*/test/*,*/.venv/*,*/node_modules/*"], normalize.bandit),
 }
-
-
-# Semgrep/Opengrep run ONLY with a rule set NERvvE or the customer owns or has licensed, passed via
-# MYELIN_SAST_RULES (file or directory). Never use `--config auto` or the Semgrep Registry: those rules are
-# under the Semgrep Rules License v1.0, which forbids use in competing commercial products and SaaS.
 SAST_RULES = os.getenv("MYELIN_SAST_RULES")
-if SAST_RULES:
-    for _bin in ("opengrep", "semgrep"):
-        EXTERNAL[_bin] = (lambda p, b=_bin: [b, "--config", SAST_RULES, "--json", "--quiet", "--metrics=off", p], normalize.semgrep)
+# deep SAST: Opengrep preferred (LGPL-2.1, intra-file taint across functions); the Semgrep CE engine works too
+for _bin in ("opengrep", "semgrep"):
+    if shutil.which(_bin):
+        EXTERNAL[_bin] = (_sast_argv(_bin), normalize.semgrep)
+        break
 
 
-def _run_external(tool, path, repo, timeout=600):
+def _applies(tool, inv, engines):
+    """Run a scanner only when the repository has something it analyses and one of its areas is selected."""
+    langs = inv.get("languages") or {}
+    if tool == "bandit":
+        return "sast" in engines and "Python" in langs
+    if tool in ("opengrep", "semgrep"):
+        return "sast" in engines and bool(set(langs) & coverage.DEEP_SAST)
+    if tool == "checkov":
+        return "iac" in engines and bool(inv.get("iac"))
+    if tool == "gitleaks":
+        return "secrets" in engines
+    if tool == "trivy":
+        return bool({"sca", "secrets", "iac"} & set(engines))
+    return True
+
+
+def rule_count() -> int:
+    n = 0
+    for fn in os.listdir(RULES_DIR) if os.path.isdir(RULES_DIR) else []:
+        if fn.endswith((".yaml", ".yml")):
+            with open(os.path.join(RULES_DIR, fn), encoding="utf-8") as fh:
+                n += sum(1 for line in fh if line.startswith("  - id: "))
+    return n
+
+
+def _run_external(tool, path, repo, timeout=1800):
     argv, norm = EXTERNAL[tool]
+    report = None
     try:
-        cp = subprocess.run(argv(path), capture_output=True, text=True, timeout=timeout)
-        if not cp.stdout.strip():
-            raise RuntimeError(f"scanner returned no machine-readable output (exit {cp.returncode})")
-        document = json.loads(cp.stdout)
+        built = argv(path)
+        if isinstance(built, tuple):                     # (argv, report file) for tools that write a report file
+            built, report = built
+        cp = subprocess.run(built, capture_output=True, text=True, timeout=timeout, env=_tool_env())
+        text = cp.stdout
+        if report:
+            text = open(report, encoding="utf-8").read() if os.path.exists(report) else ""
+        if not text.strip():
+            raise RuntimeError(f"scanner returned no machine-readable output (exit {cp.returncode}): {(cp.stderr or '').strip()[-300:]}")
+        document = json.loads(text)
         if document is None:
             raise ValueError("scanner returned JSON null instead of a result document")
         return norm(document, repo)
@@ -49,6 +134,9 @@ def _run_external(tool, path, repo, timeout=600):
         return [{"engine": "meta", "rule_id": f"tool-error:{tool}",
                  "title": f"{tool} failed: {type(e).__name__}: {e}", "severity": "high",
                  "scanner_status": "required_error", "required": True, "repo": repo}]
+    finally:
+        if report:
+            shutil.rmtree(os.path.dirname(report), ignore_errors=True)
 
 
 DEFAULT_ENGINES = ("sca", "license", "sast", "secrets", "iac", "cicd", "aibom", "supply")
@@ -59,6 +147,7 @@ def scan(path: str, repo: str = "local", engines: list[str] | None = None, use_e
     t0 = time.time()
     engines = engines or list(DEFAULT_ENGINES)
     comps = sbom.inventory(path) if {"sca", "license"} & set(engines) else sbom.parse_manifests(path)
+    inv = coverage.inventory(path)
     findings: list[dict] = []
     jobs = []
     with ThreadPoolExecutor(max_workers=6) as ex:
@@ -78,7 +167,7 @@ def scan(path: str, repo: str = "local", engines: list[str] | None = None, use_e
         tools_used = ["myelin-builtin"]
         if use_external:
             for tool in EXTERNAL:
-                if shutil.which(tool):
+                if shutil.which(tool) and _applies(tool, inv, engines):
                     tools_used.append(tool)
                     jobs.append(ex.submit(_run_external, tool, path, repo))
         for j in jobs:
@@ -104,12 +193,18 @@ def scan(path: str, repo: str = "local", engines: list[str] | None = None, use_e
     bom["metadata"]["properties"] += [
         {"name": "myelin:posture", "value": json.dumps({"score": posture["score"], "grade": posture["grade"]})},
     ]
+    inv["git_history"] = "gitleaks" in tools_used and os.path.isdir(os.path.join(path, ".git"))
+    intel = {"offline": vulndb.offline(), "sources": sorted(vulndb.STATUS["sources"]) or ["bundled advisory pack"],
+             "errors": sorted(vulndb.STATUS["errors"])[:10]}
+    cov = coverage.build(inv, engines, tools_used, uniq, len(comps), intel,
+                         deep_rules=rule_count() if {"opengrep", "semgrep"} & set(tools_used) else 0)
     return {"repo": repo, "path": path, "duration_s": round(time.time() - t0, 2), "tools": tools_used,
+            "coverage": cov, "engines": coverage.assessed(cov),
+            "tool_versions": {t: coverage.tool_version(t) for t in tools_used if t != "myelin-builtin"},
             "components": len(comps), "ignored_by_path": ignored,
             "stats": {"raw": raw_count, "after_dedup": merged_count, "reported": sum(1 for f in uniq if f.get("engine") != "meta")},
             "sbom": attach_extensions(bom, posture, crypto), "findings": uniq, "posture": posture, "crypto": crypto,
-            "intelligence": {"offline": vulndb.offline(), "sources": sorted(vulndb.STATUS["sources"]) or ["bundled advisory pack"],
-                             "errors": sorted(vulndb.STATUS["errors"])[:10]}}
+            "intelligence": intel}
 
 
 def attach_extensions(bom: dict, posture: dict | None, crypto: list | None) -> dict:
@@ -169,12 +264,44 @@ def _merge_duplicates(path, findings):
            if f.get("engine") == "sast" and not f.get("source_tool")}
     own_lines = {(f.get("file"), f.get("line")) for f in findings
                  if f.get("engine") in ("sast", "aibom", "secrets") and not f.get("source_tool")}
+    # Deep (taint) SAST results replace a pattern match for the same weakness on the same line; the pattern rule id is
+    # kept as an alias so existing suppressions still apply
+    deep = {}
+    for f in findings:
+        if f.get("source_tool") == "opengrep":
+            deep.setdefault((f.get("file"), f.get("line"), f.get("cwe")), f)
+    deep_lines = {(k[0], k[1]) for k in deep}
     out = []
     for f in findings:
-        if f.get("source_tool") == "bandit" and ((f.get("file"), f.get("line"), f.get("cwe")) in own or
-                                                  (f.get("file"), f.get("line")) in own_lines):
+        key = (f.get("file"), f.get("line"), f.get("cwe"))
+        if f.get("engine") == "sast" and not f.get("source_tool") and key in deep:
+            d = deep[key]
+            d["rule_aliases"] = sorted(set(d.get("rule_aliases") or []) | {f.get("rule_id")})
+            if f.get("autofix") and not d.get("autofix"):
+                d["autofix"] = f["autofix"]
+            continue
+        if f.get("source_tool") == "bandit" and (key in own or (f.get("file"), f.get("line")) in own_lines
+                                                  or key in deep or (f.get("file"), f.get("line")) in deep_lines):
             continue
         out.append(f)
+    # Secrets: one finding per line; NERvvE's own rule carries validation and the rotation workflow
+    own_secret = {(f.get("file"), f.get("line")) for f in out if f.get("engine") == "secrets" and not f.get("source_tool")}
+    gl_secret = {(f.get("file"), f.get("line")) for f in out if f.get("source_tool") == "gitleaks"}
+    out = [f for f in out if not (f.get("engine") == "secrets" and f.get("source_tool") in ("gitleaks", "trivy")
+                                  and ((f.get("file"), f.get("line")) in own_secret
+                                       or (f.get("source_tool") == "trivy" and (f.get("file"), f.get("line")) in gl_secret)))]
+    # Dependencies: OSV results and Trivy results for the same package, version and advisory are one finding
+    def _ids(f):
+        return {str(x).upper() for x in [f.get("cve"), f.get("rule_id"), *(f.get("aliases") or [])] if x}
+    osv = defaultdict(set)
+    for f in out:
+        if f.get("engine") == "sca" and f.get("source_tool") != "trivy":
+            osv[(str(f.get("package") or "").lower(), str(f.get("version") or ""))] |= _ids(f)
+    out = [f for f in out if not (f.get("engine") == "sca" and f.get("source_tool") == "trivy"
+                                  and _ids(f) & osv.get((str(f.get("package") or "").lower(), str(f.get("version") or "")), set()))]
+    # IaC: Trivy misconfiguration on a line another IaC engine already reports
+    iac_lines = {(f.get("file"), f.get("line")) for f in out if f.get("engine") == "iac" and f.get("source_tool") != "trivy"}
+    out = [f for f in out if not (f.get("engine") == "iac" and f.get("source_tool") == "trivy" and (f.get("file"), f.get("line")) in iac_lines)]
     # an AI-specific rule explains the same line better than the generic SAST rule (the input is model output);
     # a secret in an MCP config is reported once, by the secrets engine (rotation workflow, validation)
     ai_lines = {(f.get("file"), f.get("line")) for f in out if f.get("engine") == "aibom" and f.get("rule_id") != "NM-AI-024"}

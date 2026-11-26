@@ -59,7 +59,8 @@ def _inline(root: str, f: dict, cache: dict) -> dict | None:
             if n != line and not text.lstrip().startswith(COMMENT):   # line above must be a standalone comment
                 continue
             m = INLINE.search(text)
-            if m and f.get("rule_id") in {r.strip() for r in m.group(1).split(",")}:
+            ids = {r.strip() for r in m.group(1).split(",")} if m else set()
+            if m and (f.get("rule_id") in ids or ids & set(f.get("rule_aliases") or ())):
                 return {"type": "inline", "reason": m.group(2).strip(), "location": f"{rel}:{n}"}
     return None
 

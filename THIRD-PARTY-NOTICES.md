@@ -22,17 +22,26 @@ The complete, generated list of Python components (name, version, licence, proje
 | MPL-2.0 (file-level) | certifi (CA bundle), parts of orjson and tqdm | Files used unmodified; source available from the project; licence text included |
 | LGPL-3.0 | psycopg 3 (PostgreSQL driver) | Used unmodified as a separately installed, dynamically loaded library that customers may replace with their own build; licence text included |
 
-## 2. Tools bundled in the CLI container image (`myelin-cli`)
+## 2. Scanners bundled in the platform image and the CLI image (`nerve-myelin`, `myelin-cli`)
 
 | Component | Licence | Project |
 |---|---|---|
+| Opengrep (static analysis engine) | LGPL-2.1 | https://github.com/opengrep/opengrep |
 | Trivy (Aqua Security) | Apache-2.0 | https://github.com/aquasecurity/trivy |
 | Gitleaks (Zachary Rice) | MIT | https://github.com/gitleaks/gitleaks |
-| Cosign (Sigstore, The Linux Foundation) | Apache-2.0 | https://github.com/sigstore/cosign |
 | Checkov (Bridgecrew / Palo Alto Networks) | Apache-2.0 | https://github.com/bridgecrewio/checkov |
 | Bandit (PyCQA) | Apache-2.0 | https://github.com/PyCQA/bandit |
+| Cosign (Sigstore, The Linux Foundation), CLI image only | Apache-2.0 | https://github.com/sigstore/cosign |
 
-These binaries are copied unmodified from their official release images. Semgrep / Opengrep are **not** bundled.
+These programs are copied unmodified from their official releases (Opengrep: release binary verified by SHA-256) and run
+as separate processes; NERvvE DevSecOps does not link to them. Opengrep is distributed under the GNU Lesser General Public
+License v2.1: its complete corresponding source code is available from the project page above for the bundled version
+(see `OPENGREP_VERSION` in the Dockerfiles), and you may replace the binary with your own build.
+
+The SAST rules Opengrep runs are NERvvE DevSecOps's own rule pack (`engine/myelin_engine/rules/sast`, AGPL-3.0). No rules
+from the Semgrep Registry or the semgrep-rules repository are bundled or downloaded (they are under the Semgrep Rules
+License v1.0). Trivy downloads its vulnerability database from the Trivy project at run time (Apache-2.0 tooling; the
+database aggregates public advisories under their own terms).
 
 ## 3. Operating-system packages in container images
 

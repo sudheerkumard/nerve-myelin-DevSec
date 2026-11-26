@@ -14,6 +14,7 @@ Safety controls for hosted scanning:
 import copy
 import secrets as _rand
 import sys
+import os
 import threading
 import traceback
 import uuid
@@ -221,6 +222,12 @@ def _resolve_identities(t, resolver):
     return dast_authz.load_identities(cfg, resolve=resolver)
 
 
+def _zap_enabled(t: dict) -> bool:
+    from myelin_engine import zap_api
+    return zap_api.configured() and t["config"].get("zap", True) is not False and bool(t.get("verified_at") or
+                                                                                      os.environ.get("MYELIN_DAST_REQUIRE_VERIFICATION") == "0")
+
+
 def execute(t: dict, *, resolver, guard, max_requests, policy_doc=None) -> dict:
     """Run one assessment synchronously and return the stored result (request log trimmed, no secrets)."""
     ids = _resolve_identities(t, resolver)
@@ -228,7 +235,9 @@ def execute(t: dict, *, resolver, guard, max_requests, policy_doc=None) -> dict:
                          t["config"].get("criticality", "medium"),
                          min(int(t["config"].get("max_requests", max_requests)), max_requests), 0.2, True,
                          policy_doc=policy_doc, guard=guard, crawl=t["config"].get("crawl", True) is not False,
-                         probe=bool(t["config"].get("active_checks")) and bool(t.get("verified_at")))   # active checks only on verified targets
+                         probe=bool(t["config"].get("active_checks")) and bool(t.get("verified_at")),   # active checks only on verified targets
+                         # deep testing with the OWASP ZAP service when it is deployed; its active scanner only for the same targets
+                         zap=_zap_enabled(t), active=bool(t["config"].get("active_checks")) and bool(t.get("verified_at")))
     res["request_log"] = res["request_log"][-500:]
     return res
 

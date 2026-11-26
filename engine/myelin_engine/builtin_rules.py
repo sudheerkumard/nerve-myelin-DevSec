@@ -71,7 +71,10 @@ AIBOM = [
     ("NM-AI-004", r"(?i)(system_prompt|messages).*\+\s*(request|user_input|req\.)", "Prompt built by concatenating user input (prompt injection)", "medium"),
     ("NM-AI-005", r"(?i)(tools|functions)\s*=\s*\[.*(shell|exec|subprocess|run_command)", "LLM agent exposed to unrestricted shell tool (excessive agency)", "high"),
 ]
-SKIP = {".git", "node_modules", ".venv", "venv", "__pycache__", "dist"}
+SKIP = {".git", "node_modules", ".venv", "venv", "__pycache__", "dist", "vendor", "bower_components", "third_party",
+        "thirdparty", "coverage", ".next", "site-packages"}
+MINIFIED = (".min.js", ".bundle.js", ".min.css", "-min.js", ".pack.js")
+COMMENT = ("#", "//", "/*", "*", "<!--", "--")
 
 
 def scan_path(root: str, repo: str = "local") -> list[dict]:
@@ -79,15 +82,24 @@ def scan_path(root: str, repo: str = "local") -> list[dict]:
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames if d not in SKIP]
         for fn in filenames:
+            if fn.endswith(MINIFIED):
+                continue
             p = os.path.join(dirpath, fn)
             rel = os.path.relpath(p, root)
             try:
+                if os.path.getsize(p) > 2_000_000:
+                    continue
                 lines = open(p, encoding="utf-8", errors="ignore").read().splitlines()
             except OSError:
                 continue
+            seen = set()
             for i, ln in enumerate(lines, 1):
+                if len(ln) > 600:                  # generated or minified code
+                    continue
+                code = not ln.lstrip().startswith(COMMENT)
                 for rid, rx, title, sev, cwe, exts in SAST:
-                    if fn.endswith(exts) and re.search(rx, ln):
+                    if code and fn.endswith(exts) and (i, cwe) not in seen and re.search(rx, ln):
+                        seen.add((i, cwe))
                         out.append({"engine": "sast", "rule_id": rid, "title": title, "severity": sev, "cwe": cwe,
                                     "file": rel, "line": i, "repo": repo, "evidence": ln.strip()[:160],
                                     "reachable": True, "exposure": "internet", "autofix": rid in {"NM-SAST-001", "NM-SAST-004", "NM-SAST-006"}})

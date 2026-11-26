@@ -1,0 +1,529 @@
+# Copyright (c) 2026 Sudheer Kumar.
+# SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
+# NERvvE DevSecOps SAST rules for Python (Opengrep/Semgrep rule syntax). Original work: not derived from the
+# semgrep-rules registry. Taint rules follow untrusted input from a web request (Flask, Django, FastAPI/Starlette),
+# the command line or the environment to a dangerous sink, and stop at recognised sanitisers.
+rules:
+  - id: nervve.python.sql-injection
+    # equivalent built-in rule: NM-SAST-001
+    mode: taint
+    languages: [python]
+    severity: ERROR
+    message: >-
+      SQL statement built from untrusted input ($SINK). An attacker can read or change any data the database
+      account can reach. Pass values as query parameters (cursor.execute(sql, params)) or use the ORM.
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+      confidence: high
+      category: injection
+    pattern-sources: &py_sources
+      - pattern-either:
+          - pattern: flask.request.$ATTR
+          - pattern: flask.request.$ATTR[...]
+          - pattern: flask.request.$ATTR.get(...)
+          - pattern: flask.request.get_json(...)
+          - pattern: flask.request.get_data(...)
+          - pattern: request.args
+          - pattern: request.form
+          - pattern: request.values
+          - pattern: request.json
+          - pattern: request.cookies
+          - pattern: request.headers
+          - pattern: request.data
+          - pattern: request.files
+          - pattern: request.get_json(...)
+          - pattern: request.GET
+          - pattern: request.POST
+          - pattern: request.body
+          - pattern: request.META
+          - pattern: request.query_params
+          - pattern: request.path_params
+          - pattern: sys.argv
+          - pattern: input(...)
+      - patterns:
+          # FastAPI / Starlette route parameters
+          - pattern-inside: |
+              @$APP.$METHOD(...)
+              def $F(..., $P, ...): ...
+          - metavariable-regex:
+              metavariable: $METHOD
+              regex: ^(get|post|put|patch|delete|api_route|route)$
+          - pattern: $P
+      - patterns:
+          - pattern-inside: |
+              @$APP.$METHOD(...)
+              async def $F(..., $P, ...): ...
+          - metavariable-regex:
+              metavariable: $METHOD
+              regex: ^(get|post|put|patch|delete|api_route|route)$
+          - pattern: $P
+    pattern-sanitizers: &py_sanitizers
+      - pattern-either:
+          - pattern: int(...)
+          - pattern: float(...)
+          - pattern: bool(...)
+          - pattern: uuid.UUID(...)
+          - pattern: shlex.quote(...)
+          - pattern: werkzeug.utils.secure_filename(...)
+          - pattern: secure_filename(...)
+          - pattern: os.path.basename(...)
+          - pattern: html.escape(...)
+          - pattern: markupsafe.escape(...)
+          - pattern: escape(...)
+          - pattern: urllib.parse.quote(...)
+          - pattern: len(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $C.execute($SINK, ...)
+              - pattern: $C.executemany($SINK, ...)
+              - pattern: $C.executescript($SINK)
+              - pattern: $C.raw($SINK, ...)
+              - pattern: $C.extra(where=$SINK, ...)
+              - pattern: sqlalchemy.text($SINK)
+              - pattern: text($SINK)
+              - pattern: pandas.read_sql($SINK, ...)
+              - pattern: pd.read_sql($SINK, ...)
+              - pattern: pandas.read_sql_query($SINK, ...)
+              - pattern: pd.read_sql_query($SINK, ...)
+          - focus-metavariable: $SINK
+
+  - id: nervve.python.command-injection
+    # equivalent built-in rule: NM-SAST-003
+    mode: taint
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Operating-system command built from untrusted input. An attacker can run any command as the application.
+      Pass a fixed program and an argument list without a shell (subprocess.run([...], shell=False)), or validate
+      the value against an allow-list.
+    metadata:
+      cwe: "CWE-78"
+      owasp: "A03:2021 Injection"
+      confidence: high
+      category: injection
+    pattern-sources: *py_sources
+    pattern-sanitizers: *py_sanitizers
+    pattern-sinks:
+      - pattern-either:
+          - pattern: os.system(...)
+          - pattern: os.popen(...)
+          - pattern: os.spawnl(...)
+          - pattern: os.spawnlp(...)
+          - pattern: os.execl(...)
+          - pattern: os.execvp(...)
+          - pattern: commands.getoutput(...)
+          - pattern: subprocess.getoutput(...)
+          - pattern: subprocess.getstatusoutput(...)
+      - patterns:
+          - pattern-either:
+              - pattern: subprocess.$FN($CMD, ..., shell=True, ...)
+              - pattern: subprocess.$FN($CMD, ..., shell=1, ...)
+          - focus-metavariable: $CMD
+      - patterns:
+          - pattern-either:
+              - pattern: subprocess.$FN([$SH, "-c", $CMD, ...], ...)
+              - pattern: subprocess.$FN(["$SH", "-c", $CMD, ...], ...)
+          - focus-metavariable: $CMD
+
+  - id: nervve.python.code-injection
+    # equivalent built-in rule: NM-SAST-002
+    mode: taint
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Untrusted input is evaluated as Python code. An attacker can run arbitrary code in the application. Parse
+      the data instead (json.loads, ast.literal_eval) and never pass it to eval, exec or compile.
+    metadata:
+      cwe: "CWE-95"
+      owasp: "A03:2021 Injection"
+      confidence: high
+      category: injection
+    pattern-sources: *py_sources
+    pattern-sanitizers: *py_sanitizers
+    pattern-sinks:
+      - pattern-either:
+          - pattern: eval(...)
+          - pattern: exec(...)
+          - pattern: compile(...)
+          - pattern: __import__(...)
+          - pattern: importlib.import_module(...)
+
+  - id: nervve.python.template-injection
+    mode: taint
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Untrusted input is compiled as a template (server-side template injection), which usually allows remote code
+      execution. Render a fixed template file and pass the value as a variable.
+    metadata:
+      cwe: "CWE-1336"
+      owasp: "A03:2021 Injection"
+      confidence: high
+      category: injection
+    pattern-sources: *py_sources
+    pattern-sanitizers: *py_sanitizers
+    pattern-sinks:
+      - pattern-either:
+          - pattern: flask.render_template_string(...)
+          - pattern: render_template_string(...)
+          - pattern: jinja2.Template(...)
+          - pattern: Template(...)
+          - pattern: $ENV.from_string(...)
+          - pattern: mako.template.Template(...)
+
+  - id: nervve.python.path-traversal
+    mode: taint
+    languages: [python]
+    severity: WARNING
+    message: >-
+      File path built from untrusted input. An attacker can read or overwrite files outside the intended folder
+      with "../" sequences or an absolute path. Resolve the path and check it stays under the base directory, or
+      map an identifier to the file instead of accepting a path.
+    metadata:
+      cwe: "CWE-22"
+      owasp: "A01:2021 Broken Access Control"
+      confidence: high
+      category: injection
+    pattern-sources: *py_sources
+    pattern-sanitizers: *py_sanitizers
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: open($P, ...)
+              - pattern: io.open($P, ...)
+              - pattern: os.remove($P)
+              - pattern: os.unlink($P)
+              - pattern: shutil.rmtree($P, ...)
+              - pattern: shutil.copy($P, ...)
+              - pattern: shutil.copyfile($P, ...)
+              - pattern: flask.send_file($P, ...)
+              - pattern: send_file($P, ...)
+              - pattern: flask.send_from_directory($D, $P, ...)
+              - pattern: django.http.FileResponse(open($P, ...), ...)
+              - pattern: FileResponse($P, ...)
+              - pattern: pathlib.Path($P)
+              - pattern: Path($P)
+              - pattern: tarfile.open($P, ...)
+              - pattern: zipfile.ZipFile($P, ...)
+          - focus-metavariable: $P
+
+  - id: nervve.python.ssrf
+    # equivalent built-in rule: NM-SAST-010
+    mode: taint
+    languages: [python]
+    severity: WARNING
+    message: >-
+      Server-side request to a URL taken from untrusted input (SSRF). An attacker can reach internal services and
+      cloud metadata endpoints (169.254.169.254). Allow-list the destination host and scheme before the request.
+    metadata:
+      cwe: "CWE-918"
+      owasp: "A10:2021 Server-Side Request Forgery"
+      confidence: high
+      category: injection
+    pattern-sources: *py_sources
+    pattern-sanitizers: *py_sanitizers
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: requests.$M($URL, ...)
+              - pattern: httpx.$M($URL, ...)
+              - patterns:
+                  - pattern-either:
+                      - pattern-inside: |
+                          $CLIENT = requests.Session(...)
+                          ...
+                      - pattern-inside: |
+                          $CLIENT = httpx.Client(...)
+                          ...
+                      - pattern-inside: |
+                          $CLIENT = httpx.AsyncClient(...)
+                          ...
+                      - pattern-inside: |
+                          with httpx.Client(...) as $CLIENT:
+                            ...
+                      - pattern-inside: |
+                          async with httpx.AsyncClient(...) as $CLIENT:
+                            ...
+                      - pattern-inside: |
+                          with requests.Session(...) as $CLIENT:
+                            ...
+                  - pattern: $CLIENT.$M($URL, ...)
+              - pattern: urllib.request.urlopen($URL, ...)
+              - pattern: urllib.request.Request($URL, ...)
+              - pattern: urllib3.$POOL.request($M2, $URL, ...)
+              - pattern: aiohttp.ClientSession().$M($URL, ...)
+          - metavariable-regex:
+              metavariable: $M
+              regex: ^(get|post|put|patch|delete|head|request|stream|urlopen|options|Request)$
+          - focus-metavariable: $URL
+
+  - id: nervve.python.open-redirect
+    mode: taint
+    languages: [python]
+    severity: WARNING
+    message: >-
+      Redirect to a location taken from untrusted input. Attackers use it to send users to phishing pages that
+      look like they come from this site. Redirect only to relative paths or an allow-list of hosts.
+    metadata:
+      cwe: "CWE-601"
+      owasp: "A01:2021 Broken Access Control"
+      confidence: high
+      category: injection
+    pattern-sources: *py_sources
+    pattern-sanitizers: *py_sanitizers
+    pattern-sinks:
+      - pattern-either:
+          - pattern: flask.redirect(...)
+          - pattern: redirect(...)
+          - pattern: django.shortcuts.redirect(...)
+          - pattern: django.http.HttpResponseRedirect(...)
+          - pattern: HttpResponseRedirect(...)
+          - pattern: fastapi.responses.RedirectResponse(...)
+          - pattern: RedirectResponse(...)
+
+  - id: nervve.python.xss
+    mode: taint
+    languages: [python]
+    severity: WARNING
+    message: >-
+      Untrusted input is returned as HTML without escaping (cross-site scripting). Render it through an
+      auto-escaping template, or escape it with markupsafe.escape before building the response.
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021 Injection"
+      confidence: high
+      category: injection
+    pattern-sources: *py_sources
+    pattern-sanitizers: *py_sanitizers
+    pattern-sinks:
+      - pattern-either:
+          - pattern: markupsafe.Markup(...)
+          - pattern: Markup(...)
+          - pattern: django.utils.safestring.mark_safe(...)
+          - pattern: mark_safe(...)
+      - patterns:
+          # a response whose HTML body is assembled from strings right here
+          - pattern-either:
+              - pattern: HttpResponse($BODY, ...)
+              - pattern: django.http.HttpResponse($BODY, ...)
+              - pattern: HTMLResponse($BODY, ...)
+              - pattern: fastapi.responses.HTMLResponse($BODY, ...)
+              - pattern: make_response($BODY, ...)
+              - pattern: flask.make_response($BODY, ...)
+          - focus-metavariable: $BODY
+          - pattern-either:
+              - pattern: '"$HTML" + $X'
+              - pattern: '"$HTML" + $X + "$END"'
+              - pattern: '"$HTML".format(...)'
+              - pattern: '"$HTML" % $X'
+              - pattern: f"$HTML"
+          - metavariable-regex:
+              metavariable: $HTML
+              regex: (?s).*<[a-zA-Z!/].*
+      - patterns:
+          # HTML assembled from strings and returned straight from a Flask view
+          - pattern-inside: |
+              @$APP.route(...)
+              def $F(...): ...
+          - pattern-either:
+              - pattern: return "$HTML" + $X
+              - pattern: return "$HTML" + $X + "$END"
+              - pattern: return f"$HTML"
+              - pattern: return "$HTML".format(...)
+              - pattern: return "$HTML" % $X
+          - metavariable-regex:
+              metavariable: $HTML
+              regex: (?s).*<[a-zA-Z!/].*
+
+  - id: nervve.python.insecure-deserialisation
+    # equivalent built-in rule: NM-SAST-006
+    mode: taint
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Untrusted data is deserialised with a format that can construct arbitrary objects (pickle, marshal, shelve,
+      unsafe YAML). That allows remote code execution. Use JSON, or yaml.safe_load for YAML.
+    metadata:
+      cwe: "CWE-502"
+      owasp: "A08:2021 Software and Data Integrity Failures"
+      confidence: high
+      category: injection
+    pattern-sources: *py_sources
+    pattern-sanitizers: *py_sanitizers
+    pattern-sinks:
+      - pattern-either:
+          - pattern: pickle.loads(...)
+          - pattern: pickle.load(...)
+          - pattern: cPickle.loads(...)
+          - pattern: dill.loads(...)
+          - pattern: marshal.loads(...)
+          - pattern: shelve.open(...)
+          - pattern: jsonpickle.decode(...)
+          - pattern: yaml.unsafe_load(...)
+          - patterns:
+              - pattern: yaml.load(...)
+              - pattern-not: yaml.load(..., Loader=yaml.SafeLoader, ...)
+              - pattern-not: yaml.load(..., Loader=yaml.CSafeLoader, ...)
+              - pattern-not: yaml.load(..., Loader=SafeLoader, ...)
+
+  - id: nervve.python.xxe
+    # equivalent built-in rule: NM-SAST-015
+    languages: [python]
+    severity: WARNING
+    message: >-
+      XML is parsed with a library that resolves external entities by default (XXE), which can disclose local
+      files or reach internal hosts. Use defusedxml, or disable entity resolution on the parser.
+    metadata:
+      cwe: "CWE-611"
+      owasp: "A05:2021 Security Misconfiguration"
+      confidence: medium
+      category: injection
+    pattern-either:
+      - pattern: lxml.etree.XMLParser(..., resolve_entities=True, ...)
+      - patterns:
+          - pattern-either:
+              - pattern: lxml.etree.parse(...)
+              - pattern: lxml.etree.fromstring(...)
+              - pattern: lxml.etree.XML(...)
+          - pattern-not-inside: |
+              $P = lxml.etree.XMLParser(..., resolve_entities=False, ...)
+              ...
+          - pattern-not: lxml.etree.$F(..., parser=$PARSER, ...)
+      - pattern: xml.dom.pulldom.parse(...)
+      - pattern: xml.sax.make_parser(...)
+
+  - id: nervve.python.ldap-injection
+    mode: taint
+    languages: [python]
+    severity: WARNING
+    message: >-
+      LDAP filter built from untrusted input. An attacker can change the filter to bypass authentication or read
+      other directory entries. Escape the value with ldap.filter.escape_filter_chars.
+    metadata:
+      cwe: "CWE-90"
+      owasp: "A03:2021 Injection"
+      confidence: high
+      category: injection
+    pattern-sources: *py_sources
+    pattern-sanitizers:
+      - pattern: ldap.filter.escape_filter_chars(...)
+      - pattern: escape_filter_chars(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  $CONN = ldap.initialize(...)
+                  ...
+              - pattern-inside: |
+                  $CONN = ldap3.Connection(...)
+                  ...
+              - pattern-inside: |
+                  $CONN = Connection(...)
+                  ...
+              - pattern-inside: |
+                  with ldap3.Connection(...) as $CONN:
+                    ...
+          - pattern-either:
+              - pattern: $CONN.search_s($BASE, $SCOPE, $F, ...)
+              - pattern: $CONN.search_st($BASE, $SCOPE, $F, ...)
+              - pattern: $CONN.search($BASE, $F, ...)
+          - focus-metavariable: $F
+
+  - id: nervve.python.tls-verification-disabled
+    # equivalent built-in rule: NM-SAST-004
+    languages: [python]
+    severity: ERROR
+    message: >-
+      TLS certificate verification is turned off, so any machine on the network path can impersonate the server
+      and read or change the traffic. Remove verify=False; for private CAs pass the CA bundle path instead.
+    metadata:
+      cwe: "CWE-295"
+      owasp: "A02:2021 Cryptographic Failures"
+      confidence: high
+      category: crypto
+    pattern-either:
+      - pattern: requests.$M(..., verify=False, ...)
+      - pattern: httpx.$M(..., verify=False, ...)
+      - pattern: ssl._create_unverified_context(...)
+      - pattern: $CTX.check_hostname = False
+      - pattern: $CTX.verify_mode = ssl.CERT_NONE
+      - pattern: urllib3.disable_warnings(...)
+
+  - id: nervve.python.jwt-unverified
+    # equivalent built-in rule: NM-SAST-009
+    languages: [python]
+    severity: ERROR
+    message: >-
+      JSON Web Token decoded without verifying its signature, so anyone can forge a token with any claims. Verify
+      the signature with the expected key and an explicit algorithm list.
+    metadata:
+      cwe: "CWE-347"
+      owasp: "A02:2021 Cryptographic Failures"
+      confidence: high
+      category: crypto
+    pattern-either:
+      - pattern: 'jwt.decode(..., options={..., "verify_signature": False, ...}, ...)'
+      - pattern: jwt.decode(..., verify=False, ...)
+      - pattern: jwt.decode(..., algorithms=["none"], ...)
+
+  - id: nervve.python.weak-cipher
+    languages: [python]
+    severity: WARNING
+    message: >-
+      Broken or weak cryptography (DES, RC4, Blowfish, or a block cipher in ECB mode). Use AES-GCM or
+      ChaCha20-Poly1305 from the cryptography package.
+    metadata:
+      cwe: "CWE-327"
+      owasp: "A02:2021 Cryptographic Failures"
+      confidence: high
+      category: crypto
+    pattern-either:
+      - pattern: Crypto.Cipher.DES.new(...)
+      - pattern: Crypto.Cipher.ARC4.new(...)
+      - pattern: Crypto.Cipher.Blowfish.new(...)
+      - pattern: Crypto.Cipher.AES.new($K, Crypto.Cipher.AES.MODE_ECB, ...)
+      - pattern: cryptography.hazmat.primitives.ciphers.modes.ECB(...)
+      - pattern: cryptography.hazmat.primitives.ciphers.algorithms.TripleDES(...)
+      - pattern: cryptography.hazmat.primitives.ciphers.algorithms.ARC4(...)
+      - pattern: cryptography.hazmat.primitives.ciphers.algorithms.Blowfish(...)
+
+  - id: nervve.python.weak-password-hash
+    languages: [python]
+    severity: WARNING
+    message: >-
+      A fast general-purpose hash (MD5, SHA-1 or SHA-256) is applied to a password. Fast hashes are cracked
+      quickly offline. Use a password hashing function: argon2, bcrypt, scrypt or PBKDF2 with many iterations.
+    metadata:
+      cwe: "CWE-916"
+      owasp: "A02:2021 Cryptographic Failures"
+      confidence: medium
+      category: crypto
+    patterns:
+      - pattern-either:
+          - pattern: hashlib.$H($PW, ...)
+          - pattern: hashlib.$H($PW.encode(...), ...)
+          - pattern: hashlib.new($N, $PW, ...)
+      - metavariable-regex:
+          metavariable: $PW
+          regex: (?i).*(passw|pwd|passphrase).*
+      - metavariable-regex:
+          metavariable: $H
+          regex: ^(md5|sha1|sha224|sha256|sha512|new)$
+
+  - id: nervve.python.flask-secret-hardcoded
+    languages: [python]
+    severity: ERROR
+    message: >-
+      The web framework's session-signing key is a constant in the source code. Anyone with the code can forge
+      session cookies. Load it from the environment or a secret store.
+    metadata:
+      cwe: "CWE-798"
+      owasp: "A07:2021 Identification and Authentication Failures"
+      confidence: high
+      category: secrets
+    pattern-either:
+      - pattern: $APP.secret_key = "..."
+      - pattern: $APP.config["SECRET_KEY"] = "..."
+      - pattern: SECRET_KEY = "..."

@@ -81,6 +81,18 @@ def print_report(res, decision):
         by.setdefault(f["engine"], {}).setdefault(f["severity"], 0)
         by[f["engine"]][f["severity"]] += 1
     print(f"\n{C['b']}NERvvE DevSecOps scan · {res['repo']}{C['end']}  ({res['duration_s']}s, {res['components']} components, tools: {', '.join(res['tools'])})")
+    cov = res.get("coverage") or {}
+    if cov:
+        done = [k for k, c in cov.items() if c.get("assessed")]
+        print("  Assessed: " + ", ".join(done) if done else "  Assessed: nothing applicable was found")
+        for k in done:
+            c = cov[k]
+            tools = ", ".join(t["name"] + (f" {t['version']}" if t.get("version") else "") + (" (FAILED)" if t.get("error") else "")
+                              for t in c.get("tools") or [])
+            print(f"    {k:<8} {c.get('examined', '')[:52]:<52} {tools}")
+        skipped = [f"{k} ({c.get('reason')})" for k, c in cov.items() if not c.get("assessed")]
+        if skipped:
+            print("  Not assessed: " + "; ".join(skipped))
     print("─" * 78)
     for eng, sev in sorted(by.items()):
         parts = "  ".join(f"{C[s]}{s[:4]}:{n}{C['end']}" for s, n in sorted(sev.items(), key=lambda x: -"info low medium high critical".split().index(x[0])))
