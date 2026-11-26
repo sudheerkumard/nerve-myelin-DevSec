@@ -311,21 +311,23 @@ def _merge_duplicates(path, findings):
     sca_groups = defaultdict(list)
     for f in out:
         if f.get("engine") == "sca":
-            sca_groups[(_package_key(f), str(f.get("version") or ""), tuple(sorted(_ids(f))))].append(f)
+            sca_groups[(_package_key(f), str(f.get("version") or ""))].append(f)
     duplicate_ids = set()
     for group in sca_groups.values():
-        if len(group) < 2:
-            continue
-        priority = {"": 0, "osv": 0, "myelin": 0, "grype": 1, "trivy": 2}
-        group.sort(key=lambda f: priority.get(str(f.get("source_tool") or "").lower(), 3))
-        preferred = group[0]
-        sources = set(preferred.get("scanner_sources") or [])
-        for duplicate in group[1:]:
-            sources.add(duplicate.get("source_tool") or "NERvvE advisory engine")
-            sources.update(duplicate.get("scanner_sources") or [])
-            duplicate_ids.add(id(duplicate))
-        if sources:
-            preferred["scanner_sources"] = sorted(sources)
+        group.sort(key=lambda f: {"": 0, "osv": 0, "myelin": 0, "grype": 1, "trivy": 2}.get(
+            str(f.get("source_tool") or "").lower(), 3))
+        retained = []
+        for finding in group:
+            ids = _ids(finding)
+            match = next((prior for prior in retained if ids and ids & _ids(prior)), None)
+            if match is None:
+                retained.append(finding)
+                continue
+            sources = set(match.get("scanner_sources") or [])
+            sources.add(finding.get("source_tool") or "NERvvE advisory engine")
+            sources.update(finding.get("scanner_sources") or [])
+            match["scanner_sources"] = sorted(sources)
+            duplicate_ids.add(id(finding))
     out = [f for f in out if id(f) not in duplicate_ids]
     # IaC: Trivy misconfiguration on a line another IaC engine already reports
     iac_lines = {(f.get("file"), f.get("line")) for f in out if f.get("engine") == "iac" and f.get("source_tool") != "trivy"}
