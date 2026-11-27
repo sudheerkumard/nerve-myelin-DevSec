@@ -104,6 +104,7 @@ def test_pypi_fallback_when_osv_unreachable(online, monkeypatch, tmp_path):
     f = fs[0]
     assert f["rule_id"] == "CVE-2026-2222" and f["fixed_version"] == "1.1"
     assert f["title"] == "oldlib@1.0: Remote code execution in oldlib parser." and "severity not published" in f["evidence"]
+    assert f["severity"] == "unknown" and f["cvss"] is None
     assert "PyPI advisory database" in vulndb.STATUS["sources"]
 
 
