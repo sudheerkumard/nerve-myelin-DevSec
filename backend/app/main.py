@@ -686,7 +686,10 @@ def deployment_gate(repo: str = Query(min_length=1, max_length=300), commit: str
         intro = [f for f in c.store.findings() if f.get("repo") == repo and f.get("status") == "open"
                  and sha and str(f.get("introduced_in") or "").startswith(sha)]
         ev = pol.evaluate(intro, _effective_policy(c.store, repo=repo))
-        decision, gate = ev["decision"], {"blocking": ev["blocking"], "warnings": ev["warnings"]}
+        scanner_decision = gate.get("scanner_failure_decision") or "pass"
+        decision = max(ev["decision"], scanner_decision, key=pol.ACTION_RANK.get)
+        gate = {"blocking": ev["blocking"] + int(scanner_decision == "block"),
+                "warnings": ev["warnings"] + int(scanner_decision == "warn")}
         new_only = len(intro)
     missing = []
     if require:
@@ -1516,7 +1519,8 @@ class ScanUpload(BaseModel):
     commit: str = Field("", max_length=64)
     findings: list[dict] = Field(max_length=50000)
     sbom: dict | None = None
-    engines: list[str] | None = Field(default=None, max_length=20)   # engines that ran: lets the platform close fixed findings
+    engines: list[str] | None = Field(default=None, max_length=20)   # completed engines (deployment coverage)
+    closure_engines: list[str] | None = Field(default=None, max_length=20)  # also permits selected areas with no inputs
     stats: dict | None = None                                         # {"raw", "after_dedup", "reported"} from the CLI
 
 
@@ -1528,9 +1532,15 @@ def upload_scan(body: ScanUpload, c: Ctx = Depends(ctx("scans:write"))):
         f.setdefault("first_seen", datetime.now(timezone.utc).isoformat())
         f.setdefault("age_days", 0)
         f["repo"] = body.repo
-    decision = pol.evaluate(fs, _effective_policy(c.store, repo=body.repo))
-    sid, new = c.store.add_scan(body.repo, body.branch, body.commit, fs, body.sbom, decision, c.p.actor, scanned_engines=body.engines,
-                                  stats=body.stats if isinstance(body.stats, dict) else None)
+    failures = [enrich({"engine": "meta", "rule_id": str(f.get("rule_id") or "scanner-error"),
+                        "title": str(f.get("title") or "Required scanner failed"), "severity": "high",
+                        "scanner_status": "required_error", "repo": body.repo})
+                for f in body.findings if f.get("engine") == "meta" and f.get("scanner_status") == "required_error"]
+    decision = pol.evaluate(fs + failures, _effective_policy(c.store, repo=body.repo))
+    # Compatibility with older uploads that declare selected engines even on scanner failure.
+    scanned = [] if failures else body.engines
+    sid, new = c.store.add_scan(body.repo, body.branch, body.commit, fs, body.sbom, decision, c.p.actor, scanned_engines=scanned,
+                                  stats=body.stats, closure_engines=[] if failures else body.closure_engines)
     tickets = after_scan(c.store, getattr(c.store, "last_delta", None), c.p.tenant_id)
     if not ENTERPRISE:
         c.store.audit_event("scan.uploaded", c.p.actor, f"{body.repo}@{body.branch}: {len(fs)} findings, {new} new, gate={decision['decision']}")

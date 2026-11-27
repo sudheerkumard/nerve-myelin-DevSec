@@ -89,7 +89,11 @@ def print_report(res, decision):
             c = cov[k]
             tools = ", ".join(t["name"] + (f" {t['version']}" if t.get("version") else "") + (" (FAILED)" if t.get("error") else "")
                               for t in c.get("tools") or [])
-            print(f"    {k:<8} {c.get('examined', '')[:52]:<52} {tools}")
+            print(f"    {k:<8} [{c.get('status', 'assessed')}] {c.get('examined', '')} · {tools}")
+        for k, c in cov.items():
+            for issue in [*(c.get("errors") or []), *(c.get("limitations") or [])][:5] if c.get("status") != "not_selected" else []:
+                if c.get("assessed") or c.get("errors"):
+                    print(f"    {k:<8} {issue}")
         skipped = [f"{k} ({c.get('reason')})" for k, c in cov.items() if not c.get("assessed")]
         if skipped:
             print("  Not assessed: " + "; ".join(skipped))
@@ -114,32 +118,53 @@ def print_report(res, decision):
     print()
 
 
+def _with_required_coverage(res, decision, require):
+    if not require:
+        return decision
+    required = {e.strip() for e in require.split(",") if e.strip()}
+    missing = sorted(required - set(res.get("complete_engines") or []))
+    if not missing:
+        return decision
+    violations = [{"gate": "required-coverage", "action": "block", "finding": None,
+                   "title": f"{engine}: {(res.get('coverage') or {}).get(engine, {}).get('status', 'not assessed')}"}
+                  for engine in missing]
+    return {**decision, "decision": "block", "observed_decision": "block", "would_block": True,
+            "blocking": decision["blocking"] + len(missing), "violations": violations + decision["violations"],
+            "missing_engines": missing}
+
+
 def cmd_scan(a):
-    engines = a.engines.split(",") if a.engines else None
-    if a.image:
-        res = orchestrator.scan_image(a.image)
-        decision = policy.evaluate(res["findings"], policy.load(a.policy))
-        print_report(res, decision)
-        if a.json:
-            json.dump({**res, "decision": decision}, open(a.json, "w"), indent=2)
-        return 1 if decision["decision"] == "block" and a.fail_on != "never" else 0
-    res = orchestrator.scan(a.path, repo=a.repo or os.path.basename(os.path.abspath(a.path)), engines=engines,
-                            use_external=not a.builtin_only)
-    pol = policy.load(a.policy)
-    decision = policy.evaluate(res["findings"], pol)
+    engines = [e.strip() for e in a.engines.split(",")] if a.engines else None
+    if a.image and a.report:
+        print("myelin scan: --report is available for repository scans", file=sys.stderr)
+        return 2
+    try:
+        if a.image:
+            res = orchestrator.scan_image(a.image)
+        else:
+            res = orchestrator.scan(a.path, repo=a.repo or os.path.basename(os.path.abspath(a.path)), engines=engines,
+                                    use_external=not a.builtin_only)
+    except ValueError as exc:
+        print(f"myelin scan: {exc}", file=sys.stderr)
+        return 2
+    decision = _with_required_coverage(res, policy.evaluate(res["findings"], policy.load(a.policy)), a.require)
     print_report(res, decision)
     if a.json:
         json.dump({**res, "decision": decision}, open(a.json, "w"), indent=2)
     if a.sarif:
         json.dump(to_sarif(res["findings"]), open(a.sarif, "w"), indent=2)
-    if a.sbom:
+    if a.report:
+        from pathlib import Path
+        from . import report_enterprise
+        Path(a.report).write_text(report_enterprise.render({**res, "decision": decision}), encoding="utf-8")
+    if a.sbom and res.get("sbom") is not None:
         json.dump(res["sbom"], open(a.sbom, "w"), indent=2)
     server = a.server or os.getenv("MYELIN_SERVER")
-    if server:
+    if server and not a.image:
         try:
             r = upload(server, os.getenv("MYELIN_API_KEY"), {"repo": res["repo"], "branch": os.getenv("GITHUB_REF_NAME") or os.getenv("CI_COMMIT_REF_NAME") or os.getenv("BUILD_SOURCEBRANCHNAME") or "local",
                                                              "commit": os.getenv("GITHUB_SHA") or os.getenv("CI_COMMIT_SHA") or "", "findings": res["findings"], "sbom": res["sbom"],
-                                                             "engines": engines or list(orchestrator.DEFAULT_ENGINES),
+                                                             "engines": res["complete_engines"], "closure_engines": res["closure_engines"],
                                                              "stats": res.get("stats")})
             print(f"  Uploaded → {server}  scan_id={r.get('scan_id')}  server decision={r.get('decision', {}).get('decision')}")
         except Exception as e:
@@ -233,9 +258,9 @@ def cmd_gate(a):
     decision on the commit being deployed — fails closed when the commit was never scanned (unless --allow-unscanned)."""
     if a.results:
         res = json.load(open(a.results))
-        d = policy.evaluate(res["findings"], policy.load(a.policy))
-        print(json.dumps({k: d[k] for k in ("policy", "decision", "blocking", "warnings", "excepted")}))
-        return 1 if d["decision"] == "block" else 0
+        d = _with_required_coverage(res, policy.evaluate(res["findings"], policy.load(a.policy)), a.require)
+        print(json.dumps({k: d[k] for k in ("policy", "decision", "blocking", "warnings", "excepted", "missing_engines") if k in d}))
+        return 1 if d["decision"] == "block" or (a.fail_on == "warn" and d["decision"] == "warn") else 0
     server = a.server or os.getenv("MYELIN_SERVER")
     if not (a.repo and server):
         print("myelin gate: give --results FILE, or --repo NAME with --server URL / MYELIN_SERVER", file=sys.stderr)
@@ -448,6 +473,8 @@ def main():
     s.add_argument("--repo"); s.add_argument("--engines"); s.add_argument("--policy"); s.add_argument("--server")
     s.add_argument("--sarif"); s.add_argument("--sbom"); s.add_argument("--json")
     s.add_argument("--fail-on", choices=["block", "warn", "never"], default="block")
+    s.add_argument("--report", help="write a self-contained HTML repository assessment")
+    s.add_argument("--require", help="comma-separated domains that must complete, e.g. sast,sca,secrets")
     s.add_argument("--builtin-only", action="store_true", help="skip third-party scanners even if installed")
     d = sub.add_parser("dast", help="test a running web API (read-only by default)")
     d.add_argument("--target", required=True, help="base URL of the API, e.g. https://api.example.com")
@@ -478,7 +505,7 @@ def main():
     g.add_argument("--fail-on", choices=["block", "warn"], default="block")
     g.add_argument("--allow-unscanned", action="store_true", help="do not fail when the commit was never scanned")
     g.add_argument("--scope", choices=["all", "new"], default="all", help="new: only findings this commit introduced can block")
-    g.add_argument("--require", help="comma-separated engines that must have run, e.g. sast,sca,secrets (missing → block)")
+    g.add_argument("--require", help="comma-separated domains that must complete (missing or partial → block)")
     im = sub.add_parser("import", help="import another scanner's results (SARIF, CycloneDX, Trivy, Grype, Semgrep, Gitleaks, ZAP …)")
     im.add_argument("file"); im.add_argument("--repo", required=True); im.add_argument("--branch"); im.add_argument("--commit")
     im.add_argument("--format", default="auto"); im.add_argument("--server"); im.add_argument("--policy")

@@ -30,6 +30,10 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
+from contextvars import ContextVar, copy_context
+
+from . import coverage
 
 OSV_URL = os.environ.get("MYELIN_OSV_URL", "https://api.osv.dev").rstrip("/")
 PYPI_URL = os.environ.get("MYELIN_PYPI_URL", "https://pypi.org").rstrip("/")
@@ -38,7 +42,28 @@ OSV_ECO = {"pypi": "PyPI", "npm": "npm", "maven": "Maven", "go": "Go", "cargo": 
            "gem": "RubyGems", "composer": "Packagist", "hex": "Hex", "pub": "Pub", "cocoapods": "CocoaPods"}
 CACHE_TTL = 24 * 3600
 MAX_TRANSITIVE = 600
-STATUS = {"sources": set(), "errors": set()}     # what the last scan could reach, shown in reports
+STATUS = {"sources": set(), "errors": set(), "inventory_errors": set()}  # standalone helper calls
+_scan_status = ContextVar("scan_status", default=None)
+
+
+def current_status():
+    return _scan_status.get() or STATUS
+
+
+@contextmanager
+def scan_status():
+    status = {"sources": set(), "errors": set(), "inventory_errors": set()}
+    token = _scan_status.set(status)
+    try:
+        yield status
+    finally:
+        _scan_status.reset(token)
+
+
+def scan_map(pool, fn, values):
+    # Each worker gets its own Context, with the evidence sets of the current scan.
+    return pool.map(lambda ctx_value: ctx_value[0].run(fn, ctx_value[1]),
+                    ((copy_context(), value) for value in values))
 
 
 def offline() -> bool:
@@ -95,6 +120,18 @@ def norm_name(eco, name):
 
 
 # ------------------------------------------------------------------ lockfiles
+LOCKFILES = {"package-lock.json", "npm-shrinkwrap.json", "yarn.lock", "pnpm-lock.yaml", "poetry.lock", "uv.lock",
+             "pdm.lock", "Pipfile.lock", "Cargo.lock", "composer.lock", "Gemfile.lock", "gradle.lockfile",
+             "packages.lock.json", "packages.config", "mix.lock", "pubspec.lock", "Podfile.lock"}
+
+
+def _lock_json(fh, *sections):
+    data = json.load(fh)
+    if not isinstance(data, dict) or not any(key in data for key in sections):
+        raise ValueError("unrecognised lockfile structure")
+    return data
+
+
 def parse_lockfiles(root: str) -> list[dict]:
     """Extract exact package versions from supported lockfiles.
 
@@ -103,14 +140,18 @@ def parse_lockfiles(root: str) -> list[dict]:
     """
     out = []
     for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = [d for d in dirnames if d not in {".git", "node_modules", ".venv", "venv", "vendor"}]
-        for fn in filenames:
+        dirnames[:] = sorted(d for d in dirnames if d not in coverage.SKIP)
+        for fn in sorted(filenames):
+            if fn not in LOCKFILES:
+                continue
             p = os.path.join(dirpath, fn)
-            rel = os.path.relpath(p, root)
+            rel = os.path.relpath(p, root).replace(os.sep, "/")
             try:
+                if os.path.islink(p):
+                    raise ValueError("lockfile is a symlink")
                 if fn in ("package-lock.json", "npm-shrinkwrap.json"):
                     with open(p, encoding="utf-8") as fh:
-                        out += _npm_lock(json.load(fh), rel)
+                        out += _npm_lock(_lock_json(fh, "lockfileVersion", "packages", "dependencies"), rel)
                 elif fn == "yarn.lock":
                     with open(p, encoding="utf-8", errors="ignore") as fh:
                         out += _yarn_lock(fh.read(), rel)
@@ -121,7 +162,7 @@ def parse_lockfiles(root: str) -> list[dict]:
                     out += _python_toml_lock(p, rel, fn)
                 elif fn == "Pipfile.lock":
                     with open(p, encoding="utf-8") as fh:
-                        data = json.load(fh)
+                        data = _lock_json(fh, "default", "develop", "_meta")
                     for sect, scope in (("default", "transitive"), ("develop", "dev")):
                         for n, v in (data.get(sect) or {}).items():
                             if str(v.get("version", "")).startswith("=="):
@@ -130,7 +171,7 @@ def parse_lockfiles(root: str) -> list[dict]:
                     out += _cargo_lock(p, rel)
                 elif fn == "composer.lock":
                     with open(p, encoding="utf-8") as fh:
-                        data = json.load(fh)
+                        data = _lock_json(fh, "packages", "packages-dev")
                     for section, scope in (("packages", "transitive"), ("packages-dev", "dev")):
                         for item in data.get(section) or []:
                             if item.get("name") and item.get("version"):
@@ -143,7 +184,7 @@ def parse_lockfiles(root: str) -> list[dict]:
                         out += _gradle_lock(fh.read(), rel)
                 elif fn == "packages.lock.json":
                     with open(p, encoding="utf-8") as fh:
-                        out += _nuget_lock(json.load(fh), rel)
+                        out += _nuget_lock(_lock_json(fh, "dependencies"), rel)
                 elif fn == "packages.config":
                     out += _nuget_packages_config(p, rel)
                 elif fn == "mix.lock":
@@ -155,8 +196,8 @@ def parse_lockfiles(root: str) -> list[dict]:
                 elif fn == "Podfile.lock":
                     with open(p, encoding="utf-8") as fh:
                         out += _podfile_lock(fh.read(), rel)
-            except (OSError, ValueError, KeyError, TypeError, ImportError, ET.ParseError):
-                STATUS["errors"].add(f"lockfile parse: {rel}")
+            except (OSError, ValueError, KeyError, TypeError, AttributeError, ImportError, ET.ParseError):
+                current_status()["errors"].add(f"lockfile parse: {rel}")
                 continue
     # Keep one exact component per ecosystem/name/version while preserving all source paths.
     unique, by_key = [], {}
@@ -166,8 +207,12 @@ def parse_lockfiles(root: str) -> list[dict]:
             by_key[key] = component
             component["evidence_files"] = [component["file"]]
             unique.append(component)
-        elif component["file"] not in by_key[key]["evidence_files"]:
-            by_key[key]["evidence_files"].append(component["file"])
+        else:
+            primary = by_key[key]
+            if component["file"] not in primary["evidence_files"]:
+                primary["evidence_files"].append(component["file"])
+            if primary["scope"] in {"dev", "optional"} and component["scope"] in {"required", "transitive"}:
+                primary["scope"] = component["scope"]
     return unique
 
 
@@ -178,7 +223,7 @@ def _python_toml_lock(path, rel, kind):
         try:
             import tomli as tomllib
         except ImportError:
-            STATUS["errors"].add(f"TOML lock parser unavailable: {rel}")
+            current_status()["errors"].add(f"TOML lock parser unavailable: {rel}")
             return []
     with open(path, "rb") as fh:
         data = tomllib.load(fh)
@@ -213,7 +258,7 @@ def _pnpm_lock(text, rel):
         import yaml
         data = yaml.safe_load(text) or {}
     except Exception as exc:
-        STATUS["errors"].add(f"pnpm lock parse: {rel}: {type(exc).__name__}")
+        current_status()["errors"].add(f"pnpm lock parse: {rel}: {type(exc).__name__}")
         return []
     out = []
     packages = data.get("packages") or {}
@@ -254,7 +299,7 @@ def _cargo_lock(path, rel):
         try:
             import tomli as tomllib
         except ImportError:
-            STATUS["errors"].add(f"cargo lock parser unavailable: {rel}")
+            current_status()["errors"].add(f"cargo lock parser unavailable: {rel}")
             return []
     with open(path, "rb") as fh:
         data = tomllib.load(fh)
@@ -361,7 +406,7 @@ def _pubspec_lock(text, rel):
         import yaml
         data = yaml.safe_load(text) or {}
     except Exception as exc:
-        STATUS["errors"].add(f"pubspec lock parse: {rel}: {type(exc).__name__}")
+        current_status()["errors"].add(f"pubspec lock parse: {rel}: {type(exc).__name__}")
         return []
     out = []
     for name, meta in (data.get("packages") or {}).items():
@@ -394,6 +439,8 @@ def _podfile_lock(text, rel):
 
 def _c(eco, name, version, file, scope, via=None):
     name = norm_name(eco, name)
+    if not name or (version is not None and (not isinstance(version, str) or not version.strip())):
+        raise ValueError("invalid component name or version")
     return {"ecosystem": eco, "name": name, "version": version, "file": file, "scope": scope, "via": via,
             "license": "unknown", "purl": f"pkg:{eco}/{name.replace(':', '/')}@{version}"}
 
@@ -422,7 +469,7 @@ def resolve_pypi(direct: list[dict]) -> list[dict]:
     while queue and len(out) < MAX_TRANSITIVE:
         batch, queue = queue[:16], queue[16:]
         with ThreadPoolExecutor(max_workers=8) as ex:
-            metas = list(ex.map(lambda q: _safe(_pypi_release, q[0], q[1]), batch))
+            metas = list(scan_map(ex, lambda q: _safe(_pypi_release, q[0], q[1]), batch))
         for (name, version, extras, root, file), meta in zip(batch, metas):
             reqs = ((meta or {}).get("info") or {}).get("requires_dist") or []
             for raw in reqs:
@@ -460,7 +507,7 @@ def _safe(fn, *a):
     try:
         return fn(*a)
     except Exception as e:  # noqa: BLE001 - network intelligence is best effort
-        STATUS["errors"].add(f"{fn.__name__}: {type(e).__name__}")
+        current_status()["errors"].add(f"{fn.__name__}: {type(e).__name__}")
         return None
 
 
@@ -560,12 +607,12 @@ def _osv(comps):
                 if ids:
                     hits[idx[start + j]] = ids
     except Exception as e:  # noqa: BLE001
-        STATUS["errors"].add(f"osv: {type(e).__name__}")
+        current_status()["errors"].add(f"osv: {type(e).__name__}")
         return None
-    STATUS["sources"].add("OSV")
+    current_status()["sources"].add("OSV")
     all_ids = sorted({i for v in hits.values() for i in v})
     with ThreadPoolExecutor(max_workers=8) as ex:
-        docs = dict(zip(all_ids, ex.map(lambda i: _safe(_http_json, f"{OSV_URL}/v1/vulns/{i}"), all_ids)))
+        docs = dict(zip(all_ids, scan_map(ex, lambda i: _safe(_http_json, f"{OSV_URL}/v1/vulns/{i}"), all_ids)))
     return {k: [docs[i] for i in v if docs.get(i)] for k, v in hits.items()}
 
 
@@ -573,7 +620,7 @@ def _pypi_vulns(c):
     meta = _safe(_pypi_release, c["name"], c["version"])
     if meta is None:
         return []
-    STATUS["sources"].add("PyPI advisory database")
+    current_status()["sources"].add("PyPI advisory database")
     out = []
     for v in meta.get("vulnerabilities") or []:
         if v.get("withdrawn"):
@@ -654,33 +701,41 @@ def _export_index():
         if actual != declared:
             raise ValueError("OSV export archive set does not match manifest")
         signature = hashlib.sha256((os.path.realpath(d) + json.dumps(sorted(rows))).encode()).hexdigest()
-        if _EXPORT["signature"] == signature and _EXPORT["index"] is not None:
-            return _EXPORT["index"]
-        idx = {}
-        for entry in entries:
-            with zipfile.ZipFile(os.path.join(d, entry["file"])) as archive:
-                bad = archive.testzip()
-                if bad:
-                    raise ValueError("corrupt OSV archive member: " + bad)
-                for member in archive.namelist():
-                    if not member.endswith(".json"):
-                        continue
-                    doc = json.loads(archive.read(member))
-                    for affected_item in doc.get("affected") or []:
-                        pkg = affected_item.get("package") or {}
-                        eco = next((key for key, value in OSV_ECO.items() if value == pkg.get("ecosystem")), None)
-                        if eco:
-                            idx.setdefault((eco, norm_name(eco, pkg.get("name", ""))), []).append(doc)
-        STATUS["sources"].add("OSV offline export")
-        STATUS["sources"].add("OSV export manifest verified")
-        STATUS["sources"].add("OSV export generated: " + generated)
-        STATUS["sources"].add("OSV export ecosystems: " + ", ".join(sorted({e["ecosystem"] for e in entries})))
-        _EXPORT.update(signature=signature, index=idx)
+        ecosystems = {e["ecosystem"] for e in entries}
+        cached = _EXPORT.copy()
+        idx = cached["index"] if cached["signature"] == signature else None
+        if idx is None:
+            idx = _index_osv_archives(d, entries)
+            _EXPORT.update(signature=signature, index=idx)
+        current_status()["sources"].update({"OSV offline export", "OSV export manifest verified",
+                                            "OSV export generated: " + generated,
+                                            "OSV export ecosystems: " + ", ".join(sorted(ecosystems))})
+        current_status()["offline_ecosystems"] = ecosystems
         return idx
-    except (OSError, ValueError, TypeError, KeyError, zipfile.BadZipFile, json.JSONDecodeError) as exc:
-        STATUS["errors"].add("offline OSV export invalid: " + str(exc)[:180])
-        _EXPORT.update(signature=None, index=None)
+    except (OSError, ValueError, TypeError, KeyError, AttributeError, zipfile.BadZipFile) as exc:
+        current_status()["errors"].add("offline OSV export invalid: " + str(exc)[:180])
         return None
+
+
+def _index_osv_archives(directory, entries):
+    import zipfile
+
+    idx = {}
+    for entry in entries:
+        with zipfile.ZipFile(os.path.join(directory, entry["file"])) as archive:
+            bad = archive.testzip()
+            if bad:
+                raise ValueError("corrupt OSV archive member: " + bad)
+            for member in archive.namelist():
+                if not member.endswith(".json"):
+                    continue
+                doc = json.loads(archive.read(member))
+                for affected_item in doc.get("affected") or []:
+                    pkg = affected_item.get("package") or {}
+                    eco = next((key for key, value in OSV_ECO.items() if value == pkg.get("ecosystem")), None)
+                    if eco:
+                        idx.setdefault((eco, norm_name(eco, pkg.get("name", ""))), []).append(doc)
+    return idx
 
 
 def _vkey(eco, v):
@@ -725,40 +780,14 @@ def affected(doc: dict, eco: str, name: str, version: str) -> bool:
     return False
 
 
-def _export_index():
-    d = os.environ.get("MYELIN_OSV_EXPORT_DIR")
-    if not d:
-        return None
-    if _EXPORT["dir"] == d and _EXPORT["index"] is not None:
-        return _EXPORT["index"]
-    import zipfile
-    idx = {}
-    for dp, _, fns in os.walk(d):
-        for fn in fns:
-            if not fn.endswith(".zip"):
-                continue
-            try:
-                with zipfile.ZipFile(os.path.join(dp, fn)) as z:
-                    for member in z.namelist():
-                        if not member.endswith(".json"):
-                            continue
-                        doc = json.loads(z.read(member))
-                        for a in doc.get("affected") or []:
-                            pkg = a.get("package") or {}
-                            eco = next((k for k, v in OSV_ECO.items() if v == pkg.get("ecosystem")), None)
-                            if eco:
-                                idx.setdefault((eco, norm_name(eco, pkg.get("name", ""))), []).append(doc)
-            except (OSError, ValueError, zipfile.BadZipFile) as e:
-                STATUS["errors"].add(f"osv export {fn}: {type(e).__name__}")
-    _EXPORT.update(dir=d, index=idx)
-    return idx
-
-
 def _offline_osv(comps):
     idx = _export_index()
     if idx is None:
         return None
-    STATUS["sources"].add("OSV offline export")
+    provided = current_status().get("offline_ecosystems") or set()
+    required = {OSV_ECO.get(c["ecosystem"], c["ecosystem"]) for c in comps}
+    if missing := sorted(required - provided):
+        current_status()["errors"].add("offline OSV export missing ecosystems: " + ", ".join(missing))
     out = {}
     for i, c in enumerate(comps):
         docs = [d for d in idx.get((c["ecosystem"], c["name"]), []) if affected(d, c["ecosystem"], c["name"], str(c["version"]))]
@@ -820,7 +849,8 @@ def vulnerabilities(comps: list[dict]) -> list[tuple[dict, dict]]:
     if offline():
         found = _offline_osv(comps)
         if found is None:
-            STATUS["errors"].add("offline: no OSV export configured")
+            if not os.environ.get("MYELIN_OSV_EXPORT_DIR"):
+                current_status()["errors"].add("offline: no OSV export configured")
             return []
         normalised = _normalise([(comps[i], v) for i, docs in found.items() for v in docs])
         # Offline mode uses only locally cached enrichment; _http_json never reaches the network offline.
@@ -833,7 +863,7 @@ def vulnerabilities(comps: list[dict]) -> list[tuple[dict, dict]]:
         for i, docs in found.items():
             pairs.extend((comps[i], v) for v in docs)
     else:
-        STATUS["errors"].add("OSV unavailable; using available ecosystem fallbacks")
+        current_status()["errors"].add("OSV unavailable; using available ecosystem fallbacks")
 
     # Independent PyPI enrichment avoids the previous blind spot where a reachable
     # but incomplete OSV response suppressed PyPI-only advisories.
@@ -925,16 +955,16 @@ def _enrich_nvd(pairs, cves):
     records = {}
     try:
         with ThreadPoolExecutor(max_workers=4) as pool:
-            results = list(pool.map(_safe, [lambda c=c: _nvd_record(c) for c in cves]))
+            results = list(scan_map(pool, _safe, [lambda c=c: _nvd_record(c) for c in cves]))
         records = {c: r for c, r in zip(cves, results) if r}
         if any(r is not None for r in results):
-            STATUS["sources"].add("NVD CVE API 2.0")
+            current_status()["sources"].add("NVD CVE API 2.0")
         if any(r is None for r in results):
             # A valid no-record response is not a feed failure. Only transport errors
             # are exposed by _safe as None, so do not infer completeness from record count.
             pass
     except Exception as exc:
-        STATUS["errors"].add(f"NVD enrichment unavailable: {type(exc).__name__}")
+        current_status()["errors"].add(f"NVD enrichment unavailable: {type(exc).__name__}")
         return pairs
 
     enriched = []
@@ -978,9 +1008,9 @@ def _enrich_threat_intel(pairs):
                     epss[row["cve"]] = {"score": float(row["epss"]), "percentile": float(row["percentile"])}
                 except (KeyError, TypeError, ValueError):
                     continue
-        STATUS["sources"].add("FIRST EPSS")
+        current_status()["sources"].add("FIRST EPSS")
     except Exception as exc:
-        STATUS["errors"].add(f"EPSS enrichment unavailable: {type(exc).__name__}")
+        current_status()["errors"].add(f"EPSS enrichment unavailable: {type(exc).__name__}")
 
     kev_records = _THREAT_INTEL.get("kev")
     kev_available = kev_records is not None
@@ -995,9 +1025,9 @@ def _enrich_threat_intel(pairs):
                 for row in data.get("vulnerabilities") or [] if row.get("cveID")}
             _THREAT_INTEL["kev"] = kev_records
             kev_available = True
-            STATUS["sources"].add("CISA KEV")
+            current_status()["sources"].add("CISA KEV")
         except Exception as exc:
-            STATUS["errors"].add(f"CISA KEV enrichment unavailable: {type(exc).__name__}")
+            current_status()["errors"].add(f"CISA KEV enrichment unavailable: {type(exc).__name__}")
             kev_records = {}
 
     enriched = []

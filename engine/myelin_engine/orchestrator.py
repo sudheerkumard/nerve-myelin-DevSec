@@ -31,15 +31,25 @@ SAST_EXCLUDES = ["tests", "test", "__tests__", "spec", "testdata", "fixtures", "
                  ".venv", "venv", "*.min.js", "*.bundle.js", "*.map"]
 
 
-def _trivy_argv(p):
-    scanners = "vuln,misconfig,secret"
-    argv = ["trivy", "fs", "--quiet", "--format", "json", "--cache-dir", TRIVY_CACHE,
-            "--timeout", "15m", "--skip-dirs", "**/node_modules", "--skip-dirs", "**/.git"]
+TRIVY_DOMAINS = {"sca": "vuln", "iac": "misconfig", "secrets": "secret"}
+
+
+def _trivy_domains(engines):
+    domains = set(TRIVY_DOMAINS) & set(engines)
+    if vulndb.offline() and not os.path.isfile(os.path.join(TRIVY_CACHE, "db", "trivy.db")):
+        domains.discard("sca")
+    return domains
+
+
+def _trivy_argv(p, domains=TRIVY_DOMAINS, *, image=False):
+    scanners = ",".join(v for k, v in TRIVY_DOMAINS.items() if k in domains)
+    argv = ["trivy", "image" if image else "fs", "--quiet", "--format", "json",
+            "--cache-dir", TRIVY_CACHE, "--timeout", "15m"]
+    if not image:
+        argv += ["--skip-dirs", "**/node_modules", "--skip-dirs", "**/.git"]
     if vulndb.offline():
         argv += ["--skip-db-update", "--skip-java-db-update", "--offline-scan", "--skip-check-update"]
-        if not os.path.exists(os.path.join(TRIVY_CACHE, "db", "trivy.db")):
-            scanners = "misconfig,secret"          # air-gapped without a mirrored database: OSV/bundled data covers SCA
-    return argv + ["--scanners", scanners, p]
+    return argv + ["--scanners", scanners, "--", p]
 
 
 def _sast_argv(binary):
@@ -63,7 +73,7 @@ def _sast_argv(binary):
 
 def _gitleaks_argv(p):
     out = os.path.join(tempfile.mkdtemp(prefix="myelin-gl-"), "report.json")
-    mode = ["git", p] if os.path.isdir(os.path.join(p, ".git")) else ["dir", p]
+    mode = ["git", p] if os.path.exists(os.path.join(p, ".git")) else ["dir", p]
     return ["gitleaks", *mode, "--no-banner", "--no-color", "--redact=80", "--report-format", "json", "--report-path", out,
             "--exit-code", "0", "--max-target-megabytes", "5"], out
 
@@ -115,28 +125,76 @@ def rule_count() -> int:
     return n
 
 
-def _run_external(tool, path, repo, timeout=1800):
+def _tool_error(tool, repo, reason):
+    return {"engine": "meta", "rule_id": f"tool-error:{tool}", "title": f"{tool} failed: {reason}",
+            "severity": "high", "scanner_status": "required_error", "required": True, "repo": repo}
+
+
+def _records(value):
+    return isinstance(value, list) and all(isinstance(item, dict) for item in value)
+
+
+def _scan_document(tool, doc):
+    """Validate native reports before permissive import normalizers can turn failures into empty success."""
+    if tool == "gitleaks":
+        if not _records(doc):
+            raise ValueError("invalid Gitleaks findings")
+        return False, False
+    if tool == "checkov":
+        docs = doc if isinstance(doc, list) else [doc]
+        if not _records(docs):
+            raise ValueError("invalid Checkov report")
+        failed, partial = False, False
+        for item in docs:
+            checks, summary = item.get("results"), item.get("summary")
+            if not isinstance(checks, dict) or not isinstance(summary, dict) or not _records(checks.get("failed_checks")):
+                raise ValueError("invalid Checkov results")
+            failed |= bool(checks["failed_checks"])
+            partial |= bool(summary.get("parsing_errors") or checks.get("parsing_errors"))
+        return failed, partial
+
+    if not isinstance(doc, dict):
+        raise ValueError("expected a scanner result object")
+    if tool == "trivy":
+        if doc.get("SchemaVersion") != 2 or not _records(doc.get("Results", [])):
+            raise ValueError("invalid Trivy report")
+        return False, False
+    key = {"bandit": "results", "semgrep": "results", "opengrep": "results", "grype": "matches"}.get(tool)
+    if key and not _records(doc.get(key)):
+        raise ValueError("missing or invalid scanner results")
+    if tool in {"bandit", "semgrep", "opengrep"}:
+        if not _records(doc.get("errors")):
+            raise ValueError("missing or invalid scanner errors")
+        return bool(doc[key]), bool(doc["errors"])
+    return False, False
+
+
+def _run_external(tool, path, repo, timeout=1800, argv_override=None):
     argv, norm = EXTERNAL[tool]
     report = None
     try:
-        built = argv(path)
-        if isinstance(built, tuple):                     # (argv, report file) for tools that write a report file
+        built = argv(path) if argv_override is None else argv_override
+        if isinstance(built, tuple):
             built, report = built
         cp = subprocess.run(built, capture_output=True, text=True, timeout=timeout, env=_tool_env())
-        text = cp.stdout
         if report:
-            text = open(report, encoding="utf-8").read() if os.path.exists(report) else ""
-        if not text.strip():
-            raise RuntimeError(f"scanner returned no machine-readable output (exit {cp.returncode}): {(cp.stderr or '').strip()[-300:]}")
-        document = json.loads(text)
-        if document is None:
-            raise ValueError("scanner returned JSON null instead of a result document")
-        return norm(document, repo)
-    except Exception as e:  # noqa: BLE001
-        # A scanner error is a first-class gate input. It must not look like a clean scan.
-        return [{"engine": "meta", "rule_id": f"tool-error:{tool}",
-                 "title": f"{tool} failed: {type(e).__name__}: {e}", "severity": "high",
-                 "scanner_status": "required_error", "required": True, "repo": repo}]
+            with open(report, encoding="utf-8") as fh:
+                output = fh.read()
+        else:
+            output = cp.stdout
+        document = json.loads(output)
+        has_findings, partial = _scan_document(tool, document)
+        # Bandit and Checkov use exit 1 for findings. Gitleaks is configured to use exit 0 for findings.
+        expected_exit = cp.returncode == 0 or (cp.returncode == 1 and has_findings and tool in {"bandit", "checkov"})
+        if not expected_exit:
+            return [_tool_error(tool, repo, f"unexpected exit {cp.returncode}")]
+        findings = norm(document, repo)
+        if partial:
+            findings.append(_tool_error(tool, repo, "scanner reported analysis errors"))
+        return findings
+    except (OSError, ValueError, TypeError, KeyError, AttributeError, IndexError, subprocess.SubprocessError) as exc:
+        # Raw scanner output and exceptions can include source text or credentials.
+        return [_tool_error(tool, repo, type(exc).__name__)]
     finally:
         if report:
             shutil.rmtree(os.path.dirname(report), ignore_errors=True)
@@ -147,10 +205,19 @@ DEFAULT_ENGINES = ("sca", "license", "sast", "secrets", "iac", "cicd", "aibom", 
 
 def scan(path: str, repo: str = "local", engines: list[str] | None = None, use_external: bool = True,
          criticality: float = 1.0) -> dict:
+    if not os.path.isdir(path):
+        raise ValueError("scan path must be an existing directory")
+    if engines is not None and (not engines or set(engines) - set(DEFAULT_ENGINES)):
+        raise ValueError("unknown or empty repository scan engine selection")
+    with vulndb.scan_status() as status:
+        return _scan(os.path.abspath(path), repo, engines or list(DEFAULT_ENGINES), use_external, criticality, status)
+
+
+def _scan(path, repo, engines, use_external, criticality, status):
     t0 = time.time()
-    engines = engines or list(DEFAULT_ENGINES)
-    comps = sbom.inventory(path) if {"sca", "license"} & set(engines) else sbom.parse_manifests(path)
     inv = coverage.inventory(path)
+    comps = sbom.inventory(path, resolve_online=bool({"sca", "license"} & set(engines)))
+    inventory_gaps = sorted(status["inventory_errors"] | status["errors"])
     findings: list[dict] = []
     jobs = []
     with ThreadPoolExecutor(max_workers=6) as ex:
@@ -168,16 +235,26 @@ def scan(path: str, repo: str = "local", engines: list[str] | None = None, use_e
         if "supply" in engines:
             jobs.append(ex.submit(supply_chain.scan, path, repo, comps))
         tools_used = ["myelin-builtin"]
+        trivy_domains = set()
+        trivy_sca_skipped = False
         if use_external:
             for tool in EXTERNAL:
                 if shutil.which(tool) and _applies(tool, inv, engines):
+                    argv = None
+                    if tool == "trivy":
+                        trivy_domains = _trivy_domains(engines)
+                        trivy_sca_skipped = "sca" in engines and "sca" not in trivy_domains
+                        if not trivy_domains:
+                            continue
+                        argv = _trivy_argv(path, trivy_domains)
                     tools_used.append(tool)
-                    jobs.append(ex.submit(_run_external, tool, path, repo))
+                    jobs.append(ex.submit(_run_external, tool, path, repo, argv_override=argv))
         for j in jobs:
             findings += j.result()
     if {"sca", "license"} & set(engines):
         # reachability hint: packages imported in first-party code
-        findings += sbom.match_advisories(comps, repo, reachable_hint=_imported_packages(path, comps))
+        findings += sbom.match_advisories(comps, repo, reachable_hint=_imported_packages(path, comps),
+                                          check_vulnerabilities="sca" in engines, check_licences="license" in engines)
     findings = [f for f in findings if f.get("engine") in engines or f.get("engine") == "meta"]
     raw_count = sum(1 for f in findings if f.get("engine") != "meta")
     findings = _merge_duplicates(path, findings)
@@ -193,17 +270,21 @@ def scan(path: str, repo: str = "local", engines: list[str] | None = None, use_e
     uniq.sort(key=lambda f: -f["mrs"])
     crypto = crypto_inventory.scan(path)
     posture = repo_posture.assess(path, uniq)
-    bom = sbom.cyclonedx(comps, repo)
+    bom = sbom.cyclonedx(comps, repo, inventory_gaps=inventory_gaps)
     bom["metadata"]["properties"] += [
         {"name": "myelin:posture", "value": json.dumps({"score": posture["score"], "grade": posture["grade"]})},
     ]
-    inv["git_history"] = "gitleaks" in tools_used and os.path.isdir(os.path.join(path, ".git"))
-    intel = {"offline": vulndb.offline(), "sources": sorted(vulndb.STATUS["sources"]) or ["bundled advisory pack"],
-             "errors": sorted(vulndb.STATUS["errors"])[:10]}
+    inv["git_history"] = "gitleaks" in tools_used and os.path.exists(os.path.join(path, ".git"))
+    intel = {"offline": vulndb.offline(),
+             "sources": sorted(status["sources"] | ({"bundled advisory pack"} if "sca" in engines and comps else set())),
+             "errors": sorted(status["errors"])[:10]}
     cov = coverage.build(inv, engines, tools_used, uniq, len(comps), intel,
-                         deep_rules=rule_count() if {"opengrep", "semgrep"} & set(tools_used) else 0)
+                         deep_rules=rule_count() if {"opengrep", "semgrep"} & set(tools_used) else 0,
+                         trivy_domains=trivy_domains, trivy_sca_skipped=trivy_sca_skipped,
+                         inventory_gaps=inventory_gaps)
     return {"repo": repo, "path": path, "duration_s": round(time.time() - t0, 2), "tools": tools_used,
-            "coverage": cov, "engines": coverage.assessed(cov),
+            "coverage": cov, "engines": coverage.assessed(cov), "complete_engines": coverage.completed(cov),
+            "closure_engines": coverage.verified_absence(cov),
             "tool_versions": {t: coverage.tool_version(t) for t in tools_used if t != "myelin-builtin"},
             "components": len(comps), "ignored_by_path": ignored,
             "stats": {"raw": raw_count, "after_dedup": merged_count, "reported": sum(1 for f in uniq if f.get("engine") != "meta")},
@@ -449,13 +530,11 @@ def scan_image(image: str, criticality: float = 1.0) -> dict:
     t0 = time.time()
     if shutil.which("trivy"):
         tool = "trivy"
-        cp = subprocess.run(["trivy", "image", "--quiet", "--format", "json", "--scanners", "vuln,secret", image],
-                            capture_output=True, text=True, timeout=900)
-        fs = normalize.trivy(json.loads(cp.stdout or "{}"), image)
+        fs = _run_external(tool, image, image, timeout=960, argv_override=_trivy_argv(image, {"sca", "secrets"}, image=True))
     elif shutil.which("grype"):
         tool = "grype"
-        cp = subprocess.run(["grype", image, "-o", "json", "-q"], capture_output=True, text=True, timeout=900)
-        fs = normalize.grype(json.loads(cp.stdout or "{}"), image)
+        fs = _run_external(tool, image, image, timeout=900,
+                           argv_override=["grype", "-o", "json", "-q", "--", image])
     else:
         raise SystemExit("neither trivy nor grype found on PATH — install one of them to scan container images")
     for f in fs:
@@ -463,5 +542,13 @@ def scan_image(image: str, criticality: float = 1.0) -> dict:
         f["image"] = image
         enrich(f, criticality)
     fs.sort(key=lambda f: -f["mrs"])
+    error = next((f["title"] for f in fs if f["engine"] == "meta"), "")
+    domains = ("container", "secrets") if tool == "trivy" else ("container",)
+    version = coverage.tool_version(tool)
+    cov = {domain: {"applicable": True, "assessed": not error, "complete": not error, "examined": image,
+                    "status": "partial" if error else "complete", "reason": error, "errors": [error] if error else [],
+                    "tools": [{"name": tool, "version": version, "error": error}]}
+           for domain in domains}
     return {"repo": image, "path": image, "duration_s": round(time.time() - t0, 2), "tools": [tool], "components": 0,
+            "coverage": cov, "engines": coverage.assessed(cov), "complete_engines": coverage.completed(cov),
             "sbom": None, "findings": fs}

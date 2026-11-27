@@ -203,16 +203,12 @@ def execute(src: dict, token: str | None, decide) -> dict:
         crit = {"low": 0.6, "medium": 1.0, "high": 1.3, "critical": 1.5}.get((src.get("config") or {}).get("criticality"), 1.0)
         res = orchestrator.scan(root, repo=src["name"], criticality=crit)
         res["path"] = src["url"]
-        decision = decide([f for f in res["findings"] if f.get("engine") != "meta"])
+        decision = decide(res["findings"])
         res["decision"], res["commit"], res["branch"] = decision, commit, src.get("branch") or "default"
         res["summary"] = _summary(res, decision)
-        res["engines"] = res.get("engines") or list(CODE_ENGINES)     # domains actually assessed (see engine coverage)
         return res
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
-
-
-CODE_ENGINES = ("sca", "license", "sast", "secrets", "iac", "cicd", "aibom", "supply")
 
 
 def start_scan(repo, store_factory, tenant_id, src, actor, *, token_resolver, decide, synchronous=False, on_scanned=None):
@@ -237,7 +233,8 @@ def start_scan(repo, store_factory, tenant_id, src, actor, *, token_resolver, de
                         f["code_url"] = link
             store = store_factory()
             sid, _ = store.add_scan(src["name"], res["branch"], res["commit"], fs, res["sbom"], res["decision"], actor,
-                                    scanned_engines=CODE_ENGINES, stats=res.get("stats"))   # engines run: absent findings are fixed
+                                    scanned_engines=res["complete_engines"], stats=res.get("stats"),
+                                    closure_engines=res["closure_engines"])
             if on_scanned:
                 on_scanned(store, getattr(store, "last_delta", None))
             keep = {**res, "findings": res["findings"][:3000]}

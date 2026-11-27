@@ -235,7 +235,10 @@ def test_rescan_closes_fixed_findings_and_reopens_regressions(monkeypatch):
     current["a"] = archives["v2"]                                                                # vulnerable code removed
     c.post(f"/api/v1/repos/sources/{s['id']}/scan?wait=true", headers=H)
     after = {f["fingerprint"]: f for f in mine()}
-    assert all(f["status"] in ("fixed", "suppressed") for f in after.values())
+    # A partial SCA run must not close existing advisory findings when the offline database is absent.
+    assert any(f["engine"] == "sca" and f["status"] == "open" for f in after.values())
+    assert all(f["status"] == "fixed" for f in after.values() if f["engine"] == "iac")
+    assert any(f["engine"] == "iac" for f in after.values())
     assert after[fp["fingerprint"]]["status"] == "suppressed"                                     # decision kept
     assert any(f["status"] == "fixed" and f.get("fixed_in") == "2222222" for f in after.values())
     current["a"] = archives["v1"]                                                                # regression

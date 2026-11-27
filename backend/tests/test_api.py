@@ -746,3 +746,25 @@ def test_licence_report_uses_published_repository_policy_binding():
         DEMO.db["policy_versions"][:] = [x for x in DEMO.policy_versions() if x["id"] != version_id]
         DEMO.db["policy_bindings"][:] = [x for x in DEMO.policy_bindings()
             if not (x["scope_type"] == "repository" and x["scope_key"] == repository)]
+
+
+def test_uploaded_scanner_failure_blocks_both_deploy_scopes_and_keeps_known_findings_open(monkeypatch):
+    from app import main
+    from myelin_engine import policy
+
+    # Other API tests publish and bind tenant-wide policies on the shared demo store.
+    monkeypatch.setattr(main, "_effective_policy", lambda *a, **kw: policy.DEFAULT_POLICY)
+    repo = "incomplete-scan-" + uuid.uuid4().hex[:8]
+    prev = {"engine": "sast", "rule_id": "STATIC-TEST", "title": "Prior finding", "severity": "low",
+            "file": "app.py", "line": 1}
+    first = c.post("/api/scans", headers=H, json={"repo": repo, "engines": ["sast"], "findings": [prev]})
+    assert first.status_code == 200
+    broken = {"engine": "meta", "rule_id": "tool-error:bandit", "title": "Bandit did not complete",
+              "scanner_status": "required_error", "status": "suppressed"}
+    commit = "aa1246819"
+    second = c.post("/api/scans", headers=H, json={"repo": repo, "engines": ["sast"], "commit": commit, "findings": [broken]})
+    assert second.status_code == 200 and second.json()["decision"]["decision"] == "block"
+    for scope in ("all", "new"):
+        gate = c.get("/api/v1/gate", headers=H, params={"repo": repo, "commit": commit, "scope": scope}).json()
+        assert gate["decision"] == "block" and "sast" not in gate["engines"]
+    assert [f["status"] for f in main.DEMO.findings() if f.get("repo") == repo] == ["open"]

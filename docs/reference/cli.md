@@ -11,6 +11,10 @@
 | `MYELIN_CA_FILE` | Extra CA certificate for a private platform |
 | `MYELIN_OFFLINE=1` | Never contact the internet (air-gapped) |
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:1d27339ff37c9f2996386a29a978e2f5e05ce72c7c25163b81bc99b46aa9cf0f -->
+
 ## `myelin scan`
 
 
@@ -27,15 +31,19 @@
 | `--sbom` |  |
 | `--json` |  |
 | `--fail-on` | (block · warn · never) Default: `block`. |
+| `--report` | write a self-contained HTML repository assessment |
+| `--require` | comma-separated domains that must complete |
 | `--builtin-only` | skip third-party scanners even if installed |
 
 ```text
 usage: myelin scan [-h] [--image IMAGE] [--repo REPO] [--engines ENGINES]
                    [--policy POLICY] [--server SERVER] [--sarif SARIF]
                    [--sbom SBOM] [--json JSON] [--fail-on {block,warn,never}]
-                   [--builtin-only]
+                   [--report REPORT] [--require REQUIRE] [--builtin-only]
                    [path]
 ```
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 ## `myelin dast`
 
@@ -107,7 +115,13 @@ block a deployment: evaluate --results, or ask the platform about --repo/--commi
 | `--fail-on` | (block · warn) Default: `block`. |
 | `--allow-unscanned` | do not fail when the commit was never scanned |
 | `--scope` | new: only findings this commit introduced can block (all · new) Default: `all`. |
-| `--require` | comma-separated engines that must have run, e.g. sast,sca,secrets (missing → block) |
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:64cb6083288e0736bde11075390dadebb6aecadd3bd2f751bb5d3c8a46ecf11e -->
+
+| `--require` | comma-separated domains that must complete (missing or partial → block) |
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 ```text
 usage: myelin gate [-h] [--results RESULTS] [--policy POLICY] [--repo REPO]

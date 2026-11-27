@@ -11,7 +11,7 @@ import uuid
 from collections import Counter
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from .db.models import Finding, Repo, Scan, Tenant
 from .db.session import tenant_tx
@@ -224,7 +224,7 @@ class DemoStore:
             self.audit_event("finding.acceptance_expired", "system", f"{n} risk acceptance(s) expired and reopened")
         return n
 
-    def add_scan(self, repo, branch, commit, findings, sbom, decision, actor, scanned_engines=None, stats=None, refresh=()):
+    def add_scan(self, repo, branch, commit, findings, sbom, decision, actor, scanned_engines=None, stats=None, refresh=(), closure_engines=None):
         known = {f["fingerprint"]: f for f in self.db["findings"]}
         new = [f for f in findings if f["fingerprint"] not in known]
         for f in findings:      # refresh live fields (evidence, event counts, attack-path steps) of findings already stored
@@ -235,12 +235,13 @@ class DemoStore:
             f.setdefault("introduced_in", (commit or "")[:12] or None)
         seen = {f["fingerprint"] for f in findings}
         engines = set(scanned_engines) if scanned_engines is not None else {f["engine"] for f in findings}
+        closable = engines if closure_engines is None else set(closure_engines)
         now = datetime.now(timezone.utc).isoformat()
         fixed, reopened = [], []
         for f in self.db["findings"]:
-            if f.get("repo") != repo or f.get("engine") not in engines:
+            if f.get("repo") != repo:
                 continue
-            if f["fingerprint"] not in seen and f.get("status") == "open":
+            if f["fingerprint"] not in seen and f.get("status") == "open" and f.get("engine") in closable:
                 f.update(status="fixed", fixed_at=now, fixed_in=commit[:12] or None)
                 fixed.append(f)
             elif f["fingerprint"] in seen and f.get("status") == "fixed":
@@ -260,7 +261,8 @@ class DemoStore:
         self.db["pipelines"].insert(0, {"id": sid, "repo": repo, "ci": "nerve-myelin", "branch": branch, "commit": commit[:7],
                                         "author": actor, "started": datetime.now(timezone.utc).isoformat(), "duration_s": 0,
                                         "decision": decision["decision"], "stages": [],
-                                        "gate": {"blocking": decision["blocking"], "warnings": decision["warnings"]},
+                                        "gate": {"blocking": decision["blocking"], "warnings": decision["warnings"],
+                                                 "scanner_failure_decision": decision.get("scanner_failure_decision", "pass")},
                                         "stats": stats or {"raw": len(findings), "after_dedup": len(findings), "reported": len(findings)},
                                         "finding_fingerprints": sorted({f["fingerprint"] for f in findings}), "scanned_engines": sorted(engines),
                                         "engines": sorted(engines)})
@@ -723,13 +725,14 @@ class PgStore:
                 audit_log.append(s, self.tid, "system", "finding.acceptance_expired", {"text": f"{n} risk acceptance(s) expired and reopened"})
         return n
 
-    def add_scan(self, repo, branch, commit, findings, sbom, decision, actor, scanned_engines=None, stats=None, refresh=()):
+    def add_scan(self, repo, branch, commit, findings, sbom, decision, actor, scanned_engines=None, stats=None, refresh=(), closure_engines=None):
         """Store a scan. Within this repository and the engines that ran, open findings that are no longer reported
         become `fixed`, and fixed findings that come back are reopened (regressions). Suppressed / risk-accepted /
         false-positive decisions stay attached to the fingerprint across scans."""
         sid = "scan-" + uuid.uuid4().hex[:10]
         seen = {f["fingerprint"] for f in findings}
         engines = set(scanned_engines) if scanned_engines is not None else {f["engine"] for f in findings}
+        closable = engines if closure_engines is None else set(closure_engines)
         now = datetime.now(timezone.utc)
         with self._tx() as s:
             known = set(s.scalars(select(Finding.fingerprint)))
@@ -746,10 +749,11 @@ class PgStore:
             for f in new:
                 f.setdefault("introduced_in", (commit or "")[:12] or None)
             fixed, reopened = [], []
-            if engines:
-                for r in s.scalars(select(Finding).where(Finding.repo == repo, Finding.engine.in_(engines),
+            if closable or seen:
+                candidates = or_(Finding.engine.in_(closable), Finding.fingerprint.in_(known & seen))
+                for r in s.scalars(select(Finding).where(Finding.repo == repo, candidates,
                                                          Finding.status.in_(("open", "fixed")))):
-                    if r.fingerprint not in seen and r.status == "open":
+                    if r.fingerprint not in seen and r.status == "open" and r.engine in closable:
                         r.status, r.updated_at = "fixed", now
                         r.data = {**r.data, "status": "fixed", "fixed_at": now.isoformat(), "fixed_in": commit[:12] or None}
                         fixed.append(self._finding(r))
@@ -765,7 +769,8 @@ class PgStore:
                 s.add(Repo(tenant_id=self.tid, name=repo, data={"sbom": bool(sbom)}))
             s.add(Scan(id=sid, tenant_id=self.tid, repo=repo, decision=decision["decision"], sbom=sbom,
                        data={"ci": "nerve-myelin", "branch": branch, "commit": commit[:7], "author": actor, "duration_s": 0, "stages": [],
-                             "gate": {"blocking": decision["blocking"], "warnings": decision["warnings"]},
+                             "gate": {"blocking": decision["blocking"], "warnings": decision["warnings"],
+                                                 "scanner_failure_decision": decision.get("scanner_failure_decision", "pass")},
                              "stats": stats or {"raw": len(findings), "after_dedup": len(findings), "reported": len(findings)},
                              "finding_fingerprints": sorted(seen), "scanned_engines": sorted(engines), "engines": sorted(engines)}))
             audit_log.append(s, self.tid, actor, "scan.uploaded",

@@ -8,7 +8,7 @@ spec:
       containers:
         - name: legacy
           image: acme/legacy:latest
-          securityContext: {privileged: true}
+          securityContext: {privileged: true, seccompProfile: {type: Unconfined}}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -17,7 +17,7 @@ spec:
   template:
     spec:
       automountServiceAccountToken: false
-      securityContext: {runAsNonRoot: true, runAsUser: 10001}
+      securityContext: {runAsNonRoot: true, runAsUser: 10001, seccompProfile: {type: RuntimeDefault}}
       containers:
         - name: api
           image: acme/api@sha256:1111111111111111111111111111111111111111111111111111111111111111

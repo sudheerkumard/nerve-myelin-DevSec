@@ -6,12 +6,16 @@ In production the orchestrator prefers Syft (SBOM) and Grype/Trivy/OSV (advisori
 this built-in path guarantees results in air-gapped environments and in demos.
 """
 import json
+import fnmatch
 import os
 import re
 import uuid
+import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
+from pathlib import Path
 
-from . import vulndb
+from . import __version__, coverage, vulndb
+from packaging.requirements import InvalidRequirement, Requirement
 
 # Curated offline advisory pack (subset; the server syncs OSV/NVD/GHSA/KEV/EPSS feeds).
 ADVISORIES = [
@@ -57,45 +61,128 @@ def _ver(v: str):
     return tuple(int(x) if x.isdigit() else 0 for x in re.split(r"[.\-+]", re.sub(r"^[^\d]*", "", v))[:4])
 
 
+PAIRED_LOCKS = {
+    "package.json": {"npm-shrinkwrap.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml"},
+    "pyproject.toml": {"uv.lock", "poetry.lock", "pdm.lock", "Pipfile.lock"},
+    "Pipfile": {"Pipfile.lock"}, "setup.py": {"uv.lock", "poetry.lock", "pdm.lock", "Pipfile.lock"},
+    "Cargo.toml": {"Cargo.lock"}, "Gemfile": {"Gemfile.lock"}, "composer.json": {"composer.lock"},
+    "go.sum": {"go.mod"}, "build.gradle": {"gradle.lockfile"}, "build.gradle.kts": {"gradle.lockfile"},
+    "Directory.Packages.props": {"packages.lock.json", "packages.config"},
+    "mix.exs": {"mix.lock"}, "pubspec.yaml": {"pubspec.lock"},
+}
+NPM_VERSION = re.compile(r"v?([0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)")
+
+
+def _manifest_gap(message):
+    vulndb.current_status()["inventory_errors"].add(message)
+
+
+def _python_requirement(raw, rel, scope):
+    try:
+        req = Requirement(raw)
+    except InvalidRequirement:
+        _manifest_gap(f"unsupported Python requirement in {rel}")
+        return
+    pinned = [x.version for x in req.specifier if x.operator == "==" and "*" not in x.version]
+    version = pinned[0] if len(pinned) == 1 and req.specifier.contains(pinned[0], prereleases=True) else None
+    comp = vulndb._c("pypi", req.name, version, rel, scope)
+    comp.update(spec=str(req.specifier), extras=req.extras, registry=not req.url)
+    return comp
+
+
 def parse_manifests(root: str) -> list[dict]:
     comps = []
     for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = [d for d in dirnames if d not in {".git", "node_modules", ".venv"}]
-        for fn in filenames:
-            p = os.path.join(dirpath, fn)
-            rel = os.path.relpath(p, root)
-            try:
-                text = open(p, encoding="utf-8", errors="ignore").read()
-            except OSError:
+        dirnames[:] = sorted(d for d in dirnames if d not in coverage.SKIP)
+        names = set(filenames)
+        for fn in sorted(names):
+            if fn in vulndb.LOCKFILES or not any(fnmatch.fnmatch(fn, m) for m in coverage.MANIFESTS):
                 continue
-            if fn == "package.json":
-                try:
-                    data = json.loads(text)
-                except json.JSONDecodeError:
+            p = os.path.join(dirpath, fn)
+            rel = os.path.relpath(p, root).replace(os.sep, "/")
+            reqfile = fnmatch.fnmatch(fn, "requirements*.txt")
+            try:
+                if os.path.islink(p):
+                    raise ValueError("manifest is a symlink")
+                if fn not in {"package.json", "pyproject.toml", "go.mod", "pom.xml"} and not reqfile:
+                    paired = PAIRED_LOCKS.get(fn) or ({"packages.lock.json", "packages.config"} if fn.endswith(".csproj") else set())
+                    if not paired & names:
+                        _manifest_gap(f"manifest requires a supported lockfile or parser: {rel}")
                     continue
-                for sect, scope in (("dependencies", "required"), ("devDependencies", "optional")):
-                    for n, v in (data.get(sect) or {}).items():
-                        comps.append({"ecosystem": "npm", "name": n, "version": v.lstrip("^~>=< "), "file": rel, "scope": scope})
-            elif re.match(r"requirements.*\.txt$", fn):
-                dev = bool(re.search(r"(dev|test|lint|doc)", fn))
-                for ln in text.splitlines():
-                    m = re.match(r"^\s*([A-Za-z0-9_.\-]+)(\[[^\]]*\])?\s*(==|>=|~=|>|<=|<|!=)?\s*([\w.\-*]+)?", ln.split("#")[0])
-                    if not m or not m.group(1) or ln.strip().startswith(("-", "#")):
-                        continue
-                    extras = {e.strip() for e in (m.group(2) or "").strip("[]").split(",") if e.strip()}
-                    version = m.group(4) if m.group(3) == "==" else None
-                    spec = ln.split("#")[0].split(";")[0].strip()[len(m.group(1)) + len(m.group(2) or ""):].strip()
-                    comps.append({"ecosystem": "pypi", "name": vulndb.norm_name("pypi", m.group(1)), "version": version,
-                                  "spec": spec, "extras": extras, "file": rel, "scope": "optional" if dev else "required"})
-            elif fn == "go.mod":
-                for m in re.finditer(r"^\s*([\w./\-]+)\s+v([\w.\-+]+)", text, re.M):
-                    comps.append({"ecosystem": "go", "name": m.group(1), "version": m.group(2), "file": rel, "scope": "required"})
-            elif fn == "pom.xml":
-                for m in re.finditer(r"<groupId>([^<]+)</groupId>\s*<artifactId>([^<]+)</artifactId>\s*<version>([^<$]+)</version>", text):
-                    comps.append({"ecosystem": "maven", "name": f"{m.group(1)}:{m.group(2)}", "version": m.group(3), "file": rel, "scope": "required"})
-    for c in comps:
-        c["license"] = KNOWN_LICENSES.get(c["name"], "unknown")
-        c["purl"] = f"pkg:{c['ecosystem']}/{c['name'].replace(':', '/')}@{c['version']}"
+                text = Path(p).read_text(encoding="utf-8")
+                if fn == "package.json":
+                    data = json.loads(text)
+                    for section, scope in (("dependencies", "required"), ("devDependencies", "dev"),
+                                           ("optionalDependencies", "optional"), ("peerDependencies", "optional")):
+                        for name, spec in (data.get(section) or {}).items():
+                            match = NPM_VERSION.fullmatch(spec)
+                            comps.append(vulndb._c("npm", name, match[1] if match else None, rel, scope))
+                elif reqfile:
+                    scope = "optional" if re.search(r"(dev|test|lint|doc)", fn) else "required"
+                    for line in text.replace("\\\n", " ").splitlines():
+                        # Remove pip hashes and comments, but preserve URL fragments for PEP 508 parsing.
+                        raw = re.split(r"\s+(?:#|--hash(?:=|\s))", line.strip(), maxsplit=1)[0]
+                        if not raw or raw.startswith("#"):
+                            continue
+                        if raw.startswith("-"):
+                            if re.match(r"-(?:[rce]\s*|-(?:requirement|constraint|editable)\b)", raw):
+                                _manifest_gap(f"requirement include, constraint or editable needs review: {rel}")
+                            continue
+                        if comp := _python_requirement(raw, rel, scope):
+                            comps.append(comp)
+                elif fn == "pyproject.toml":
+                    try:
+                        import tomllib
+                    except ImportError:
+                        import tomli as tomllib
+                    data = tomllib.loads(text)
+                    project = data.get("project") or {}
+                    groups = [(project.get("dependencies") or [], "required")]
+                    groups += [(values, "optional") for values in (project.get("optional-dependencies") or {}).values()]
+                    groups += [(values, "dev") for values in (data.get("dependency-groups") or {}).values()]
+                    if not PAIRED_LOCKS[fn] & names and (
+                        {"dependencies", "optional-dependencies"} & set(project.get("dynamic") or [])
+                        or (data.get("tool") or {}).get("poetry", {}).get("dependencies")
+                    ):
+                        _manifest_gap(f"dynamic or tool-specific Python dependencies need a lockfile: {rel}")
+                    for values, scope in groups:
+                        for raw in values:
+                            if isinstance(raw, dict) and set(raw) == {"include-group"}:
+                                continue  # already inventoried from the named group
+                            if comp := _python_requirement(raw, rel, scope):
+                                comps.append(comp)
+                elif fn == "go.mod":
+                    in_requires = False
+                    for line in text.splitlines():
+                        directive = line.partition("//")[0].strip()
+                        if re.fullmatch(r"require\s*\(", directive):
+                            in_requires = True
+                        elif in_requires and directive == ")":
+                            in_requires = False
+                        elif in_requires or re.match(r"^require\s", directive):
+                            coordinate = directive if in_requires else directive.split(maxsplit=1)[1]
+                            if m := re.fullmatch(r"([\w./\-]+)\s+v([\w.\-+]+)", coordinate):
+                                comps.append(vulndb._c("go", m[1], m[2], rel,
+                                                       "transitive" if re.search(r"//\s*indirect\b", line) else "required"))
+                        elif re.match(r"^replace\b", directive):
+                            _manifest_gap(f"Go module replacements are not resolved: {rel}")
+                elif fn == "pom.xml":
+                    project = ET.fromstring(text)
+                    paths = ("./{*}dependencies/{*}dependency", "./{*}profiles/{*}profile/{*}dependencies/{*}dependency")
+                    for path in paths:
+                        for dep in project.findall(path):
+                            group = dep.findtext("{*}groupId", "").strip()
+                            artifact = dep.findtext("{*}artifactId", "").strip()
+                            version = dep.findtext("{*}version", "").strip()
+                            scope = dep.findtext("{*}scope", "").strip()
+                            if group and artifact:
+                                exact = version if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._+\-]*", version) else None
+                                comps.append(vulndb._c("maven", f"{group}:{artifact}", exact, rel,
+                                                       "optional" if scope in {"test", "provided", "system"} else "required"))
+            except (OSError, ValueError, TypeError, AttributeError, ET.ParseError):
+                _manifest_gap(f"manifest parse: {rel}")
+    for comp in comps:
+        comp["license"] = KNOWN_LICENSES.get(comp["name"], "unknown")
     return comps
 
 
@@ -119,53 +206,71 @@ def _pick_pypi(name, spec):
         return None
 
 
-def inventory(root: str) -> list[dict]:
-    """Every third-party component: manifests (direct), lockfiles (exact transitive) and, for Python requirements
-    without a lockfile, transitive dependencies resolved from PyPI. Licences filled in from the registries."""
-    vulndb.STATUS["sources"].clear(); vulndb.STATUS["errors"].clear()
+def inventory(root: str, *, resolve_online: bool = True) -> list[dict]:
+    """Discover third-party packages; match manifest evidence only against same-project locks."""
     direct = parse_manifests(root)
-    for c in direct:
-        c.setdefault("via", None)
-        if c["ecosystem"] == "pypi" and not c["version"] and not vulndb.offline():
-            c["version"] = _pick_pypi(c["name"], c.get("spec"))
-            if c["version"]:
-                c["resolved"] = True
-    direct = [c for c in direct if c["version"]]
-    for c in direct:
-        c["purl"] = f"pkg:{c['ecosystem']}/{c['name'].replace(':', '/')}@{c['version']}"
     locked = vulndb.parse_lockfiles(root)
-    # Lockfile resolved versions override ranges in manifests; retain both evidence paths.
-    direct_by_key = {(c["ecosystem"], c["name"]): c for c in direct}
-    locked_by_key = {}
-    for c in locked:
-        locked_by_key.setdefault((c["ecosystem"], c["name"]), []).append(c)
-    for key, manifest in direct_by_key.items():
-        candidates = locked_by_key.get(key) or []
-        if not candidates:
+    online = resolve_online and not vulndb.offline()
+    locks = {}
+    python_lock_dirs = set()
+    for component in locked:
+        for evidence in component["evidence_files"]:
+            directory = os.path.dirname(evidence)
+            locks.setdefault((directory, component["ecosystem"], component["name"]), []).append(component)
+            if component["ecosystem"] == "pypi":
+                python_lock_dirs.add(directory)
+
+    remaining = []
+    for comp in direct:
+        directory = os.path.dirname(comp["file"])
+        candidates = locks.get((directory, comp["ecosystem"], comp["name"]), [])
+        if comp["version"]:
+            candidates = [c for c in candidates if c["version"] == comp["version"]]
+        if len(candidates) > 1:
+            candidates = [c for c in candidates if c["scope"] == comp["scope"]]
+        if len(candidates) == 1 and comp.get("registry", True):
+            selected = candidates[0]
+            selected["evidence_files"] = sorted({*selected["evidence_files"], comp["file"]})
+            if comp["scope"] == "required" or selected["scope"] == "transitive":
+                selected["scope"] = comp["scope"]
             continue
-        selected = candidates[0]
-        selected["scope"] = manifest.get("scope", "required")
-        selected["evidence_files"] = sorted(set(selected.get("evidence_files") or [selected.get("file", "")]) |
-                                            {manifest.get("file", "")})
-    direct = [c for c in direct if (c["ecosystem"], c["name"]) not in locked_by_key]
-    locked_ecos = {c["ecosystem"] for c in locked}
-    trans = [] if "pypi" in locked_ecos or vulndb.offline() else vulndb.resolve_pypi(
-        [c for c in direct if c["ecosystem"] == "pypi"])
-    comps, seen = [], set()
-    for c in direct + locked + trans:
+        if comp["ecosystem"] == "pypi" and not comp["version"] and not candidates and online and comp.get("registry", True):
+            comp["version"] = _pick_pypi(comp["name"], comp.get("spec"))
+            if comp["version"]:
+                comp["resolved"] = True
+                _manifest_gap(f"Python version estimated from registry metadata: {comp['file']}")
+        if not comp["version"]:
+            _manifest_gap(f"unresolved version for {comp['name']} in {comp['file']}")
+            continue
+        comp["purl"] = vulndb._c(comp["ecosystem"], comp["name"], comp["version"], comp["file"], comp["scope"])["purl"]
+        remaining.append(comp)
+    python_direct = [c for c in remaining if c["ecosystem"] == "pypi" and
+                     os.path.dirname(c["file"]) not in python_lock_dirs]
+    # This is a metadata estimate (host markers and latest matching versions), not a lockfile or build graph.
+    trans = vulndb.resolve_pypi(python_direct) if online else []
+    comps = {}
+    for c in locked + remaining + trans:
         k = (c["ecosystem"], c["name"], c["version"])
-        if k not in seen:
-            seen.add(k)
-            comps.append(c)
-    if not vulndb.offline():
+        paths = set(c.get("evidence_files") or [c["file"]])
+        if k not in comps:
+            comps[k] = c
+        else:
+            paths.update(comps[k]["evidence_files"])
+            if c["scope"] == "required":
+                comps[k]["scope"] = "required"
+            if c.get("via") != comps[k].get("via"):
+                comps[k]["via"] = None
+        comps[k]["evidence_files"] = sorted(paths)
+    components = [comps[k] for k in sorted(comps)]
+    if online:
         from concurrent.futures import ThreadPoolExecutor
-        todo = [c for c in comps if c.get("license", "unknown") == "unknown"]
+        todo = [c for c in components if c.get("license", "unknown") == "unknown"]
         with ThreadPoolExecutor(max_workers=8) as ex:
-            for c, lic in zip(todo, ex.map(vulndb.licence, todo)):
+            for c, lic in zip(todo, vulndb.scan_map(ex, vulndb.licence, todo)):
                 c["license"] = lic
         if any(c["license"] != "unknown" for c in todo):
-            vulndb.STATUS["sources"].add("package registries (licences)")
-    return comps
+            vulndb.current_status()["sources"].add("package registries (licences)")
+    return components
 
 
 def _reach(pkg, hint):
@@ -179,9 +284,10 @@ def _dep_type(c):
     return {"required": "direct", "optional": "dev", "dev": "dev", "transitive": "transitive"}.get(c.get("scope"), "direct")
 
 
-def match_advisories(comps: list[dict], repo: str = "local", reachable_hint: set | None = None) -> list[dict]:
+def match_advisories(comps: list[dict], repo: str = "local", reachable_hint: set | None = None, *,
+                     check_vulnerabilities: bool = True, check_licences: bool = True) -> list[dict]:
     out, seen = [], set()
-    for c, v in vulndb.vulnerabilities(comps):                    # live intelligence (OSV / PyPI)
+    for c, v in (vulndb.vulnerabilities(comps) if check_vulnerabilities else []):                    # live intelligence (OSV / PyPI)
         key = (c["ecosystem"], c["name"], c["version"], v["cve"] or v["id"])
         if key in seen:
             continue
@@ -205,7 +311,7 @@ def match_advisories(comps: list[dict], repo: str = "local", reachable_hint: set
             if v["fixed"] else f"No fixed release published for {c['name']}; assess exposure, apply the advisory's workaround or replace the component.",
         })
     for c in comps:
-        for eco, pkg, below, fixed, cve, cvss, epss, kev, cwe, title in ADVISORIES:
+        for eco, pkg, below, fixed, cve, cvss, epss, kev, cwe, title in (ADVISORIES if check_vulnerabilities else []):
             if c["ecosystem"] == eco and c["name"] == pkg and _ver(c["version"]) < _ver(below):
                 if (c["ecosystem"], c["name"], c["version"], cve) in seen:
                     continue
@@ -219,7 +325,7 @@ def match_advisories(comps: list[dict], repo: str = "local", reachable_hint: set
                     "autofix": True,
                     "remediation": f"Upgrade {pkg} to {fixed} or later. NERvvE DevSecOps AutoFix can open a PR with the upgrade and lockfile refresh.",
                 })
-        kind = licence_kind(c.get("license"))
+        kind = licence_kind(c.get("license")) if check_licences else None
         if kind == "strong":
             out.append({"engine": "license", "rule_id": "NM-LIC-001", "title": f"Copyleft licence {c['license']} in {c['name']}",
                         "severity": "high", "package": c["name"], "version": c["version"], "file": c["file"], "repo": repo,
@@ -235,11 +341,11 @@ def match_advisories(comps: list[dict], repo: str = "local", reachable_hint: set
     return out
 
 
-def cyclonedx(comps: list[dict], name: str = "application") -> dict:
+def cyclonedx(comps: list[dict], name: str = "application", *, inventory_gaps=()) -> dict:
     """Build a CycloneDX BOM with stable component refs and an explicit dependency graph.
 
     The graph is based only on dependency relationships resolved by the inventory engine.
-    Unknown parent relationships are not guessed; they remain attached to the application root.
+    Unknown parent relationships are omitted from the graph.
     """
     safe_name = re.sub(r"[^A-Za-z0-9._-]+", "-", str(name)).strip("-") or "application"
     app_ref = f"urn:myelin:application:{safe_name}"
@@ -247,7 +353,7 @@ def cyclonedx(comps: list[dict], name: str = "application") -> dict:
     by_name = {}
     for c in comps:
         purl = c["purl"]
-        by_name.setdefault(c["name"], []).append(purl)
+        by_name.setdefault((c["ecosystem"], c["name"]), []).append(purl)
         components.append({
             "type": "library", "bom-ref": purl, "name": c["name"], "version": c["version"],
             "purl": purl,
@@ -255,7 +361,8 @@ def cyclonedx(comps: list[dict], name: str = "application") -> dict:
             "scope": "optional" if c.get("scope") in ("optional", "dev") else "required",
             "properties": [
                 {"name": "myelin:dependency", "value": _dep_type(c)},
-                {"name": "myelin:manifest", "value": c.get("file", "")},
+                *({"name": "myelin:manifest", "value": path}
+                  for path in sorted(set(c.get("evidence_files") or [c.get("file", "")])) if path),
             ] + ([{"name": "myelin:introduced-by", "value": c["via"]}] if c.get("via") else []),
         })
 
@@ -263,16 +370,12 @@ def cyclonedx(comps: list[dict], name: str = "application") -> dict:
     for c in comps:
         child = c["purl"]
         parent_name = c.get("via")
-        parents = by_name.get(parent_name, []) if parent_name else []
+        parents = by_name.get((c["ecosystem"], parent_name), []) if parent_name else []
         # A relationship is emitted only when the inventory resolved one unambiguous parent.
         if len(parents) == 1 and parents[0] != child:
             edges.setdefault(parents[0], set()).add(child)
             edges.setdefault(child, set())
-        elif not parent_name:
-            edges[app_ref].add(child)
-            edges.setdefault(child, set())
-        else:
-            # Ambiguous or unresolved ancestry remains visible as a direct application dependency.
+        elif not parent_name and c.get("scope") != "transitive":
             edges[app_ref].add(child)
             edges.setdefault(child, set())
 
@@ -280,10 +383,13 @@ def cyclonedx(comps: list[dict], name: str = "application") -> dict:
         "bomFormat": "CycloneDX", "specVersion": "1.5", "serialNumber": f"urn:uuid:{uuid.uuid4()}", "version": 1,
         "metadata": {
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "tools": [{"vendor": "NERvvE DevSecOps", "name": "NERvvE DevSecOps", "version": "1.0.0"}],
+            "tools": [{"vendor": "NERvvE DevSecOps", "name": "NERvvE DevSecOps", "version": __version__}],
             "component": {"type": "application", "bom-ref": app_ref, "name": name},
-            "properties": [{"name": "myelin:inventory", "value": "manifest-and-lockfile-derived"}],
+            "properties": [{"name": "myelin:inventory", "value": "manifest-and-lockfile-derived"}]
+                          + [{"name": "myelin:inventory-gap", "value": gap} for gap in inventory_gaps],
         },
         "components": components,
+        "compositions": [{"aggregate": "incomplete" if inventory_gaps else "unknown",
+                          "assemblies": [app_ref], "dependencies": [app_ref]}],
         "dependencies": [{"ref": ref, "dependsOn": sorted(children)} for ref, children in sorted(edges.items())],
     }

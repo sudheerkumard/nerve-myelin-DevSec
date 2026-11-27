@@ -270,7 +270,8 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
         engines_run = list(result.get("engines") or sorted({f.get("engine") for f in fs_all if f.get("engine")}))
     # Only controls an assessed area tests are reported; frameworks with none are left out
     matrix = []
-    for m in FW.matrix(fs, engines_run):
+    complete = [k for k in engines_run if cov[k].get("complete", True)] if cov else engines_run
+    for m in FW.matrix(fs, complete):
         m["controls"] = [c for c in m["controls"] if c["status"] != "not_tested"]
         m["not_tested"] = 0
         if m["controls"] or m["id"] == "cwe25":
@@ -468,9 +469,19 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
                     + (f'<div class="muted">Not covered: {_e(", ".join(c["not_covered"]))}</div>' if c.get("not_covered") else "")
                     + f'</td><td>{_tools(c) if c else "<span class=muted>—</span>"}</td><td class="num">{by_eng[k]}</td></tr>')
     if not dast and comps:
-        eng_cov += (f'<tr><td><a href="#sbom"><b>Software bill of materials (SBOM)</b></a><div class="muted">Inventory of every third-party component '
+        eng_cov += (f'<tr><td><a href="#sbom"><b>Software bill of materials (SBOM)</b></a><div class="muted">Discovered third-party components '
                     f'(direct and transitive) with version, licence and package URL; exported as CycloneDX 1.5.</div></td>'
                     f'<td>CycloneDX 1.5</td><td class="num">{len(comps)} component{"" if len(comps) == 1 else "s"}</td></tr>')
+    coverage_notes = []
+    for k, c in cov.items():
+        status = c.get("status") or "not_assessed"
+        if status == "partial" or (c.get("applicable") and not c.get("assessed")):
+            note = "; ".join((c.get("errors") or [])[:5]) or c.get("reason") or ""
+            coverage_notes.append(f'<li><b>{_e(names.get(k, (k, ""))[0])}: {_e(status.replace("_", " "))}.</b> {_e(note)}</li>')
+        if c.get("assessed"):
+            coverage_notes += [f'<li><b>{_e(names.get(k, (k, ""))[0])}:</b> {_e(note)}</li>'
+                               for note in c.get("limitations") or []]
+    coverage_notes = "<h3>Coverage gaps and limits</h3><ul>" + "".join(coverage_notes) + "</ul>" if coverage_notes else ""
     if comps:
         sbom_body = (f'<div class="grid2"><div class="panel"><h4>Licences</h4>{_bars(lic_top, total=len(comps))}</div>'
                      f'<div class="panel"><h4>Ecosystems</h4>{_bars(eco.most_common(8), total=len(comps))}'
@@ -478,7 +489,7 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
                      f'<h3>Components{" (first 600)" if len(comps) > 600 else ""}</h3>'
                      f'<table><thead><tr><th>Component</th><th>Version</th><th>Licence</th><th>Type</th><th>Vulnerabilities</th></tr></thead><tbody>{sbom_rows}</tbody></table>')
     else:
-        sbom_body = '<p class="muted">No dependency manifests were found in the repository.</p>'
+        sbom_body = '<p class="muted">No versioned components were inventoried.</p>'
     sbom_section = "" if not has_sbom else (
         f'<section id="sbom" class="pb"><h2><span class="no">{no_sbom}</span>Software bill of materials</h2>'
         f'<p class="lede">{len(comps)} third-party components were inventoried, including transitive dependencies. '
@@ -509,7 +520,7 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
     else:
         scope_rows = (f'<tr><th>Repository</th><td class="mono">{_e(src)}</td></tr>'
                       f'<tr><th>Snapshot</th><td>{_e(result.get("branch") or "default branch")}{", commit " + _e(commit) if commit else ""}. '
-                      f'The source was retrieved read-only for the duration of the scan and was not retained.</td></tr>'
+                      f'The assessment reflects the files available to the scanner in that snapshot.</td></tr>'
                       f'<tr><th>Assessment date</th><td>{when} (automated, {_e(result.get("duration_s"))} s)</td></tr>'
                       + (f'<tr><th>Components inventoried</th><td>{len(comps)} ({dep.get("direct", 0)} direct, {dep.get("transitive", 0)} transitive)</td></tr>'
                          if comps else ""))
@@ -762,6 +773,7 @@ a{{color:#1c5cab}}
 <h3>Areas assessed</h3>
 <p class="muted">Only areas that apply to this {"service" if dast else "repository"} and were examined are listed.</p>
 <table><thead><tr><th>Area and coverage</th><th>Analysis tools</th><th class="num">Findings</th></tr></thead><tbody>{eng_cov}</tbody></table>
+{coverage_notes}
 </section>
 
 <section id="top"><h2><span class="no">4</span>Top risks</h2>
@@ -778,7 +790,7 @@ a{{color:#1c5cab}}
 
 <section id="fw" class="pb"><h2><span class="no">6</span>Framework &amp; compliance alignment</h2>
 <p class="lede">Each finding is mapped to the controls it bears on. A control is shown as a <b>gap</b> when critical or high-severity findings are open against it,
-an <b>observation</b> when only medium or low findings are open, and <b>no issues found</b> when an assessed area tests for it and found nothing.
+an <b>observation</b> when only medium or low findings are open, and <b>no issues found</b> when an assessed area completed its checks for it and found nothing.
 Only controls tested by the areas assessed in this scan are listed.</p>
 <div class="note">Automated evidence supports — but does not by itself establish — compliance with a standard. Controls that depend on process, people or
 physical security are outside the scope of this assessment.</div>

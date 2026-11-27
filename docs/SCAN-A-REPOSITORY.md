@@ -39,7 +39,14 @@ results from CI pipelines and live-app tests.
 | Infrastructure as Code | Dockerfiles (root user, health check, unpinned base, TLS-off installs, `curl | sh`, secrets in ENV/ARG), Docker Compose (privileged, Docker socket, host namespaces, dangerous capabilities, published database ports, hard-coded secrets) and Kubernetes (privileged, host namespaces, root, privilege escalation, capabilities, limits, image pinning, service-account tokens, secrets in env); Terraform/Bicep patterns. |
 | Pipeline posture, AI components | GitHub Actions / GitLab / Azure Pipelines risks; models, prompts and agent tools. |
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:a42e26b396966d95b25d165cc1bc9fee04b838f56bc1e0831711d59408ce8712 -->
+
 The report's **Vulnerability data** line shows which sources were reachable during the scan.
+See [Repository scan, SBOM and accuracy evidence](REPOSITORY-SCAN-EVIDENCE.md) for CLI exports, coverage gates and the benchmark.
+
+<!-- /coderabbit-ai-generated:v1 -->
 **Air-gapped installations:** set `MYELIN_OFFLINE=1` (bundled advisory pack only) or point to internal mirrors with
 `MYELIN_OSV_URL`, `MYELIN_PYPI_URL`, `MYELIN_NPM_URL`.
 

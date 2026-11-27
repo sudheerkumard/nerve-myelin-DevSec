@@ -40,6 +40,8 @@ def test_common_tls_title_without_cwe_still_gets_specific_guidance():
 
 def test_pypi_advisories_are_queried_when_osv_returns_no_matches(monkeypatch):
     from myelin_engine import vulndb
+    monkeypatch.delenv("MYELIN_OFFLINE", raising=False)
+    monkeypatch.setattr(vulndb, "_enrich_threat_intel", lambda pairs: pairs)
 
     component = {"ecosystem": "pypi", "name": "sample-lib", "version": "1.0",
                  "file": "requirements.txt", "purl": "pkg:pypi/sample-lib@1.0", "scope": "required"}
@@ -58,6 +60,8 @@ def test_pypi_advisories_are_queried_when_osv_returns_no_matches(monkeypatch):
 
 def test_osv_and_pypi_duplicate_advisories_are_deduplicated(monkeypatch):
     from myelin_engine import vulndb
+    monkeypatch.delenv("MYELIN_OFFLINE", raising=False)
+    monkeypatch.setattr(vulndb, "_enrich_threat_intel", lambda pairs: pairs)
 
     component = {"ecosystem": "pypi", "name": "sample-lib", "version": "1.0",
                  "file": "requirements.txt", "purl": "pkg:pypi/sample-lib@1.0", "scope": "required"}

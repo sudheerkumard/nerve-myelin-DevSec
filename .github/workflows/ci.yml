@@ -37,6 +37,16 @@ jobs:
         env:
           PYTHONPATH: engine
         run: python -m pytest -q engine/tests --junitxml=engine-test-results.xml
+      - name: Measure repository and SBOM accuracy against labelled fixtures
+        if: always()
+        run: python scripts/scan_benchmark.py --output scan-accuracy.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        if: always()
+        with:
+          name: scan-validation
+          path: |
+            engine-test-results.xml
+            scan-accuracy.json
       - name: Build demo snapshot and clean enterprise console
         run: |
           python scripts/build_console.py
@@ -58,7 +68,9 @@ jobs:
       - name: NERvvE DevSecOps self-scan (secrets, IaC, CI/CD posture) — policy gate
         run: |
           pip install -r backend/requirements.txt
-          python cli/myelin.py scan . --builtin-only --policy policies/myelin-policy.yaml --sarif myelin.sarif --json myelin.json --fail-on block
+          python cli/myelin.py scan . --builtin-only --policy policies/myelin-policy.yaml \
+            --require sast,secrets,iac,cicd --sarif myelin.sarif --json myelin.json \
+            --sbom source-sbom.cdx.json --fail-on block
       - name: Dockerfile lint (hadolint)
         uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf  # v3.1.0
         with: { dockerfile: Dockerfile, config: .hadolint.yaml }
@@ -76,6 +88,7 @@ jobs:
           path: |
             myelin.sarif
             myelin.json
+            source-sbom.cdx.json
 
   image:
     needs: [test, security]

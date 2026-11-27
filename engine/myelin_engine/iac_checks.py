@@ -161,16 +161,31 @@ def compose(text, rel, repo, doc):
     return out
 
 
+def _yaml_at(node, *keys):
+    for key in keys:
+        if isinstance(key, int) and isinstance(node, yaml.SequenceNode):
+            node = node.value[key] if key < len(node.value) else None
+        elif isinstance(node, yaml.MappingNode):
+            node = next((v for k, v in reversed(node.value) if k.value == key), None)
+        else:
+            return None
+    return node
+
+
 def kubernetes(text, rel, repo, docs):
     out = []
-    for doc in docs:
+    nodes = list(yaml.compose_all(text, Loader=yaml.SafeLoader)) if "Unconfined" in text else []
+    for index, doc in enumerate(docs):
         if not isinstance(doc, dict) or doc.get("kind") not in WORKLOADS:
             continue
         kind, name = doc["kind"], (doc.get("metadata") or {}).get("name", "?")
+        spec_keys = ("spec",)
         spec = doc.get("spec") or {}
         if kind == "CronJob":
+            spec_keys += ("jobTemplate", "spec", "template", "spec")
             spec = (((spec.get("jobTemplate") or {}).get("spec") or {}).get("template") or {}).get("spec") or {}
         elif kind != "Pod":
+            spec_keys += ("template", "spec")
             spec = ((spec.get("template") or {}).get("spec")) or {}
         if not spec:
             continue
@@ -190,12 +205,24 @@ def kubernetes(text, rel, repo, docs):
             out.append(_f("NM-IAC-032", f"{where} mounts a service-account token it may not need", "low", rel, ln, repo,
                           "automountServiceAccountToken not set to false",
                           "Set automountServiceAccountToken: false unless the workload calls the Kubernetes API.", "CWE-250"))
-        for c in (spec.get("containers") or []) + (spec.get("initContainers") or []):
+        containers = [(section, i, c) for section in ("containers", "initContainers", "ephemeralContainers")
+                      for i, c in enumerate(spec.get(section) or [])]
+        for section, i, c in containers:
             if not isinstance(c, dict):
                 continue
             cn = c.get("name", "?")
             cl = _line_of(text, f"name: {cn}", ln)
             sc = c.get("securityContext") or {}
+            override = sc.get("seccompProfile")
+            profile = override if override is not None else pod_sc.get("seccompProfile")
+            if isinstance(profile, dict) and profile.get("type") == "Unconfined":
+                keys = spec_keys + ((section, i) if override is not None else ()) + ("securityContext", "seccompProfile", "type")
+                node = _yaml_at(nodes[index], *keys) if index < len(nodes) else None
+                out.append(_f("NM-IAC-041", f"{where} container '{cn}' explicitly disables seccomp", "medium",
+                              rel, node.start_mark.line + 1 if node else cl, repo, "seccompProfile.type: Unconfined",
+                              "Set seccompProfile.type to RuntimeDefault or an approved Localhost profile.", "CWE-693"))
+            if section == "ephemeralContainers":
+                continue  # Other checks assume normal workload containers and their fields.
             if sc.get("privileged") is True:
                 out.append(_f("NM-IAC-033", f"{where} container '{cn}' runs privileged", "critical", rel, _line_of(text, "privileged", cl),
                               repo, "privileged: true", "Remove privileged mode.", "CWE-250"))
@@ -245,11 +272,12 @@ def scan_path(root: str, repo: str = "local") -> list[dict]:
                     text = open(p, encoding="utf-8", errors="ignore").read()
                     if "{{" in text:                       # Helm/Go templates: not plain YAML
                         continue
-                    docs = [d for d in yaml.safe_load_all(text) if d]
-                    if not docs:
+                    docs = list(yaml.safe_load_all(text))
+                    primary = next((d for d in docs if d), None)
+                    if not primary:
                         continue
-                    if re.match(r"(docker-)?compose.*\.ya?ml$", low) or (isinstance(docs[0], dict) and "services" in docs[0] and "kind" not in docs[0]):
-                        out += compose(text, rel, repo, docs[0])
+                    if re.match(r"(docker-)?compose.*\.ya?ml$", low) or (isinstance(primary, dict) and "services" in primary and "kind" not in primary):
+                        out += compose(text, rel, repo, primary)
                     else:
                         out += kubernetes(text, rel, repo, docs)
             except (OSError, yaml.YAMLError, AttributeError, TypeError, ValueError):

@@ -2,6 +2,11 @@
  "_note": "Every finding NERvvE DevSecOps must report on this corpus (rule, file, line). Anything missing is a false negative, anything extra is a false positive; both fail CI. Review each change by hand before updating this file.",
  "expected": [
   {
+   "rule": "NM-LIC-001",
+   "file": "app/requirements.txt",
+   "line": null
+  },
+  {
    "rule": "NM-AI-030",
    "file": ".claude/settings.json",
    "line": 5
@@ -150,6 +155,11 @@
    "rule": "NM-AI-029",
    "file": "AGENTS.md",
    "line": 5
+  },
+  {
+   "rule": "NM-IAC-041",
+   "file": "deploy/k8s/workloads.yaml",
+   "line": 11
   },
   {
    "rule": "NM-IAC-010",
@@ -546,5 +556,18 @@
    "file": "web/app.js",
    "line": 9
   }
+ ],
+ "sbom": [
+  "pkg:npm/chalk@5.6.1",
+  "pkg:npm/esbuild@0.20.0",
+  "pkg:npm/evil-helper@1.0.4",
+  "pkg:npm/expresss@4.18.2",
+  "pkg:npm/lodash@4.17.21",
+  "pkg:npm/preact@10.19.3",
+  "pkg:pypi/acme-billing@2.3.1",
+  "pkg:pypi/django@4.2.14",
+  "pkg:pypi/mysql-connector-python@9.1.0",
+  "pkg:pypi/pyyaml@5.3",
+  "pkg:pypi/requests@2.32.3"
  ]
 }

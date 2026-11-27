@@ -79,6 +79,7 @@ def evaluate(findings: list[dict], policy: dict | None = None) -> dict:
     """
     policy = policy or DEFAULT_POLICY
     violations, excepted = [], []
+    scanner_action = "pass"
     for f in findings:
         if f.get("status") in ("fixed", "suppressed", "risk_accepted", "false_positive"):
             continue
@@ -94,6 +95,9 @@ def evaluate(findings: list[dict], policy: dict | None = None) -> dict:
                 excepted.append({**rec, "exception": ex.get("id")})
             else:
                 violations.append(rec)
+                if f.get("scanner_status") == "required_error":
+                    scanner_action = max(scanner_action, g["action"] if g["action"] != "monitor" else "pass",
+                                         key=ACTION_RANK.get)
         # Findings with no matching policy gate are intentionally not violations.
     blocks = [v for v in violations if v["action"] == "block"]
     warns = [v for v in violations if v["action"] == "warn"]
@@ -103,8 +107,11 @@ def evaluate(findings: list[dict], policy: dict | None = None) -> dict:
         raise ValueError("policy mode must be audit, warn or enforce")
     # Audit mode records the full decision without affecting the gate. Warn mode
     # surfaces every violation but downgrades a would-block result to a warning.
-    decision = observed_decision if mode == "enforce" else ("warn" if observed_decision != "pass" else "pass") if mode == "warn" else "pass"
+    def effective(observed):
+        return observed if mode == "enforce" else "warn" if mode == "warn" and observed != "pass" else "pass"
+
+    decision = effective(observed_decision)
     return {"policy": policy.get("name"), "mode": mode, "decision": decision,
-            "observed_decision": observed_decision, "would_block": bool(blocks),
+            "observed_decision": observed_decision, "scanner_failure_decision": effective(scanner_action), "would_block": bool(blocks),
             "blocking": len(blocks), "warnings": len(warns),
             "excepted": len(excepted), "violations": violations[:500], "exceptions_applied": excepted[:500]}

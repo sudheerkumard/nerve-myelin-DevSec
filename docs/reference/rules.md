@@ -144,6 +144,10 @@ NERvvE DevSecOps ships **280 built-in rules** across 12 rule sets. Runtime detec
 | `NM-SEC-009` | JWT | :material-alert-circle-outline:{ .med } medium | CWE-798 |
 | `NM-SEC-010` | Generic credential assignment | :material-alert:{ .high } high | CWE-798 |
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:78693de5be48f522d903be90e5c8e4399e9b8b516f11a820c20b29131b20fcf3 -->
+
 ## Infrastructure as Code { #iac }
 
 | Rule | What it finds | Severity | Reference |
@@ -177,6 +181,9 @@ NERvvE DevSecOps ships **280 built-in rules** across 12 rule sets. Runtime detec
 | `NM-IAC-038` | … container '…' has no resource limits | :material-information-outline:{ .low } low |  |
 | `NM-IAC-039` | … container '…' image … | :material-alert-circle-outline:{ .med } medium |  |
 | `NM-IAC-040` | … container '…' has a hard-coded secret (…) | :material-alert:{ .high } high |  |
+| `NM-IAC-041` | Kubernetes container explicitly disables seccomp | :material-alert-circle-outline:{ .med } medium | CWE-693 |
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 ## CI pipeline posture { #cicd }
 
