@@ -245,12 +245,28 @@ def cmd_vex(a):
     return 1 if result["decision"]["decision"] == "block" else 0
 
 
+def _with_required_coverage(res, decision, require):
+    """Block when a required area was not assessed completely (missing, not applicable, partial or tool error)."""
+    if not require:
+        return decision
+    cov = res.get("coverage") or {}
+    required = sorted({e.strip() for e in require.split(",") if e.strip()})
+    missing = [e for e in required if (cov.get(e) or {}).get("status") != "complete"]
+    if missing:
+        decision = dict(decision)
+        decision["decision"] = "block"
+        decision["blocking"] = list(decision.get("blocking") or []) + [
+            {"gate": "required-coverage", "action": "block", "finding": None,
+             "reason": f"{e}: {(cov.get(e) or {}).get('status') or 'not run'}"} for e in missing]
+    return decision
+
+
 def cmd_gate(a):
     """Gate a deployment. Local mode: evaluate a results file. Platform mode (--repo): ask RAT Flea DevSec for the
     decision on the commit being deployed — fails closed when the commit was never scanned (unless --allow-unscanned)."""
     if a.results:
         res = json.load(open(a.results))
-        d = policy.evaluate(res["findings"], policy.load(a.policy))
+        d = _with_required_coverage(res, policy.evaluate(res["findings"], policy.load(a.policy)), a.require)
         print(json.dumps({k: d[k] for k in ("policy", "decision", "blocking", "warnings", "excepted")}))
         return 1 if d["decision"] == "block" else 0
     server = a.server or os.getenv("MYELIN_SERVER")
@@ -496,7 +512,8 @@ def main():
     g.add_argument("--fail-on", choices=["block", "warn"], default="block")
     g.add_argument("--allow-unscanned", action="store_true", help="do not fail when the commit was never scanned")
     g.add_argument("--scope", choices=["all", "new"], default="all", help="new: only findings this commit introduced can block")
-    g.add_argument("--require", help="comma-separated engines that must have run, e.g. sast,sca,secrets (missing → block)")
+    g.add_argument("--require", help="comma-separated areas that must be completely assessed, e.g. sast,sca,secrets "
+                   "(not run, partial or failed → block)")
     im = sub.add_parser("import", help="import another scanner's results (SARIF, CycloneDX, Trivy, Grype, Semgrep, Gitleaks, ZAP …)")
     im.add_argument("file"); im.add_argument("--repo", required=True); im.add_argument("--branch"); im.add_argument("--commit")
     im.add_argument("--format", default="auto"); im.add_argument("--server"); im.add_argument("--policy")

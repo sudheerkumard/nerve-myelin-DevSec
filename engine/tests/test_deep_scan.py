@@ -163,3 +163,17 @@ def test_no_assessed_areas_does_not_generate_a_clean_report():
     html = R.render({"coverage": {}, "engines": ["sast"], "findings": []})
     assert "Undetermined" in html and "Coverage is incomplete" in html
     assert 'id="d-sast"' not in html and "✓ No open findings" not in html
+
+
+def test_gate_blocks_when_required_area_is_partial_or_missing(tmp_path):
+    import json
+    import types
+    from myelin_engine import cli
+    res = {"findings": [], "coverage": {"sast": {"status": "complete"}, "sca": {"status": "partial"}}}
+    p = tmp_path / "r.json"
+    p.write_text(json.dumps(res))
+    base = dict(results=str(p), policy=None, repo=None, server=None, commit=None, environment=None, scope="all",
+                allow_unscanned=False)
+    assert cli.cmd_gate(types.SimpleNamespace(**base, require="sast")) == 0
+    assert cli.cmd_gate(types.SimpleNamespace(**base, require="sast,sca")) == 1
+    assert cli.cmd_gate(types.SimpleNamespace(**base, require="secrets")) == 1
