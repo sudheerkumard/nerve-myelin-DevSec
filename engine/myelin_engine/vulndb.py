@@ -17,6 +17,7 @@ Air-gapped: download the OSV ecosystem exports on a connected host (`myelin advi
 across, and set MYELIN_OSV_EXPORT_DIR=DIR. Offline scans then match every component against the full OSV data locally
 (version lists and ECOSYSTEM / SEMVER ranges), including malicious-package (MAL-) records.
 """
+import calendar
 import hashlib
 import json
 import math
@@ -607,7 +608,7 @@ def _export_index():
         generated_at = time.strptime(generated, "%Y-%m-%dT%H:%M:%SZ")
         max_age = os.environ.get("MYELIN_OSV_MAX_AGE_DAYS")
         if max_age:
-            age_days = (time.time() - time.mktime(generated_at)) / 86400
+            age_days = (time.time() - calendar.timegm(generated_at)) / 86400
             if age_days > float(max_age):
                 raise ValueError(f"OSV export is stale ({age_days:.1f} days; maximum {max_age})")
         entries = manifest.get("archives")
@@ -777,7 +778,7 @@ def download_exports(dest: str, ecosystems=tuple(OSV_ECO.values())) -> list[str]
     temporary = os.path.join(dest, OSV_EXPORT_MANIFEST + ".part")
     with open(temporary, "w", encoding="utf-8") as fh:
         json.dump(manifest, fh, indent=2, sort_keys=True)
-        fh.write("\\n")
+        fh.write("\n")
     os.replace(temporary, os.path.join(dest, OSV_EXPORT_MANIFEST))
     _EXPORT.update(signature=None, index=None)
     return got
