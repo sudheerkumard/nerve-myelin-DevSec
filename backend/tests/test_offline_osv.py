@@ -28,15 +28,18 @@ DOCS = [
 def _export(tmp_path):
     d = tmp_path / "osv"
     d.mkdir()
-    archive = d / "npm.zip"
-    with zipfile.ZipFile(archive, "w") as z:
-        for doc in DOCS:
-            z.writestr(doc["id"] + ".json", json.dumps(doc))
+    archives = []
+    for ecosystem, docs in (("PyPI", [DOCS[0]]), ("npm", DOCS[1:])):
+        archive = d / (ecosystem + ".zip")
+        with zipfile.ZipFile(archive, "w") as z:
+            for doc in docs:
+                z.writestr(doc["id"] + ".json", json.dumps(doc))
+        archives.append({"ecosystem": ecosystem, "file": archive.name,
+                         "sha256": hashlib.sha256(archive.read_bytes()).hexdigest(),
+                         "size_bytes": archive.stat().st_size})
     manifest = {"schema_version": 1, "source": "OSV ecosystem exports",
                 "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                "archives": [{"ecosystem": "npm", "file": archive.name,
-                              "sha256": hashlib.sha256(archive.read_bytes()).hexdigest(),
-                              "size_bytes": archive.stat().st_size}]}
+                "archives": archives}
     (d / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     return str(d)
 
