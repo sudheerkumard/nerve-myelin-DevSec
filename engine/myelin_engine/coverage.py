@@ -137,7 +137,7 @@ DOMAIN_TOOLS = {
 
 def build(inv: dict, engines: list[str], tools_used: list[str], findings: list[dict], components: int,
           intel: dict | None = None, deep_rules: int = 0, *, trivy_domains=None,
-          trivy_sca_skipped=False, inventory_gaps=()) -> dict:
+          trivy_sca_skipped=False, inventory_gaps=(), licence_stats=None) -> dict:
     """Per-domain record: assessed or not, why, what was examined, which tools ran, and errors."""
     trivy_domains = {"sca", "iac", "secrets"} if trivy_domains is None else trivy_domains
     errors = {}
@@ -178,13 +178,17 @@ def build(inv: dict, engines: list[str], tools_used: list[str], findings: list[d
                    + ("pattern rules for " + ", ".join(pattern_langs) if pattern_langs else ""),
                    "not_covered": unsupported, "rules": deep_rules, "tools": tools_for("sast", sast_tools)}
     # SCA and licences
+    offline = (intel or {}).get("offline")
+    verified_export = "OSV export manifest verified" in ((intel or {}).get("sources") or [])
+    advisory_scope = ("verified offline OSV export and bundled advisories" if verified_export else
+                      "bundled advisory fallback" if offline else "configured online sources and bundled advisories")
     has_deps = components > 0
     has_manifests = bool(inv.get("manifests") or inventory_gaps)
     cov["sca"] = {"applicable": has_deps or has_manifests, "assessed": "sca" in engines and has_deps,
                   "examined": f"{components} components from {len(inv.get('manifests') or [])} manifest/lock files" if has_deps else "",
-                  "depth": "Known vulnerabilities (CVE/GHSA/OSV) with CVSS, EPSS, CISA KEV and import reachability"
-                           + (" — offline: bundled advisory data only" if (intel or {}).get("offline") else ""),
-                  "tools": tools_for("sca", (["OSV advisory matching"] if has_deps else []) + ["trivy", "grype"]),
+                  "depth": "Known vulnerabilities from " + advisory_scope + "; severity and reachability where evidence is available",
+                  "tools": tools_for("sca", (["OSV advisory matching"] if has_deps and (not offline or verified_export) else
+                                              ["NERvvE bundled advisory pack"] if has_deps else []) + ["trivy", "grype"]),
                   "errors": (intel or {}).get("errors") or []}
     cov["sca"]["limitations"] = ["Only dependencies discovered in supported manifests, lockfiles, SBOMs or scanned artifacts can be assessed.",
                                  "A dependency inventory does not prove runtime reachability; unknown reachability remains unknown."]
@@ -192,6 +196,11 @@ def build(inv: dict, engines: list[str], tools_used: list[str], findings: list[d
                       "examined": f"{components} components" if components else "",
                       "depth": "Available licence evidence checked against built-in rules",
                       "tools": tools_for("license", ["NERvvE licence policy"] if has_deps else [])}
+    if licence_stats and "license" in engines:
+        cov["license"]["evidence"] = licence_stats
+        uncertain = licence_stats["missing_or_unverified"]
+        if uncertain:
+            cov["license"]["errors"] = [f"{uncertain} of {components} components lack usable release-specific SPDX licence evidence"]
     cov["supply"] = {"applicable": has_deps or has_manifests, "assessed": "supply" in engines and has_deps,
                      "examined": f"{components} components" if components else "",
                      "depth": "Known-malicious and typosquatted packages, install scripts, dependency confusion",

@@ -25,11 +25,29 @@ Coverage counts describe candidate files. Test fixtures, ignored paths, generate
 
 ## Verification in CI
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:9905ae58813cb43c6cb786580e0612d6a1cb4fd7cd2dd1fece4f9a36c6087149 -->
+
+Run both benchmark commands from the checkout:
+
 ```sh
 python scripts/scan_benchmark.py --output scan-accuracy.json
+python scripts/scan_profiles.py --output scan-profiles.json
 ```
 
-The command uses built-in engines and bundled offline advisories. It compares finding rule, path and line against reviewed labels, and compares SBOM package identities against a separate list of expected components. It emits true positives, false positives, false negatives, precision, recall, mismatches and duplicate component counts. CI uploads the result as **scan-validation** and fails on discrepancies. The fixture metrics measure regression performance on that corpus; they are not an accuracy percentage for a specific repository or for additional scanners.
+| Test profile | Evidence measured |
+|---|---|
+| Offline repository corpus | SAST, SCA, secrets, IaC, CI/CD, licence and supply chain rules, AI inventory, and versioned SBOM components. Advisory matching uses only the bundled subset. |
+| Connected repository fixture | OSV pagination, withdrawn advisories, PyPI advisories, registry licence evidence and SBOM identities through a local HTTP service. |
+| Verified offline export | Checksum and age checked OSV archives, version matching including unaffected controls, and licence gaps where there is no release metadata. |
+| Read-only web baseline | Local HTTP fixtures with and without selected security headers. |
+
+Both commands emit true positives, false positives, false negatives, precision and recall against labels. CI uploads them as **scan-validation** and fails on discrepancies. The results measure the listed fixtures; they do not measure production feed availability, broad real-world recall or the accuracy of a specific scan.
+
+The report opens with the release gate, open findings, scan coverage and SBOM inventory. Clicking each card jumps to that detail. A zero finding count with material coverage gaps leaves the overall risk undetermined. For licences, the SBOM identifies lockfile, registry and bundled evidence. Missing or conflicting release evidence is shown as a coverage gap; bundled hints are useful for triage.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 <!-- coderabbit-ai-generated:v1 -->
 

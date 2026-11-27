@@ -19,6 +19,7 @@ across, and set MYELIN_OSV_EXPORT_DIR=DIR. Offline scans then match every compon
 """
 import calendar
 import hashlib
+import http.client
 import json
 import math
 import os
@@ -175,7 +176,11 @@ def parse_lockfiles(root: str) -> list[dict]:
                     for section, scope in (("packages", "transitive"), ("packages-dev", "dev")):
                         for item in data.get(section) or []:
                             if item.get("name") and item.get("version"):
-                                out.append(_c("composer", item["name"], str(item["version"]).lstrip("v"), rel, scope))
+                                component = _c("composer", item["name"], str(item["version"]).lstrip("v"), rel, scope)
+                                declared = item.get("license")
+                                if isinstance(declared, list) and len(declared) == 1:
+                                    _record_lock_licence(component, declared[0])
+                                out.append(component)
                 elif fn == "Gemfile.lock":
                     with open(p, encoding="utf-8", errors="ignore") as fh:
                         out += _gem_lock(fh.read(), rel)
@@ -211,6 +216,8 @@ def parse_lockfiles(root: str) -> list[dict]:
             primary = by_key[key]
             if component["file"] not in primary["evidence_files"]:
                 primary["evidence_files"].append(component["file"])
+            if "lock_licences" in primary or "lock_licences" in component:
+                primary["lock_licences"] = sorted(set(primary.get("lock_licences", ())) | set(component.get("lock_licences", ())))
             if primary["scope"] in {"dev", "optional"} and component["scope"] in {"required", "transitive"}:
                 primary["scope"] = component["scope"]
     return unique
@@ -349,6 +356,11 @@ def _nuget_lock(data, rel):
                               "dev" if (meta or {}).get("type") == "Direct" else "transitive"))
     return out
 
+def _record_lock_licence(component, declared):
+    if isinstance(declared, str) and declared.strip():
+        component["lock_licences"] = [declared.strip()]
+
+
 def _npm_lock(data, rel):
     out = []
     packages = data.get("packages")
@@ -372,13 +384,17 @@ def _npm_lock(data, rel):
                 scope = "required"
             else:
                 scope = "transitive"
-            out.append(_c("npm", name, meta["version"], rel, scope))
+            component = _c("npm", name, meta["version"], rel, scope)
+            _record_lock_licence(component, meta.get("license"))
+            out.append(component)
     else:  # lockfile v1: first-level entries are direct dependencies.
         def walk(deps, depth=0):
             for name, meta in (deps or {}).items():
                 if (meta or {}).get("version"):
                     scope = ("dev" if meta.get("dev") else "optional" if meta.get("optional") else "required") if depth == 0 else "transitive"
-                    out.append(_c("npm", name, meta["version"], rel, scope))
+                    component = _c("npm", name, meta["version"], rel, scope)
+                    _record_lock_licence(component, meta.get("license"))
+                    out.append(component)
                 walk((meta or {}).get("dependencies"), depth + 1)
         walk(data.get("dependencies"))
     return out
@@ -590,39 +606,68 @@ def _fixed_for(v, eco, name):
 
 
 def _osv(comps):
-    """{index: [osv vulnerability documents]} for components OSV knows about, or None if OSV is unreachable."""
+    """Map component indexes to advisory details; record incomplete pages separately."""
     queries = [{"package": {"name": c["name"], "ecosystem": OSV_ECO[c["ecosystem"]]}, "version": c["version"]}
                for c in comps if c["ecosystem"] in OSV_ECO]
     idx = [i for i, c in enumerate(comps) if c["ecosystem"] in OSV_ECO]
     if not queries:
         return {}
     hits = {}
-    try:
-        for start in range(0, len(queries), 500):
-            res = _http_json(f"{OSV_URL}/v1/querybatch", {"queries": queries[start:start + 500]}, ttl=6 * 3600)
-            if res is None:
-                return None
-            for j, r in enumerate(res.get("results") or []):
-                ids = [v["id"] for v in (r or {}).get("vulns") or []]
-                if ids:
-                    hits[idx[start + j]] = ids
-    except Exception as e:  # noqa: BLE001
-        current_status()["errors"].add(f"osv: {type(e).__name__}")
-        return None
-    current_status()["sources"].add("OSV")
+    for start in range(0, len(queries), 500):
+        pending = list(zip(idx[start:start + 500], queries[start:start + 500]))
+        seen_tokens = set()
+        for _ in range(20):
+            try:
+                res = _http_json(f"{OSV_URL}/v1/querybatch", {"queries": [q for _, q in pending]}, ttl=6 * 3600)
+            except (OSError, ValueError, http.client.HTTPException) as exc:
+                current_status()["errors"].add(f"OSV query failed: {type(exc).__name__}")
+                break
+            results = res.get("results") if isinstance(res, dict) else None
+            if not isinstance(results, list) or len(results) != len(pending):
+                current_status()["errors"].add("OSV returned an incomplete batch")
+                break
+            current_status()["sources"].add("OSV")
+            following = []
+            for (i, query), result in zip(pending, results):
+                summaries = result.get("vulns", []) if isinstance(result, dict) else None
+                if not isinstance(summaries, list) or any(
+                    not isinstance(v, dict) or not isinstance(v.get("id"), str) or not v["id"] for v in summaries
+                ):
+                    current_status()["errors"].add("OSV returned an invalid package result")
+                    continue
+                hits.setdefault(i, set()).update(v["id"] for v in summaries)
+                token = result.get("next_page_token")
+                if token:
+                    if not isinstance(token, str) or (i, token) in seen_tokens:
+                        current_status()["errors"].add("OSV returned an invalid or repeated page token")
+                    else:
+                        seen_tokens.add((i, token))
+                        following.append((i, {**query, "page_token": token}))
+            if not following:
+                break
+            pending = following
+        else:
+            current_status()["errors"].add("OSV advisory pagination limit reached")
     all_ids = sorted({i for v in hits.values() for i in v})
     with ThreadPoolExecutor(max_workers=8) as ex:
-        docs = dict(zip(all_ids, scan_map(ex, lambda i: _safe(_http_json, f"{OSV_URL}/v1/vulns/{i}"), all_ids)))
-    return {k: [docs[i] for i in v if docs.get(i)] for k, v in hits.items()}
+        docs = dict(zip(all_ids, scan_map(ex, lambda i: _safe(_http_json, f"{OSV_URL}/v1/vulns/{urllib.parse.quote(i, safe='')}"), all_ids)))
+    usable = {i: doc for i, doc in docs.items() if isinstance(doc, dict) and doc.get("id") == i}
+    if len(usable) != len(docs):
+        current_status()["errors"].add("OSV advisory details missing or invalid")
+    return {k: [usable[i] for i in sorted(v) if i in usable and not usable[i].get("withdrawn")] for k, v in hits.items()}
 
 
 def _pypi_vulns(c):
     meta = _safe(_pypi_release, c["name"], c["version"])
-    if meta is None:
+    if not isinstance(meta, dict) or not isinstance(meta.get("vulnerabilities", []), list):
+        current_status()["errors"].add("PyPI advisory response missing or invalid for one or more packages")
         return []
     current_status()["sources"].add("PyPI advisory database")
     out = []
     for v in meta.get("vulnerabilities") or []:
+        if not isinstance(v, dict) or not isinstance(v.get("id"), str) or not v["id"]:
+            current_status()["errors"].add("PyPI returned an invalid advisory")
+            continue
         if v.get("withdrawn"):
             continue
         out.append({"id": v["id"], "aliases": v.get("aliases") or [], "summary": v.get("summary") or v.get("details", "")[:160],
@@ -790,7 +835,7 @@ def _offline_osv(comps):
         current_status()["errors"].add("offline OSV export missing ecosystems: " + ", ".join(missing))
     out = {}
     for i, c in enumerate(comps):
-        docs = [d for d in idx.get((c["ecosystem"], c["name"]), []) if affected(d, c["ecosystem"], c["name"], str(c["version"]))]
+        docs = [d for d in idx.get((c["ecosystem"], c["name"]), []) if not d.get("withdrawn") and affected(d, c["ecosystem"], c["name"], str(c["version"]))]
         if docs:
             out[i] = list({d["id"]: d for d in docs}.values())
     return out
@@ -857,13 +902,7 @@ def vulnerabilities(comps: list[dict]) -> list[tuple[dict, dict]]:
         normalised = _enrich_threat_intel(normalised)
         return normalised
 
-    found = _osv(comps)
-    pairs = []
-    if found is not None:
-        for i, docs in found.items():
-            pairs.extend((comps[i], v) for v in docs)
-    else:
-        current_status()["errors"].add("OSV unavailable; using available ecosystem fallbacks")
+    pairs = [(comps[i], v) for i, docs in _osv(comps).items() for v in docs]
 
     # Independent PyPI enrichment avoids the previous blind spot where a reachable
     # but incomplete OSV response suppressed PyPI-only advisories.

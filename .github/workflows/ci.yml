@@ -40,6 +40,9 @@ jobs:
       - name: Measure repository and SBOM accuracy against labelled fixtures
         if: always()
         run: python scripts/scan_benchmark.py --output scan-accuracy.json
+      - name: Measure connected, air-gapped and read-only web profiles
+        if: always()
+        run: python scripts/scan_profiles.py --output scan-profiles.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         if: always()
         with:
@@ -47,6 +50,7 @@ jobs:
           path: |
             engine-test-results.xml
             scan-accuracy.json
+            scan-profiles.json
       - name: Build demo snapshot and clean enterprise console
         run: |
           python scripts/build_console.py

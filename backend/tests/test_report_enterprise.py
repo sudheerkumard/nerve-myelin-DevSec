@@ -71,3 +71,18 @@ def test_dast_report():
     h = R.render(json.loads(json.dumps(res)), issuer="Globex", kind="dast")
     assert "OWASP API Security Top 10" in h and "API1:2023" in h and 'id="sbom"' not in h
     assert "Live application" in h and "61 requests" in h
+
+
+def test_report_separates_release_gate_risk_and_inventory_evidence():
+    result = {"repo": "<fixture>", "findings": [], "decision": {"decision": "pass"},
+              "coverage": {"sca": {"status": "partial", "assessed": False, "applicable": True,
+                                   "errors": ["OSV export missing"]}},
+              "intelligence": {"offline": True, "sources": ["bundled advisory pack"]},
+              "sbom": {"components": [], "compositions": [{"aggregate": "incomplete"}]}}
+    html = R.render(result)
+    overview = html.split('aria-labelledby="brief-title"', 1)[1].split("</section>", 1)[0]
+    for text in ("Scan at a glance", "Pass", "0 open", "Partial", "Known inventory gaps",
+                 "Offline · bundled advisory fallback", 'href="#scope"'):
+        assert text in overview
+    assert "Undetermined" in html and "OSV export missing" in html
+    assert "<fixture>" not in html and "&lt;fixture&gt;" in html

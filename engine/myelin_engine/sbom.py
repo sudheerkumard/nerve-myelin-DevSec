@@ -14,8 +14,10 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from pathlib import Path
 
-from . import __version__, coverage, vulndb
+from packaging.licenses import InvalidLicenseExpression, canonicalize_license_expression
 from packaging.requirements import InvalidRequirement, Requirement
+
+from . import __version__, coverage, license_policy, vulndb
 
 # Curated offline advisory pack (subset; the server syncs OSV/NVD/GHSA/KEV/EPSS feeds).
 ADVISORIES = [
@@ -34,23 +36,51 @@ ADVISORIES = [
     ("pypi", "jinja2", "3.1.4", "3.1.4", "CVE-2024-34064", 5.4, 0.001, False, "CWE-79", "XSS via xmlattr filter"),
     ("go", "golang.org/x/net", "0.17.0", "0.17.0", "CVE-2023-44487", 7.5, 0.94, True, "CWE-400", "HTTP/2 Rapid Reset DoS"),
 ]
-COPYLEFT = {"AGPL-3.0", "GPL-3.0", "GPL-2.0", "SSPL-1.0"}
+
+
+def _spdx(lic):
+    if not isinstance(lic, str) or not lic.strip() or len(lic) > 1024:
+        return None
+    try:
+        return str(canonicalize_license_expression(lic))
+    except (InvalidLicenseExpression, RecursionError):
+        return None
 
 
 def licence_kind(lic: str | None) -> str | None:
-    """strong (GPL/AGPL/SSPL/EUPL), weak (LGPL/MPL/EPL/CDDL) or None. An 'A OR B' expression is judged by its most
-    permissive option, since the user may choose it."""
+    """Report obligations common to all OR alternatives; AND retains the strongest obligation."""
+    expression = _spdx(lic)
+    if not expression:
+        return None
+
+    def rank(node):
+        op = node["op"]
+        if op in {"AND", "OR"}:
+            return (max if op == "AND" else min)(rank(child) for child in node["args"])
+        ident = (node.get("id") or node.get("license")).upper()
+        if ident.startswith(("AGPL-", "GPL-", "SSPL-", "EUPL-")):
+            return 2
+        if ident.startswith(("LGPL-", "MPL-", "EPL-", "CDDL-", "CPL-")):
+            return 1
+        return 0
+
+    try:
+        return (None, "weak", "strong")[rank(license_policy.parse_expression(expression))]
+    except (license_policy.LicenseExpressionError, RecursionError):
+        return None
+
+
+def _cyclonedx_licenses(lic):
     if not lic or lic == "unknown":
-        return None
-    options = [o.strip(" ()").upper() for o in re.split(r"\s+OR\s+", lic)]
-    def one(o):
-        if re.search(r"\b(AGPL|SSPL|EUPL)|(^|[^L])GPL", o):
-            return "strong"
-        if re.search(r"\bLGPL|\bMPL|\bEPL|\bCDDL|\bCPL", o):
-            return "weak"
-        return None
-    kinds = [one(o) for o in options]
-    return None if None in kinds else "weak" if "weak" in kinds else "strong"
+        return []
+    spdx = _spdx(lic)
+    if not spdx:
+        return [{"license": {"name": lic}}]
+    if " " in spdx or spdx.endswith("+") or "LicenseRef-" in spdx:
+        return [{"expression": spdx}]
+    return [{"license": {"id": spdx}}]
+
+
 KNOWN_LICENSES = {"lodash": "MIT", "express": "MIT", "axios": "MIT", "semver": "ISC", "requests": "Apache-2.0",
                   "django": "BSD-3-Clause", "flask": "BSD-3-Clause", "pyyaml": "MIT", "jinja2": "BSD-3-Clause",
                   "mongodb": "Apache-2.0", "ghostscript": "AGPL-3.0", "itext7": "AGPL-3.0", "mysql-connector-python": "GPL-2.0",
@@ -181,8 +211,6 @@ def parse_manifests(root: str) -> list[dict]:
                                                        "optional" if scope in {"test", "provided", "system"} else "required"))
             except (OSError, ValueError, TypeError, AttributeError, ET.ParseError):
                 _manifest_gap(f"manifest parse: {rel}")
-    for comp in comps:
-        comp["license"] = KNOWN_LICENSES.get(comp["name"], "unknown")
     return comps
 
 
@@ -262,15 +290,39 @@ def inventory(root: str, *, resolve_online: bool = True) -> list[dict]:
                 comps[k]["via"] = None
         comps[k]["evidence_files"] = sorted(paths)
     components = [comps[k] for k in sorted(comps)]
+    for c in components:
+        declarations = c.pop("lock_licences", [])
+        declared = {(_spdx(value) or value) for value in declarations}
+        if len(declared) > 1:
+            c["licence_source"] = "conflicting lockfiles"
+        elif declared:
+            value = next(iter(declared))
+            if value.casefold() not in {"unknown", "noassertion", "none"}:
+                c.update(license=value, licence_source="lockfile")
+
     if online:
         from concurrent.futures import ThreadPoolExecutor
-        todo = [c for c in components if c.get("license", "unknown") == "unknown"]
+        todo = [c for c in components if not c.get("licence_source") and c["ecosystem"] in {"npm", "pypi"}]
         with ThreadPoolExecutor(max_workers=8) as ex:
-            for c, lic in zip(todo, vulndb.scan_map(ex, vulndb.licence, todo)):
-                c["license"] = lic
-        if any(c["license"] != "unknown" for c in todo):
+            for c, licence in zip(todo, vulndb.scan_map(ex, vulndb.licence, todo)):
+                if isinstance(licence, str) and licence.strip() and licence.lower() not in {"unknown", "noassertion", "none"}:
+                    c.update(license=licence.strip(), licence_source="registry")
+        if any(c.get("licence_source") == "registry" for c in todo):
             vulndb.current_status()["sources"].add("package registries (licences)")
+
+    fallback_ecosystems = {"@babel/traverse": "npm", "lodash": "npm", "express": "npm", "axios": "npm", "semver": "npm",
+                           "mongodb": "npm", "jsonwebtoken": "npm"}
+    for c in components:
+        pkg = c["name"]
+        if not c.get("licence_source") and pkg in KNOWN_LICENSES and c["ecosystem"] == fallback_ecosystems.get(pkg, "pypi"):
+            c.update(license=KNOWN_LICENSES[pkg], licence_source="bundled package hint")
     return components
+
+
+def licence_evidence(components):
+    verified = sum(c.get("licence_source") in {"lockfile", "registry"} and bool(_spdx(c.get("license")))
+                   for c in components)
+    return {"with_release_spdx": verified, "missing_or_unverified": len(components) - verified}
 
 
 def _reach(pkg, hint):
@@ -329,13 +381,15 @@ def match_advisories(comps: list[dict], repo: str = "local", reachable_hint: set
         if kind == "strong":
             out.append({"engine": "license", "rule_id": "NM-LIC-001", "title": f"Copyleft licence {c['license']} in {c['name']}",
                         "severity": "high", "package": c["name"], "version": c["version"], "file": c["file"], "repo": repo,
-                        "license": c["license"], "dependency_type": _dep_type(c),
+                        "license": c["license"], "purl": c["purl"], "ecosystem": c["ecosystem"],
+                        "licence_source": c.get("licence_source"), "dependency_type": _dep_type(c),
                         "remediation": "Strong copyleft can require releasing your source code when you distribute or host the product. "
                                        "Replace the component or obtain a commercial licence; legal review required."})
         elif kind == "weak":
             out.append({"engine": "license", "rule_id": "NM-LIC-002", "title": f"Weak copyleft licence {c['license']} in {c['name']}",
                         "severity": "info", "package": c["name"], "version": c["version"], "file": c["file"], "repo": repo,
-                        "license": c["license"], "dependency_type": _dep_type(c),
+                        "license": c["license"], "purl": c["purl"], "ecosystem": c["ecosystem"],
+                        "licence_source": c.get("licence_source"), "dependency_type": _dep_type(c),
                         "remediation": "Usually fine when used unmodified as a separate library; modifications to this component "
                                        "must be published under the same licence. Record it in your third-party notices."})
     return out
@@ -357,13 +411,14 @@ def cyclonedx(comps: list[dict], name: str = "application", *, inventory_gaps=()
         components.append({
             "type": "library", "bom-ref": purl, "name": c["name"], "version": c["version"],
             "purl": purl,
-            "licenses": [{"license": {"id": c["license"]}}] if c.get("license") and c["license"] != "unknown" else [],
+            "licenses": _cyclonedx_licenses(c.get("license")),
             "scope": "optional" if c.get("scope") in ("optional", "dev") else "required",
             "properties": [
                 {"name": "myelin:dependency", "value": _dep_type(c)},
                 *({"name": "myelin:manifest", "value": path}
                   for path in sorted(set(c.get("evidence_files") or [c.get("file", "")])) if path),
-            ] + ([{"name": "myelin:introduced-by", "value": c["via"]}] if c.get("via") else []),
+            ] + ([{"name": "myelin:licence-source", "value": c["licence_source"]}] if c.get("licence_source") else [])
+              + ([{"name": "myelin:introduced-by", "value": c["via"]}] if c.get("via") else []),
         })
 
     edges = {app_ref: set()}

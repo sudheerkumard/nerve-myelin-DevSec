@@ -281,7 +281,7 @@ def _scan(path, repo, engines, use_external, criticality, status):
     cov = coverage.build(inv, engines, tools_used, uniq, len(comps), intel,
                          deep_rules=rule_count() if {"opengrep", "semgrep"} & set(tools_used) else 0,
                          trivy_domains=trivy_domains, trivy_sca_skipped=trivy_sca_skipped,
-                         inventory_gaps=inventory_gaps)
+                         inventory_gaps=inventory_gaps, licence_stats=sbom.licence_evidence(comps))
     return {"repo": repo, "path": path, "duration_s": round(time.time() - t0, 2), "tools": tools_used,
             "coverage": cov, "engines": coverage.assessed(cov), "complete_engines": coverage.completed(cov),
             "closure_engines": coverage.verified_absence(cov),

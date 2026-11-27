@@ -93,3 +93,43 @@ def test_parallel_scans_keep_their_intelligence_evidence_separate(monkeypatch, t
         first, second = threads.map(lambda name: orchestrator.scan(str(tmp_path / name), use_external=False), ("first", "second"))
     assert first["intelligence"]["errors"] == ["first"]
     assert second["intelligence"]["errors"] == ["second"]
+
+
+def test_online_advisory_batch_gaps_keep_useful_results_and_prevent_complete_sca(monkeypatch, tmp_path):
+    monkeypatch.delenv("MYELIN_OFFLINE", raising=False)
+    _write(tmp_path, "package-lock.json", json.dumps({"lockfileVersion": 3, "packages": {
+        "node_modules/fictitious": {"version": "1.0.0", "license": "MIT"},
+        "node_modules/other": {"version": "1.0.0", "license": "MIT"},
+    }}))
+
+    def response(url, body=None, **kwargs):
+        if body:
+            if len(body["queries"]) == 2:
+                return {"results": [{"vulns": [{"id": "GHSA-first"}, {"id": "GHSA-missing"}], "next_page_token": "continue"}, {}]}
+            return {"results": []}  # The second page omitted its package result.
+        if url.endswith("/GHSA-first"):
+            return {"id": "GHSA-first", "summary": "Versioned fixture advisory"}
+        return None
+
+    monkeypatch.setattr(vulndb, "_http_json", response)
+    res = orchestrator.scan(str(tmp_path), engines=["sca"], use_external=False)
+    assert [f["rule_id"] for f in res["findings"] if f["engine"] == "sca"] == ["GHSA-first"]
+    c = res["coverage"]["sca"]
+    assert c["status"] == "partial"
+    assert "OSV returned an incomplete batch" in c["errors"]
+    assert "OSV advisory details missing or invalid" in c["errors"]
+    assert "sca" not in res["closure_engines"]
+
+
+def test_offline_licence_conflict_does_not_select_one_projects_claim(monkeypatch, tmp_path):
+    monkeypatch.setenv("MYELIN_OFFLINE", "1")
+    for project, licence in (("one", "MIT"), ("two", "GPL-3.0-only")):
+        _write(tmp_path, f"{project}/package-lock.json", json.dumps({"lockfileVersion": 3, "packages": {
+            "node_modules/fictitious": {"version": "1.2.0", "license": licence},
+        }}))
+    res = orchestrator.scan(str(tmp_path), engines=["license"], use_external=False)
+    assert not res["findings"]
+    (component,) = res["sbom"]["components"]
+    assert not component["licenses"]
+    assert {"name": "myelin:licence-source", "value": "conflicting lockfiles"} in component["properties"]
+    assert res["coverage"]["license"]["status"] == "partial"

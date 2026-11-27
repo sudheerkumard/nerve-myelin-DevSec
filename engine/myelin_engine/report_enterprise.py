@@ -248,6 +248,58 @@ def _loc(f, external):
     return file if external or not f.get("line") else f"{file}:{f['line']}"
 
 
+def _coverage_summary(result, cov, dast):
+    """Distinguish checked scope from confidence or an estimate of scanner accuracy."""
+    gaps = [key for key, check in cov.items()
+            if check.get("status") in {"partial", "not_assessed", "not_selected"}
+            or (check.get("applicable") and not check.get("assessed"))]
+    if dast:
+        zap = (result.get("stats") or {}).get("zap") or {}
+        if zap.get("complete") is False:
+            return "Partial", "The optional web scanner did not finish.", True
+        return "Live target", "See the methods and request counts in scope.", False
+    if gaps:
+        return "Partial", f"{len(gaps)} areas with gaps or skipped checks.", True
+    if not cov or not any(check.get("assessed") for check in cov.values()):
+        return "Unknown", "No completed checks were recorded.", True
+    if not all(check.get("status") for check in cov.values()):
+        return "Unknown", "This report does not record coverage status.", True
+    completed = sum(check.get("status") == "complete" for check in cov.values())
+    return "Recorded", f"{completed} areas completed within the scan scope.", False
+
+
+def _overview(result, fs, coverage_status, coverage_hint, dast, components, advisory_mode, top):
+    decision = (result.get("decision") or {}).get("decision")
+    gate = {"pass": ("Pass", "Current policy found no blocking or warning conditions."),
+            "warn": ("Warn", "Review the policy warnings before release."),
+            "block": ("Block", "Resolve or review the blocking policy conditions.")}.get(
+                decision, ("Not evaluated", "No release decision was saved."))
+    urgent = sum(f.get("severity") in {"critical", "high"} for f in fs)
+    cards = [("Release gate", *gate, "exec", decision if decision in {"pass", "warn", "block"} else "neutral"),
+             ("Findings", f"{len(fs)} open", f"{urgent} critical or high severity", "top", "neutral"),
+             ("Coverage", coverage_status, coverage_hint, "scope", "warn" if coverage_status == "Partial" else "neutral")]
+    if not dast:
+        bom = result.get("sbom") or {}
+        aggregates = {str(c.get("aggregate") or "") for c in bom.get("compositions") or []}
+        known_gap = any(value.startswith("incomplete") for value in aggregates)
+        label = ("Known inventory gaps" if known_gap else "Coverage declared complete" if aggregates == {"complete"}
+                 else "Completeness unverified") if bom else "Inventory unavailable"
+        cards.append(("Software inventory", f"{components} components" if bom else "No SBOM", label,
+                      "sbom" if components else "scope", "warn" if known_gap else "neutral"))
+
+    card_html = "".join(
+        f'<a class="brief-card brief-{tone}" href="#{anchor}"><span>{_e(label)}</span>'
+        f'<strong>{_e(value)}</strong><small>{_e(hint)}</small></a>'
+        for label, value, hint, anchor, tone in cards)
+    next_step = ("Review the top finding and its remediation." if fs else
+                 "Review coverage before treating this result as release evidence.")
+    anchor = (top[0].get("id") or "top") if top else "scope"
+    return (f'<section class="brief" aria-labelledby="brief-title"><div class="brief-heading">'
+            f'<h2 id="brief-title">Scan at a glance</h2><span>{_e(advisory_mode)}</span></div>'
+            f'<div class="brief-grid">{card_html}</div>'
+            f'<a class="brief-action" href="#{_e(anchor)}">{_e(next_step)} <span aria-hidden="true">→</span></a></section>')
+
+
 def render(result, *, issuer="", prepared_for="", source_url="", classification="Confidential", audience="internal",
            title="Application Security Assessment", logo_text="", now=None, kind="code"):
     external = audience == "external"
@@ -277,6 +329,9 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
         if m["controls"] or m["id"] == "cwe25":
             matrix.append(m)
     risk, rcol, rink, rtext = _risk(fs)
+    coverage_status, coverage_hint, incomplete = _coverage_summary(result, cov, dast)
+    if not fs and incomplete:
+        risk, rcol, rink, rtext = "Undetermined", "#fce5b5", "#482b06", "No open findings were observed; review the missing scan evidence."
     d = result.get("decision") or {}
     repo = result.get("repo") or (result.get("name") if dast else None) or ("application" if dast else "repository")
     src = source_url or result.get("target") or result.get("path") or ""
@@ -306,6 +361,8 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
         keymsgs.append(f'<b>{by_eng["secrets"]}</b> secret(s) were found in source; they must be revoked and rotated, not only deleted.')
     if gaps_fw:
         keymsgs.append("Gaps were identified against " + ", ".join(f'<b>{_e(m["name"])}</b>' for m in gaps_fw[:5]) + ".")
+    if incomplete:
+        keymsgs.append(f'<b>{_e(coverage_status)} coverage.</b> {_e(coverage_hint)} See <a href="#scope">assessment scope</a>.')
     if not fs:
         keymsgs.append("No open weaknesses were identified across the assessed areas.")
     if d.get("decision"):
@@ -431,7 +488,7 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
         f'<td class="mono">{_e(f.get("version"))}</td><td class="mono">{_e(f.get("fixed_version") or "no fix yet")}</td>'
         f'<td class="num">{_e(f.get("cvss") if f.get("cvss") is not None else "—")}</td>'
         f'<td class="num">{_pct(f.get("epss"))}</td>'
-        f'<td>{"<b class=dn>Yes</b>" if f.get("kev") else "No"}</td><td>{"Yes" if f.get("reachable") else "—"}</td></tr>' for f in vulns)
+        f'<td>{"<b class=dn>Yes</b>" if f.get("kev") is True else "No" if f.get("kev") is False else "Unknown"}</td><td>{"Yes" if f.get("reachable") else "—"}</td></tr>' for f in vulns)
     has_cve = not dast and "sca" in engines_run
     has_sbom = not dast and bool(comps)
     no_cve, no_sbom = "9", ("10" if has_cve else "9")
@@ -450,7 +507,12 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
         for c in sorted(comps, key=lambda c: ((c.get("name"), c.get("version")) not in vuln_pk, str(c.get("name")).lower()))[:600])
 
     intel = result.get("intelligence") or {}
-    srcs = ", ".join(intel.get("sources") or ["bundled advisory pack"])
+    sources = intel.get("sources") or []
+    srcs = ", ".join(sources) or "No advisory sources recorded"
+    mode = ("Live web assessment" if dast else "Offline · verified OSV export" if "OSV export manifest verified" in sources
+            else "Offline · bundled advisory fallback" if intel.get("offline") is True and "bundled advisory pack" in sources
+            else "Offline repository scan" if intel.get("offline") is True
+            else "Online repository scan" if intel.get("offline") is False else "Repository scan")
     toc = [("1", "Document control", "doc"), ("2", "Executive summary", "exec"), ("3", "Assessment scope", "scope"),
            ("4", "Top risks", "top"), ("5", "Risk by area", "areas"), ("6", "Framework & compliance alignment", "fw"),
            ("7", "Remediation roadmap", "road"), ("8", "Detailed findings", "det"), ("9", "Vulnerability register (CVE)", "cve"),
@@ -475,7 +537,7 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
     coverage_notes = []
     for k, c in cov.items():
         status = c.get("status") or "not_assessed"
-        if status == "partial" or (c.get("applicable") and not c.get("assessed")):
+        if status in {"partial", "not_assessed", "not_selected"} or (c.get("applicable") and not c.get("assessed")):
             note = "; ".join((c.get("errors") or [])[:5]) or c.get("reason") or ""
             coverage_notes.append(f'<li><b>{_e(names.get(k, (k, ""))[0])}: {_e(status.replace("_", " "))}.</b> {_e(note)}</li>')
         if c.get("assessed"):
@@ -541,7 +603,7 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
         if depth:
             method_rows.append(("Depth of analysis", " ".join(depth)))
         if "sca" in engines_run:
-            method_rows.append(("Vulnerability intelligence", f'{srcs}{" — offline mode (bundled data)" if intel.get("offline") else ""}. CVSS v3 base scores; '
+            method_rows.append(("Vulnerability intelligence", f'{srcs}. CVSS v3 base scores; '
                                                              f'EPSS exploit probability; CISA KEV catalogue.'
                                                              + (f' Unavailable during this scan: {", ".join(intel["errors"])}.' if intel.get("errors") else "")))
         failed = sorted({t["name"] for c in cov.values() for t in c.get("tools") or [] if t.get("error")})
@@ -595,6 +657,7 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
     "".join(f'<div class="tile"><b>{sev[s]}</b><span>{_sevchip(s)}</span></div>' for s in ["critical", "high", "medium", "low"])
     aud = "External edition — prepared for distribution to third parties" if external else "Internal edition — contains technical evidence"
     footer_class = _e(classification)
+    overview = _overview(result, fs, coverage_status, coverage_hint, dast, len(comps), mode, top)
 
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{_e(title)} — {_e(repo)}</title>
@@ -603,22 +666,34 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
 *{{box-sizing:border-box}}
 body{{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:var(--ink);margin:0;background:#ecebe6;font-size:13px;line-height:1.5}}
 .sheet{{max-width:860px;margin:18px auto;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.12);padding:46px 56px}}
-.cover{{max-width:860px;margin:18px auto 0;background:var(--brand);color:#fff;min-height:1080px;padding:56px;position:relative;display:flex;flex-direction:column}}
+.cover{{max-width:860px;margin:18px auto 0;background:var(--brand);color:#fff;min-height:0;padding:36px 42px 54px;position:relative;display:flex;flex-direction:column}}
 .cover .brand{{display:flex;align-items:center;gap:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;font-size:13px}}
 .cover .by{{font-weight:500;letter-spacing:.08em;font-size:11px;color:#9ec5f4;margin-top:2px}}
 .cover .cust{{display:block;font-size:20px;font-weight:600;color:#cde2fb;margin-bottom:4px}}
 a.ext{{color:#1c5cab;text-decoration:underline;text-underline-offset:2px}}
 .cover .mark{{width:38px;height:38px;border-radius:9px;background:#fff;color:var(--brand);display:grid;place-items:center;font-weight:800;font-size:15px;letter-spacing:0}}
-.cover .kind{{margin-top:170px;color:#9ec5f4;letter-spacing:.2em;font-size:12px;font-weight:700;text-transform:uppercase}}
-.cover h1{{font-size:38px;line-height:1.15;margin:10px 0 12px;font-weight:700}}
+.cover .kind{{margin-top:32px;color:#9ec5f4;letter-spacing:.2em;font-size:12px;font-weight:700;text-transform:uppercase}}
+.cover h1{{font-size:38px;overflow-wrap:anywhere;line-height:1.15;margin:10px 0 12px;font-weight:700}}
 .cover .sub{{font-size:18px;color:#cde2fb;margin:0}}
-.cover .meta{{margin-top:auto;display:grid;grid-template-columns:1fr 1fr;gap:16px 40px;border-top:1px solid rgba(255,255,255,.25);padding-top:22px}}
+.cover .meta{{margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:16px 40px;border-top:1px solid rgba(255,255,255,.25);padding-top:22px}}
 .cover .meta i{{display:block;font-style:normal;color:#86b6ef;font-size:11px;text-transform:uppercase;letter-spacing:.08em}}
 .cover .meta b{{font-weight:600;font-size:14px;word-break:break-all}}
-.cover .rating{{position:absolute;top:56px;right:56px;text-align:right}}
+.cover .rating{{position:absolute;top:36px;right:42px;text-align:right}}
 .cover .rating i{{display:block;font-style:normal;font-size:11px;color:#86b6ef;text-transform:uppercase;letter-spacing:.08em}}
 .cover .rating span{{display:inline-block;margin-top:6px;padding:6px 16px;border-radius:6px;font-weight:700;font-size:16px}}
-.cover .cls{{position:absolute;bottom:20px;left:56px;right:56px;font-size:11px;color:#86b6ef;display:flex;justify-content:space-between}}
+.cover .cls{{position:absolute;bottom:16px;left:42px;right:42px;font-size:11px;color:#86b6ef;display:flex;justify-content:space-between}}
+.brief{{background:#102f50;border:1px solid #365a7e;border-radius:14px;padding:16px;margin:24px 0 0;break-inside:avoid}}
+.brief-heading{{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px}}
+.brief-heading h2{{color:#fff;font-size:19px;padding:0;margin:0}}
+.brief-heading>span{{color:#cde2fb;font-size:11px;font-weight:600}}
+.brief-grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(143px,1fr));gap:9px}}
+.brief-card{{display:flex;flex-direction:column;gap:4px;color:#102b47;text-decoration:none;background:#f7fbff;
+  border-radius:8px;border-top:3px solid #90b8df;padding:10px 12px;min-width:0}}
+.brief-card:hover,.brief-card:focus-visible{{background:#e0edfa;outline:2px solid #a7d3ff;outline-offset:2px}}
+.brief-card span{{font-size:11px;text-transform:uppercase;letter-spacing:.045em;color:#344e69}}
+.brief-card strong{{font-size:18px;line-height:1.16}} .brief-card small{{color:#3e5470}}
+.brief-warn{{border-color:#d28a23}} .brief-block{{border-color:#de5a63}} .brief-pass{{border-color:#2f9b78}}
+.brief-action{{display:inline-block;color:#d4eaff;font-weight:600;margin-top:12px;text-underline-offset:3px}}
 h2{{font-size:21px;margin:0 0 4px;color:var(--brand);padding-top:6px}}
 h2 .no{{color:var(--accent);margin-right:10px}}
 .lede{{color:var(--ink2);margin:0 0 16px}}
@@ -706,11 +781,21 @@ a{{color:#1c5cab}}
 @media print{{
   body{{background:#fff;font-size:10pt}} .bar-print{{display:none}}
   .cover{{margin:0;max-width:none;min-height:297mm;height:297mm;break-after:page;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+  .cover .meta{{margin-top:auto}}
   .sheet{{margin:0;max-width:none;box-shadow:none;padding:0}}
   *{{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
   h2,h3{{break-after:avoid}} tr,.tile,.bar-row{{break-inside:avoid}}
 }}
-@media(max-width:760px){{.sheet,.cover{{padding:24px}}.tiles{{grid-template-columns:repeat(2,1fr)}}.grid2,.hero{{grid-template-columns:1fr}}.cover .rating{{position:static;text-align:left;margin-top:20px}}.cover .kind{{margin-top:60px}}}}
+@media(max-width:760px){{
+  .sheet,.cover{{padding:24px;overflow-wrap:anywhere}}.bar-print{{padding:0 12px;gap:8px}}
+  .tiles,.kpis{{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .grid2,.hero,.dash,.hr{{grid-template-columns:minmax(0,1fr)}}
+  .cover h1{{font-size:clamp(26px,7vw,38px)}}.cover .rating{{position:static;text-align:left;margin-top:20px}}
+  .cover .kind{{margin-top:28px}}.cover .cls{{position:static;margin-top:20px}}
+  .brief-heading{{align-items:start;flex-direction:column}}.brief-grid{{grid-template-columns:repeat(auto-fit,minmax(124px,1fr))}}
+  table{{display:block;max-width:100%;overflow-x:auto}}.card-h{{flex-wrap:wrap;overflow-wrap:anywhere}}
+  .timeline{{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:8px}}
+}}
 </style></head><body>
 <div class="bar-print"><span>{_e(aud)}</span><button onclick="window.print()">Download PDF / print</button></div>
 
@@ -720,6 +805,7 @@ a{{color:#1c5cab}}
   <div class="kind">{_e(title)}</div>
   <h1>{f'<span class="cust">{_e(customer)}</span>' if customer else ""}{_e(repo)}</h1>
   <p class="sub">{_e(subtitle)}</p>
+  {overview}
   <div class="meta">
     <div><i>Prepared for</i><b>{_e(prepared_for or customer or "—")}</b></div>
     <div><i>Prepared by</i><b>{_e(VENDOR)}</b></div>
