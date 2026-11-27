@@ -74,7 +74,7 @@ services:
 
   migrate:
     build: .
-    image: ghcr.io/sudheerkumard/nerve-myelin:1.5.0
+    image: ghcr.io/sudheerkumard/nerve-myelin:1.6.0
     command: ["migrate"]
     environment:
       MYELIN_MIGRATIONS_DATABASE_URL: postgresql+psycopg://myelin_owner:${MYELIN_DB_OWNER_PASSWORD}@postgres:5432/myelin
@@ -88,7 +88,7 @@ services:
 
   myelin-worker:
     build: .
-    image: ghcr.io/sudheerkumard/nerve-myelin:1.5.0
+    image: ghcr.io/sudheerkumard/nerve-myelin:1.6.0
     command: ["worker"]
     profiles: ["worker"]       # enable after MYELIN_WORKER_TENANT_IDS is populated with provisioned tenant UUIDs
     environment:
@@ -108,7 +108,7 @@ services:
 
   myelin-api:
     build: .
-    image: ghcr.io/sudheerkumard/nerve-myelin:1.5.0
+    image: ghcr.io/sudheerkumard/nerve-myelin:1.6.0
     command: ["api"]
     environment:
       MYELIN_MODE: enterprise

@@ -5,7 +5,7 @@
 Every scanner (built-in or third-party) is normalised into one Finding schema,
 scored with the RAT Flea Risk Score (MRS) and evaluated against policy-as-code.
 """
-__version__ = "1.5.0"
+__version__ = "1.6.0"
 
 ENGINES = [
     "sca",        # open-source dependencies

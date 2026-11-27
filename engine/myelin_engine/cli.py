@@ -97,6 +97,10 @@ def print_report(res, decision):
         skipped = [f"{k} ({c.get('reason')})" for k, c in cov.items() if not c.get("assessed")]
         if skipped:
             print("  Not assessed: " + "; ".join(skipped))
+    intel = res.get("intelligence") or {}
+    if "sca" in (cov or {}) and (cov["sca"].get("assessed")) and not ({"OSV", "OSV offline export"} & set(intel.get("sources") or [])):
+        print("  WARNING: the OSV advisory database was not reachable; dependency CVEs are incomplete "
+              "(bundled subset only). Allow api.osv.dev or set MYELIN_OSV_URL / MYELIN_OSV_EXPORT_DIR.")
     print("─" * 78)
     for eng, sev in sorted(by.items()):
         parts = "  ".join(f"{C[s]}{s[:4]}:{n}{C['end']}" for s, n in sorted(sev.items(), key=lambda x: -"info low medium high critical".split().index(x[0])))

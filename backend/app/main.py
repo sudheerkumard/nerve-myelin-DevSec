@@ -481,7 +481,8 @@ def finding(fid: str, c: Ctx = Depends(ctx("findings:read"))):
     f = _with_ssvc(c, [dict(_get(c, fid))])[0]
     same = [x["repo"] for x in c.store.findings() if x.get("rule_id") == f.get("rule_id") and x["status"] == "open"]
     from myelin_engine import frameworks as FW
-    return {**f, "blast_radius": {"repos": sorted(set(same)), "count": len(same)}, "compliance": _controls_for(f),
+    from myelin_engine import mitigation as MIT
+    return {**f, "mitigation": MIT.guidance(f), "blast_radius": {"repos": sorted(set(same)), "count": len(same)}, "compliance": _controls_for(f),
             "frameworks": FW.short(f)}
 
 
@@ -489,6 +490,13 @@ class StatusIn(BaseModel):
     status: str
     reason: str | None = Field(default=None, max_length=1000)
     expires: str | None = None
+
+
+def _mitigation_cells(g: dict, f: dict) -> list:
+    locs = [f"{x.get('file')}:{x.get('line')}" + (f" @{x['commit']}" if x.get("commit") else "")
+            for x in (f.get("locations") or [])[1:]]
+    return [g["summary"], "\n".join(f"{i}. {s}" for i, s in enumerate(g["steps"], 1)), g["verify"], g["reference"],
+            f.get("occurrences") or 1, "; ".join(locs)[:2000]]
 
 
 @app.get("/api/v1/findings/export")
@@ -505,7 +513,9 @@ def findings_export(status: str = "open", repo: str | None = None, c: Ctx = Depe
     w = csv.writer(buf)
     w.writerow(["id", "priority", "severity", "risk_score", "status", "engine", "repository", "title", "rule", "cve_or_advisory", "link",
                 "cwe", "cvss", "epss", "kev", "package", "version", "fixed_version", "file", "line", "first_seen", "age_days", "sla_days",
-                "ticket", "triage_reason", "accepted_until"])
+                "ticket", "triage_reason", "accepted_until", "how_to_fix", "mitigation_steps", "how_to_verify", "reference",
+                "occurrences", "other_locations"])
+    from myelin_engine import mitigation as MIT
     for f in fs:
         vid = vuln_id(f) if f.get("engine") in ("sca", "container") else ""
         t = f.get("triage") or {}
@@ -514,7 +524,8 @@ def findings_export(status: str = "open", repo: str | None = None, c: Ctx = Depe
                     f.get("repo"), f.get("title"), f.get("rule_id"), vid, vuln_url(vid) if vid else f.get("code_url", ""), f.get("cwe"),
                     f.get("cvss"), f.get("epss"), "yes" if f.get("kev") else "", f.get("package"), f.get("version"), f.get("fixed_version"),
                     f.get("file"), f.get("line"), f.get("first_seen"), f.get("age_days"), f.get("sla_days"),
-                    (f.get("ticket") or {}).get("key", ""), t.get("reason", ""), t.get("expires", "")]])
+                    (f.get("ticket") or {}).get("key", ""), t.get("reason", ""), t.get("expires", "")]]
+                   + [cell(x) for x in _mitigation_cells(MIT.guidance(f), f)])
     c.store.audit_event("findings.exported", c.p.actor, {"text": f"{len(fs)} findings exported as CSV", "status": status})
     return Response(buf.getvalue(), media_type="text/csv; charset=utf-8",
                     headers={"Content-Disposition": f'attachment; filename="myelin-findings-{status}.csv"'})

@@ -16,6 +16,7 @@ from collections import Counter, defaultdict
 from datetime import datetime, timezone
 
 from . import frameworks as FW
+from . import mitigation as MIT
 
 SEV = ["critical", "high", "medium", "low", "info"]
 # Severity is a status-style encoding: always shown with its label, never by colour alone.
@@ -422,6 +423,16 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
                 meta.append(f'<span><i>Instances</i> {_e(f["instances"])}</span>')
             affected = (f'<div class="ev"><b>Affected endpoints</b><code>{_e(", ".join(endpoints))}</code></div>'
                         if endpoints and not external else "")
+            g = MIT.guidance(f)
+            fix = fix or g["summary"]
+            steps = "".join(f"<li>{_e(x)}</li>" for x in g["steps"])
+            locs = (f.get("locations") or [])[1:6]
+            locs_html = ("" if external or not locs else '<div class="ev"><b>Also found at</b><code>'
+                         + _e("; ".join(f"{x.get('file')}:{x.get('line')}" + (f" (commit {x['commit']})" if x.get("commit") else "")
+                                         for x in locs)) + (f" … {len(f['locations']) - 6} more" if len(f.get("locations") or []) > 6 else "")
+                         + "</code></div>")
+            mit = (f'<div class=fix><b>Mitigation steps</b><ol class="steps">{steps}</ol>'
+                   f'<p><b>Verify</b> {_e(g["verify"])} · <a class=ext href="{_e(g["reference"])}" target=_blank rel=noopener>guidance</a></p></div>')
             cards.append(
                 f'<div class="card" id="{_e(f.get("id"))}"><div class="card-h">{_sevchip(f.get("severity"))}'
                 f'<b>{_e(f.get("title"))}</b><span class="rid mono">{_e(f.get("id"))}</span></div>'
@@ -429,7 +440,7 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
                 f'<span><i>Risk score</i> {_e(f.get("mrs"))}</span><span><i>Rule</i> {_e(f.get("rule_id"))}</span>'
                 f'<span><i>Location</i> <span class="mono">{_e(_loc(f, external))}</span>'
                 f'{"" if external or not str(f.get("code_url", "")).startswith("https://") else " " + chr(183) + " <a class=ext href=" + chr(34) + _e(f["code_url"]) + chr(34) + " target=_blank rel=noopener>open in source</a>"}</span>{"".join(meta)}</div>'
-                f'{ev}{affected}{f"<div class=fix><b>Remediation</b> {_e(fix)}</div>" if fix else ""}'
+                f'{ev}{affected}{locs_html}{f"<div class=fix><b>Remediation</b> {_e(fix)}</div>" if fix else ""}{mit}'
                 f'{f"<div class=fws>{fwt}</div>" if fwt else ""}</div>')
         body = "".join(cards) if items else (empty_findings if k in partial else '<p class="clear">✓ No open findings in this area.</p>')
         det.append(f'<h3 id="d-{k}">8.{sec_no} {_e(name)} <span class="cnt">{len(items)}</span></h3><p class="muted">{_e(what)}</p>{body}')
@@ -567,6 +578,9 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
             method_rows.append(("Vulnerability intelligence", f'{srcs}{" — offline mode" if intel.get("offline") else ""}. CVSS v3 base scores; '
                                                              f'EPSS exploit probability; CISA KEV catalogue.'
                                                              + (f' Unavailable during this scan: {", ".join(intel["errors"])}.' if intel.get("errors") else "")))
+        if intel.get("resolution"):
+            method_rows.append(("Dependency resolution", "Lock files and manifests, plus: " + ", ".join(intel["resolution"])
+                                + ". Transitive dependencies are resolved to the versions a build would install."))
         if failed_tools:
             method_rows.append(("Tool errors", "These tools did not complete: " + ", ".join(failed_tools)
                                 + ". Any findings they returned are included."))
@@ -710,6 +724,7 @@ thead th,th{{color:var(--ink2);font-weight:600;font-size:11px;text-transform:upp
 .kvs i{{font-style:normal;color:var(--mute);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;margin-right:4px}}
 .ev{{margin-top:6px;font-size:12px}} .ev code{{display:block;background:#f6f6f3;border:1px solid var(--line);border-radius:5px;padding:6px 8px;margin-top:3px;white-space:pre-wrap;word-break:break-all}}
 .fix{{margin-top:6px;font-size:12px}} .fix b{{color:#006300;margin-right:4px}}
+.fix ol.steps{{margin:4px 0 2px 18px;padding:0}} .fix ol.steps li{{margin:2px 0}} .fix p{{margin:3px 0 0}}
 .fws{{margin-top:7px;display:flex;flex-wrap:wrap;gap:4px}}
 .fw{{font-size:10.5px;border:1px solid #cde2fb;background:#f3f8fe;color:#184f95;border-radius:4px;padding:0 6px}}
 .clear{{color:#006300;font-weight:600}} .dn{{color:#b42318}}

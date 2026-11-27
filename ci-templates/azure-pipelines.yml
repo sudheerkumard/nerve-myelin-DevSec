@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
 # RAT Flea DevSec secure pipeline — Azure DevOps
 # MYELIN_CLI_PACKAGE: the RAT Flea DevSec CLI to install, e.g.
-# git+https://github.com/sudheerkumard/nervve-devsecops@v1.5.0 or a wheel on your internal package index
+# git+https://github.com/sudheerkumard/nervve-devsecops@v1.6.0 or a wheel on your internal package index
 trigger: { branches: { include: [main, release/*] } }
 pr: { branches: { include: ["*"] } }
 pool: { vmImage: ubuntu-latest }        # Microsoft-hosted (ephemeral) agents; avoid shared self-hosted pools (CICD-SEC-7)

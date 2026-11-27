@@ -79,7 +79,9 @@ def scan_path(root: str, repo: str = "local") -> list[dict]:
                             continue
                         out.append({
                             "engine": "secrets", "rule_id": "NM-SEC-011", "title": "Default or demo password documented in source",
-                            "severity": "high", "file": rel, "line": i, "repo": repo, "evidence": redact(val), "cwe": "CWE-1392",
+                            "severity": "medium" if DOC_PATH.search(rel.replace("\\", "/")) else "high", "file": rel, "line": i,
+                            "repo": repo, "evidence": redact(val), "cwe": "CWE-1392", "_value": val,
+                            **({"context": "documentation"} if DOC_PATH.search(rel.replace("\\", "/")) else {}),
                             "remediation": "Remove the password from code, comments and pages. Ship without default accounts (create "
                                            "the first administrator at install time with a one-time password) and change any "
                                            "deployed account that uses it.",
@@ -96,9 +98,12 @@ def scan_path(root: str, repo: str = "local") -> list[dict]:
                     if rid == "NM-SEC-010" and entropy(val) < 3.0:
                         continue
                     state = secret_validation.validate(rid, val) if not is_test else "not_checked"
+                    ctx = "test" if is_test else "documentation" if DOC_PATH.search(rel.replace("\\", "/")) else "code"
                     out.append({
                         "engine": "secrets", "rule_id": rid, "title": f"{title} committed to source",
-                        "severity": sev, "file": rel, "line": i, "repo": repo,
+                        "severity": ("low" if ctx == "test" and state != "live" else "medium" if ctx == "documentation"
+                                     and state != "live" and sev == "high" else sev),
+                        "file": rel, "line": i, "repo": repo, "_value": val, **({"context": ctx} if ctx != "code" else {}),
                         "evidence": redact(val) + {"live": " · provider accepted it (live)", "revoked": " · provider rejected it (revoked)"}.get(state, ""),
                         "cwe": "CWE-798",
                         "remediation": "Revoke and rotate the credential, purge it from git history "
@@ -107,4 +112,90 @@ def scan_path(root: str, repo: str = "local") -> list[dict]:
                         "high_confidence": rid in secret_validation.HIGH_CONFIDENCE,
                         "exposure": "internet",
                     })
+    return _group(out)
+
+
+def _group(found: list[dict]) -> list[dict]:
+    """The same credential copied into several files is one secret to rotate: one finding, every location listed."""
+    import hashlib
+    by, out = {}, []
+    for f in found:
+        val = f.pop("_value", None)
+        if val is None:
+            out.append(f)
+            continue
+        key = hashlib.sha256(f"{f['rule_id']}\0{val}".encode()).hexdigest()[:16]
+        if key in by:
+            g = by[key]
+            g["locations"].append({"file": f["file"], "line": f["line"]})
+            g["occurrences"] = len(g["locations"])
+            if f.get("context") is None and g.get("context"):          # a real-code copy outranks the test copy
+                for k in ("severity", "file", "line"):
+                    g[k] = f[k]
+                g.pop("context", None)
+            continue
+        f["secret_id"], f["locations"], f["occurrences"] = key, [{"file": f["file"], "line": f["line"]}], 1
+        by[key] = f
+        out.append(f)
+    return out
+
+
+# ------------------------------------------------------------------ Gitleaks consolidation
+# Gitleaks reports one result per commit that touched a secret, so one leaked key can become dozens of findings.
+# Results are grouped per secret (rule + value hash; the value itself is never kept), classified as present now or
+# history-only, and test fixtures and placeholders are separated from real credentials.
+PROVIDER_RULES = re.compile(r"(?i)aws|github|gitlab|private-key|stripe|slack|gcp|google|azure|openai|anthropic|"
+                            r"twilio|sendgrid|npm|pypi|shopify|square|heroku|digitalocean|databricks|hashicorp|jwt-base64")
+DOC_PATH = re.compile(r"(?i)(^|/)(docs?|examples?|samples?|demo)/|\.(md|rst|adoc|txt)$|readme")
+PLACEHOLDER_VALUE = re.compile(r"(?i)^(.)\1{5,}$|changeme|example|placeholder|dummy|sample|fake|your[_-]|redacted|"
+                               r"xxxx|test(ing)?[_-]?(key|token|secret)|^<.*>$|^\$\{.*\}$|^\{\{.*\}\}$|^%.*%$|1234567")
+
+
+def consolidate_gitleaks(doc, root: str):
+    """Group raw Gitleaks results per distinct secret. Returns the same list shape with extra keys
+    (_occurrences, _in_head, _context, _hash) that normalize.gitleaks understands."""
+    import hashlib
+    groups: dict[str, dict] = {}
+    for d in doc or []:
+        secret = str(d.get("Secret") or "")
+        rule = str(d.get("RuleID") or "")
+        if not secret or PLACEHOLDER_VALUE.search(secret):
+            continue
+        if rule == "generic-api-key" and (float(d.get("Entropy") or entropy(secret)) < 3.3 or EMAILISH.match(secret)
+                                          or HASHLIKE.search(secret)):
+            continue
+        h = hashlib.sha256(f"{rule}\0{secret}".encode()).hexdigest()[:16]
+        g = groups.get(h)
+        occ = {"file": d.get("File"), "line": d.get("StartLine"), "commit": (d.get("Commit") or "")[:12] or None,
+               "date": d.get("Date")}
+        if g is None:
+            g = dict(d)
+            g["_hash"], g["_occurrences"], g["_secret"] = h, [], secret
+            groups[h] = g
+        g["_occurrences"].append(occ)
+    out = []
+    for g in groups.values():
+        secret = g.pop("_secret")
+        files = {o["file"] for o in g["_occurrences"] if o.get("file")}
+        in_head = []
+        for f in sorted(files):
+            p = os.path.join(root, f)
+            try:
+                if os.path.isfile(p) and os.path.getsize(p) < 5_000_000:
+                    with open(p, encoding="utf-8", errors="replace") as fh:
+                        for n, line in enumerate(fh, 1):
+                            if secret in line:
+                                in_head.append({"file": f, "line": n})
+                                break
+            except OSError:
+                continue
+        g["_in_head"] = in_head
+        where = in_head[0]["file"] if in_head else (g.get("File") or "")
+        g["_context"] = ("test" if TEST_PATH.search(where) else "documentation" if DOC_PATH.search(where) else "code")
+        g["_occurrences"].sort(key=lambda o: str(o.get("date") or ""), reverse=True)
+        if in_head:
+            g["File"], g["StartLine"], g["Commit"] = in_head[0]["file"], in_head[0]["line"], None
+        g["Secret"] = secret[:4]
+        g["Match"] = ""
+        out.append(g)
     return out

@@ -36,11 +36,13 @@ from contextvars import ContextVar, copy_context
 OSV_URL = os.environ.get("MYELIN_OSV_URL", "https://api.osv.dev").rstrip("/")
 PYPI_URL = os.environ.get("MYELIN_PYPI_URL", "https://pypi.org").rstrip("/")
 NPM_URL = os.environ.get("MYELIN_NPM_URL", "https://registry.npmjs.org").rstrip("/")
+MAVEN_URL = os.environ.get("MYELIN_MAVEN_URL", "https://repo1.maven.org/maven2").rstrip("/")
+NUGET_URL = os.environ.get("MYELIN_NUGET_URL", "https://api.nuget.org").rstrip("/")
 OSV_ECO = {"pypi": "PyPI", "npm": "npm", "maven": "Maven", "go": "Go", "cargo": "crates.io", "nuget": "NuGet",
            "gem": "RubyGems", "composer": "Packagist", "hex": "Hex", "pub": "Pub", "cocoapods": "CocoaPods"}
 CACHE_TTL = 24 * 3600
 MAX_TRANSITIVE = 600
-STATUS = {"sources": set(), "errors": set()}  # standalone callers outside a scan
+STATUS = {"sources": set(), "errors": set(), "resolution": set()}  # standalone callers outside a scan
 _SCAN_STATUS = ContextVar("scan_status", default=None)
 
 
@@ -52,7 +54,7 @@ def scan_status():
 @contextmanager
 def scan_intelligence():
     """Keep feed and inventory errors isolated to the current repository scan."""
-    token = _SCAN_STATUS.set({"sources": set(), "errors": set()})
+    token = _SCAN_STATUS.set({"sources": set(), "errors": set(), "resolution": set()})
     try:
         yield
     finally:
@@ -480,11 +482,25 @@ def resolve_pypi(direct: list[dict]) -> list[dict]:
     return out
 
 
+_FAILS: dict = {}
+
+
+def _host(a):
+    m = re.match(r"https?://([^/]+)", str(a[0])) if a else None
+    return m.group(1) if m else ""
+
+
 def _safe(fn, *a):
+    """Best-effort network call. After repeated failures for one host (blocked by a proxy, offline network) the host
+    is skipped for the rest of the process, so a scan never stalls on hundreds of time-outs."""
+    host = _host(a)
+    if _FAILS.get(host, 0) >= 5:
+        return None
     try:
         return fn(*a)
     except Exception as e:  # noqa: BLE001 - network intelligence is best effort
-        scan_status()["errors"].add(f"{fn.__name__}: {type(e).__name__}")
+        _FAILS[host] = _FAILS.get(host, 0) + 1
+        scan_status()["errors"].add(f"{fn.__name__}{' ' + host if host else ''}: {type(e).__name__}")
         return None
 
 
@@ -517,7 +533,67 @@ def licence(c) -> str:
             lic = lic.get("type")
         if isinstance(lic, str) and lic:
             return lic
+    elif c["ecosystem"] == "maven" and ":" in c["name"]:
+        g, a = c["name"].split(":", 1)
+        pom = _safe(_http_text, f"{MAVEN_URL}/{g.replace('.', '/')}/{a}/{c['version']}/{a}-{c['version']}.pom") or ""
+        m = re.search(r"<licenses>.*?<name>\s*([^<]{2,80}?)\s*</name>", pom, re.S)
+        if m:
+            return SPDX_FROM_NAME.get(m.group(1).lower(), m.group(1))
+    elif c["ecosystem"] == "nuget":
+        leaf = _safe(_http_json, f"{NUGET_URL}/v3/registration5-semver1/{c['name'].lower()}/{c['version'].lower()}.json") or {}
+        ce = leaf.get("catalogEntry")
+        ce = _safe(_http_json, ce) if isinstance(ce, str) else ce
+        if isinstance(ce, dict) and ce.get("licenseExpression"):
+            return ce["licenseExpression"]
+    elif c["ecosystem"] == "composer" and "/" in c["name"]:
+        data = _safe(_http_json, f"https://repo.packagist.org/p2/{c['name']}.json") or {}
+        for rel in (data.get("packages") or {}).get(c["name"], []):
+            if str(rel.get("version", "")).lstrip("v") == c["version"].lstrip("v") and rel.get("license"):
+                return " OR ".join(rel["license"])
+    elif c["ecosystem"] == "gem":
+        data = _safe(_http_json, f"https://rubygems.org/api/v2/rubygems/{c['name']}/versions/{c['version']}.json") or {}
+        if data.get("licenses"):
+            return " OR ".join(data["licenses"])
+    elif c["ecosystem"] == "cargo":
+        data = _safe(_http_json, f"https://crates.io/api/v1/crates/{c['name']}/{c['version']}") or {}
+        if (data.get("version") or {}).get("license"):
+            return data["version"]["license"]
     return "unknown"
+
+
+SPDX_FROM_NAME = {"the apache software license, version 2.0": "Apache-2.0", "apache license, version 2.0": "Apache-2.0",
+                  "apache-2.0": "Apache-2.0", "apache 2.0": "Apache-2.0", "apache license 2.0": "Apache-2.0", "mit license": "MIT",
+                  "the mit license": "MIT", "mit": "MIT", "bsd-3-clause": "BSD-3-Clause", "new bsd license": "BSD-3-Clause",
+                  "the bsd license": "BSD-3-Clause", "bsd 2-clause": "BSD-2-Clause", "eclipse public license - v 2.0": "EPL-2.0",
+                  "eclipse public license 2.0": "EPL-2.0", "eclipse public license - v 1.0": "EPL-1.0",
+                  "gnu lesser general public license": "LGPL-2.1", "gnu general public license, version 2": "GPL-2.0",
+                  "gpl2 w/ cpe": "GPL-2.0-with-classpath-exception", "cddl + gplv2 with classpath exception": "CDDL-1.1 OR GPL-2.0-with-classpath-exception",
+                  "mozilla public license version 2.0": "MPL-2.0", "eclipse distribution license - v 1.0": "BSD-3-Clause"}
+
+
+def _http_text(url, ttl=CACHE_TTL):
+    key = hashlib.sha256(url.encode()).hexdigest()
+    path = os.path.join(_cache_dir(), key + ".txt")
+    try:
+        if time.time() - os.path.getmtime(path) < ttl:
+            return open(path, encoding="utf-8").read()
+    except OSError:
+        pass
+    if offline():
+        return None
+    req = urllib.request.Request(url, headers={"User-Agent": "RAT-Flea-DevSec"})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:  # myelin:ignore[NM-SAST-010] -- fixed registry URL or operator-set mirror
+            out = r.read(2_000_000).decode("utf-8", "ignore")
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return None
+        raise
+    try:
+        open(path, "w", encoding="utf-8").write(out)
+    except OSError:
+        pass
+    return out
 
 
 # ------------------------------------------------------------------ vulnerabilities

@@ -11,7 +11,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
-from . import coverage, vulndb, remediation
+from . import coverage, precision, vulndb, remediation
 from . import (ai_security, builtin_rules, cd_posture, cicd_posture, crypto_inventory, iac_checks, normalize, repo_posture, sbom,
                secrets, suppress, supply_chain)
 from .scoring import enrich
@@ -71,7 +71,7 @@ def _sast_argv(binary):
 def _gitleaks_argv(p):
     out = os.path.join(tempfile.mkdtemp(prefix="myelin-gl-"), "report.json")
     mode = ["git", p] if os.path.isdir(os.path.join(p, ".git")) else ["dir", p]
-    return ["gitleaks", *mode, "--no-banner", "--no-color", "--redact=80", "--report-format", "json", "--report-path", out,
+    return ["gitleaks", *mode, "--no-banner", "--no-color", "--report-format", "json", "--report-path", out,
             "--exit-code", "0", "--max-target-megabytes", "5"], out
 
 
@@ -154,6 +154,10 @@ def _run_external(tool, path, repo, timeout=1800, *, run_info=None):
             raise ValueError("scanner report has no Trivy schema version")
         if tool == "gitleaks" and not isinstance(document, list):
             raise ValueError("scanner report is not a Gitleaks findings array")
+        if tool in ("opengrep", "semgrep") and isinstance(document, dict):
+            document = precision.refine(document, path)  # drop flows proven infeasible; resolve configured algorithms
+        if tool == "gitleaks" and isinstance(document, list):
+            document = secrets.consolidate_gitleaks(document, path)  # one finding per secret, not per commit
         findings = norm(document, repo)
         if tool in ("bandit", "opengrep", "semgrep"):
             errors = document.get("errors") or []
@@ -195,7 +199,7 @@ def _scan(path, repo, engines, use_external, criticality, advisory_lookup):
     t0 = time.time()
     started = datetime.now(timezone.utc)
     engines = engines or list(DEFAULT_ENGINES)
-    comps = sbom.inventory(path) if {"sca", "license"} & set(engines) else sbom.parse_manifests(path)
+    comps = sbom.inventory(path, use_external) if {"sca", "license"} & set(engines) else sbom.parse_manifests(path)
     inv = coverage.inventory(path)
     findings: list[dict] = []
     jobs = []
@@ -251,7 +255,8 @@ def _scan(path, repo, engines, use_external, criticality, advisory_lookup):
     inv["git_history"] = "gitleaks" in tools_used and os.path.isdir(os.path.join(path, ".git"))
     intel_status = vulndb.scan_status()
     intel = {"offline": vulndb.offline(), "sources": sorted(intel_status["sources"] | (
-        {"bundled advisory pack"} if "sca" in engines and comps else set())), "errors": sorted(intel_status["errors"])}
+        {"bundled advisory pack"} if "sca" in engines and comps else set())), "errors": sorted(intel_status["errors"]),
+             "resolution": sorted(intel_status.get("resolution") or [])}
     cov = coverage.build(inv, engines, tools_used, uniq, len(comps), intel,
                          deep_rules=rule_count() if {"opengrep", "semgrep"} & set(tools_used) else 0,
                          run_info=run_info, detected=detected, use_external=use_external)
@@ -326,11 +331,14 @@ def _merge_duplicates(path, findings):
     for f in findings:
         if f.get("source_tool") in ("opengrep", "semgrep") and f.get("cwe"):
             deep.setdefault((f.get("file"), f.get("line"), f.get("cwe")), f)
+    by_alias = {(f.get("file"), f.get("line"), a): f for f in findings if f.get("source_tool") == "opengrep"
+                for a in f.get("rule_aliases") or []}
     out = []
     for f in findings:
         key = (f.get("file"), f.get("line"), f.get("cwe"))
-        if f.get("engine") == "sast" and not f.get("source_tool") and key in deep:
-            d = deep[key]
+        akey = (f.get("file"), f.get("line"), f.get("rule_id"))
+        if f.get("engine") == "sast" and not f.get("source_tool") and (key in deep or akey in by_alias):
+            d = deep.get(key) or by_alias[akey]
             d["rule_aliases"] = sorted(set(d.get("rule_aliases") or []) | {f.get("rule_id")})
             if f.get("autofix") and not d.get("autofix"):
                 d["autofix"] = f["autofix"]
@@ -341,8 +349,9 @@ def _merge_duplicates(path, findings):
     # Secrets: one finding per line; RAT Flea's own rule carries validation and the rotation workflow
     own_secret = {(f.get("file"), f.get("line")) for f in out if f.get("engine") == "secrets" and not f.get("source_tool")}
     gl_secret = {(f.get("file"), f.get("line")) for f in out if f.get("source_tool") == "gitleaks"}
+    near = lambda f, pool: any(f.get("file") == p[0] and abs((f.get("line") or 0) - (p[1] or 0)) <= 2 for p in pool)  # noqa: E731
     out = [f for f in out if not (f.get("engine") == "secrets" and f.get("source_tool") in ("gitleaks", "trivy")
-                                  and ((f.get("file"), f.get("line")) in own_secret
+                                  and (near(f, own_secret)
                                        or (f.get("source_tool") == "trivy" and (f.get("file"), f.get("line")) in gl_secret)))]
     # Correlate OSV, Trivy and Grype by package identity, exact version and advisory aliases.
     # Keep the richest RAT Flea/OSV record, while retaining all contributing scanner names.

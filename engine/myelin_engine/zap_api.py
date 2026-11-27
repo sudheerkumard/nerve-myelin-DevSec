@@ -45,7 +45,7 @@ class Zap:
         req = urllib.request.Request(f"{self.base}/JSON/{component}/{kind}/{name}/" + (f"?{q}" if q else ""),
                                      headers={"X-ZAP-API-Key": self.key, "Accept": "application/json"})
         try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as r:     # noqa: S310 - fixed scheme from settings
+            with urllib.request.urlopen(req, timeout=self.timeout) as r:  # noqa: S310  # myelin:ignore[NM-SAST-010] -- operator-configured ZAP daemon URL
                 return json.loads(r.read() or b"{}")
         except urllib.error.HTTPError as e:
             raise ZapError(f"ZAP API {component}/{name}: HTTP {e.code} {e.read()[:200]!r}") from None

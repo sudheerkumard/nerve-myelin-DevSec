@@ -90,3 +90,25 @@ function ok(pw) {
   // ok: nervve.js.weak-crypto
   return crypto.createHash("sha256").update(pw).digest("hex");
 }
+
+
+// --- framework configuration
+const session = require("express-session");
+// ruleid: nervve.js.session-cookie-flags-missing, nervve.js.hardcoded-session-secret
+app.use(session({ secret: "keyboard cat", resave: false }));
+// ok: nervve.js.session-cookie-flags-missing
+app.use(session({ secret: process.env.SESSION_SECRET, cookie: { secure: true, httpOnly: true } }));
+// ruleid: nervve.js.template-autoescape-disabled
+swig.setDefaults({ autoescape: false });
+
+function allocations(db, userId, threshold) {
+  // ruleid: nervve.js.nosql-where-injection
+  return db.find({ $where: "this.userId == " + userId + " && this.stocks > " + threshold });
+}
+
+app.post("/login", (req, res) => {
+  // ruleid: nervve.js.log-injection
+  console.log("login attempt for " + req.body.userName);
+  // ok: nervve.js.log-injection
+  console.log("login attempt", JSON.stringify(req.body.userName));
+});

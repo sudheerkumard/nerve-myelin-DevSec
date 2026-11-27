@@ -16,18 +16,28 @@ rules:
       confidence: high
       category: injection
     pattern-sources: &java_sources
-      - pattern-either:
-          - pattern: (HttpServletRequest $R).getParameter(...)
-          - pattern: (HttpServletRequest $R).getParameterValues(...)
-          - pattern: (HttpServletRequest $R).getParameterMap()
-          - pattern: (HttpServletRequest $R).getHeader(...)
-          - pattern: (HttpServletRequest $R).getQueryString()
-          - pattern: (HttpServletRequest $R).getRequestURI()
-          - pattern: (HttpServletRequest $R).getCookies()
-          - pattern: (HttpServletRequest $R).getInputStream()
-          - pattern: (HttpServletRequest $R).getReader()
-          - pattern: (javax.servlet.http.HttpServletRequest $R).getParameter(...)
-          - pattern: (jakarta.servlet.http.HttpServletRequest $R).getParameter(...)
+      - patterns:
+          - pattern-either:
+              - pattern: (HttpServletRequest $R).$GET(...)
+              - pattern: (javax.servlet.http.HttpServletRequest $R).$GET(...)
+              - pattern: (jakarta.servlet.http.HttpServletRequest $R).$GET(...)
+              - pattern: (ServletRequest $R).$GET(...)
+              - pattern: (HttpServletRequestWrapper $R).$GET(...)
+              - pattern: (MultipartHttpServletRequest $R).$GET(...)
+              - pattern: (WebRequest $R).$GET(...)
+              - pattern: (NativeWebRequest $R).$GET(...)
+          - metavariable-regex:
+              metavariable: $GET
+              regex: ^(getParameter|getParameterValues|getParameterMap|getParameterNames|getHeader|getHeaders|getHeaderNames|getQueryString|getRequestURI|getRequestURL|getPathInfo|getServletPath|getCookies|getInputStream|getReader|getPart|getParts|getFile|getFiles)$
+      - patterns:
+          # request data read through a project-specific wrapper of the servlet request
+          - pattern: $WRAP.$GET(...)
+          - pattern-inside: |
+              $WT $WRAP = new $W(..., (HttpServletRequest $R), ...);
+              ...
+          - metavariable-regex:
+              metavariable: $GET
+              regex: ^get\w*(Parameter|Header|Cookie|Query|Value)s?\w*$
       - patterns:
           # Spring MVC / JAX-RS handler parameters bound from the request
           - pattern-either:
@@ -35,37 +45,46 @@ rules:
               - pattern-inside: $RET $M(..., @$ANN(...) $T $P, ...) { ... }
           - metavariable-regex:
               metavariable: $ANN
-              regex: ^(RequestParam|PathVariable|RequestHeader|RequestBody|CookieValue|ModelAttribute|QueryParam|PathParam|FormParam|HeaderParam|MatrixParam)$
+              regex: ^(RequestParam|PathVariable|RequestHeader|RequestBody|CookieValue|ModelAttribute|QueryParam|PathParam|FormParam|HeaderParam|MatrixParam|CookieParam|BeanParam)$
           - pattern: $P
-    pattern-sanitizers: &java_sanitizers
-      - pattern-either:
+    pattern-sanitizers:
+      - &java_num
+        pattern-either:
           - pattern: Integer.parseInt(...)
           - pattern: Long.parseLong(...)
+          - pattern: Double.parseDouble(...)
           - pattern: Integer.valueOf(...)
           - pattern: Long.valueOf(...)
           - pattern: UUID.fromString(...)
-          - pattern: org.owasp.encoder.Encode.$F(...)
-          - pattern: Encode.$F(...)
-          - pattern: org.apache.commons.text.StringEscapeUtils.escapeHtml4(...)
-          - pattern: HtmlUtils.htmlEscape(...)
-          - pattern: FilenameUtils.getName(...)
+          - pattern: java.util.UUID.fromString(...)
+          - pattern: Boolean.parseBoolean(...)
+      - pattern-either:
+          - pattern: $E.encodeForSQL(...)
     pattern-sinks:
       - patterns:
           - pattern-either:
               - pattern: (java.sql.Statement $S).$M($Q, ...)
               - pattern: (Statement $S).$M($Q, ...)
-              - pattern: (Connection $C).prepareStatement($Q, ...)
-              - pattern: (java.sql.Connection $C).prepareStatement($Q, ...)
-              - pattern: (Connection $C).prepareCall($Q, ...)
-              - pattern: (EntityManager $E).createQuery($Q, ...)
-              - pattern: (EntityManager $E).createNativeQuery($Q, ...)
+              - pattern: (java.sql.PreparedStatement $S).$M($Q, ...)
+              - pattern: (java.sql.CallableStatement $S).$M($Q, ...)
+              - pattern: (Connection $C).$M($Q, ...)
+              - pattern: (java.sql.Connection $C).$M($Q, ...)
+              - pattern: (EntityManager $E).$M($Q, ...)
+              - pattern: (javax.persistence.EntityManager $E).$M($Q, ...)
+              - pattern: (jakarta.persistence.EntityManager $E).$M($Q, ...)
+              - pattern: (Session $H).$M($Q, ...)
               - pattern: (JdbcTemplate $J).$M($Q, ...)
+              - pattern: (org.springframework.jdbc.core.JdbcTemplate $J).$M($Q, ...)
               - pattern: (NamedParameterJdbcTemplate $J).$M($Q, ...)
-              - pattern: (Session $H).createQuery($Q, ...)
-              - pattern: (Session $H).createSQLQuery($Q, ...)
-              - pattern: $S.executeQuery($Q)
-              - pattern: $S.executeUpdate($Q)
-              - pattern: $S.addBatch($Q)
+              - pattern: (JdbcOperations $J).$M($Q, ...)
+              - patterns:
+                  - pattern: $X.$M($Q, ...)
+                  - metavariable-regex:
+                      metavariable: $X
+                      regex: (?i)^.*(stmt|statement|conn|connection|jdbc|template|entitymanager|em|session)$
+          - metavariable-regex:
+              metavariable: $M
+              regex: ^(execute|executeQuery|executeUpdate|executeLargeUpdate|addBatch|prepareStatement|prepareCall|nativeSQL|createQuery|createNativeQuery|createSQLQuery|query|queryForObject|queryForList|queryForMap|queryForRowSet|queryForStream|queryForLong|queryForInt|update|batchUpdate)$
           - focus-metavariable: $Q
 
   - id: nervve.java.command-injection
@@ -81,13 +100,21 @@ rules:
       confidence: high
       category: injection
     pattern-sources: *java_sources
-    pattern-sanitizers: *java_sanitizers
+    pattern-sanitizers:
+      - *java_num
+      - pattern-either:
+          - pattern: $E.encodeForOS(...)
     pattern-sinks:
       - pattern-either:
           - pattern: Runtime.getRuntime().exec(...)
+          - pattern: java.lang.Runtime.getRuntime().exec(...)
           - pattern: (Runtime $RT).exec(...)
+          - pattern: (java.lang.Runtime $RT).exec(...)
           - pattern: new ProcessBuilder(...)
+          - pattern: new java.lang.ProcessBuilder(...)
           - pattern: (ProcessBuilder $PB).command(...)
+          - pattern: (java.lang.ProcessBuilder $PB).command(...)
+          - pattern: (ProcessBuilder $PB).environment().put(...)
 
   - id: nervve.java.path-traversal
     mode: taint
@@ -103,19 +130,37 @@ rules:
       confidence: high
       category: injection
     pattern-sources: *java_sources
-    pattern-sanitizers: *java_sanitizers
+    pattern-sanitizers:
+      - *java_num
+      - pattern-either:
+          - pattern: FilenameUtils.getName(...)
+          - pattern: org.apache.commons.io.FilenameUtils.getName(...)
+          - pattern: (java.io.File $F).getName()
     pattern-sinks:
       - pattern-either:
           - pattern: new File(...)
           - pattern: new java.io.File(...)
           - pattern: new FileInputStream(...)
+          - pattern: new java.io.FileInputStream(...)
           - pattern: new FileOutputStream(...)
+          - pattern: new java.io.FileOutputStream(...)
           - pattern: new FileReader(...)
+          - pattern: new java.io.FileReader(...)
           - pattern: new FileWriter(...)
+          - pattern: new java.io.FileWriter(...)
+          - pattern: new RandomAccessFile(...)
+          - pattern: new java.io.RandomAccessFile(...)
+          - pattern: new PrintWriter((String $S), ...)
           - pattern: Paths.get(...)
+          - pattern: java.nio.file.Paths.get(...)
           - pattern: Path.of(...)
+          - pattern: java.nio.file.Path.of(...)
           - pattern: Files.$M(...)
+          - pattern: java.nio.file.Files.$M(...)
           - pattern: new ClassPathResource(...)
+          - pattern: new FileSystemResource(...)
+          - pattern: (java.nio.file.Path $P).resolve(...)
+          - pattern: (Path $P).resolve(...)
 
   - id: nervve.java.ssrf
     mode: taint
@@ -130,18 +175,30 @@ rules:
       confidence: high
       category: injection
     pattern-sources: *java_sources
-    pattern-sanitizers: *java_sanitizers
+    pattern-sanitizers:
+      - *java_num
     pattern-sinks:
-      - pattern-either:
-          - pattern: new URL(...)
-          - pattern: new java.net.URL(...)
-          - pattern: URI.create(...)
-          - pattern: (RestTemplate $RT).$M(...)
-          - pattern: (WebClient $W).get().uri(...)
-          - pattern: HttpRequest.newBuilder(...)
-          - pattern: (HttpRequest.Builder $B).uri(...)
-          - pattern: new HttpGet(...)
-          - pattern: new HttpPost(...)
+      - patterns:
+          - pattern-either:
+              - pattern: new URL($U, ...)
+              - pattern: new java.net.URL($U, ...)
+              - pattern: URI.create($U)
+              - pattern: java.net.URI.create($U)
+              - pattern: new URI($U, ...)
+              - pattern: new java.net.URI($U, ...)
+              - pattern: (RestTemplate $RT).$M($U, ...)
+              - pattern: (WebClient $W).$GET().uri($U, ...)
+              - pattern: HttpRequest.newBuilder($U, ...)
+              - pattern: (HttpRequest.Builder $B).uri($U)
+              - pattern: new HttpGet($U)
+              - pattern: new HttpPost($U)
+              - pattern: new HttpPut($U)
+              - pattern: new HttpDelete($U)
+              - pattern: (OkHttpClient $C).newCall((Request $RQ))
+              - pattern: new Request.Builder().url($U)
+          - pattern-not: new java.net.URL($REQ.getRequestURL().toString())
+          - pattern-not: new URL($REQ.getRequestURL().toString())
+          - focus-metavariable: $U
 
   - id: nervve.java.open-redirect
     mode: taint
@@ -156,12 +213,15 @@ rules:
       confidence: high
       category: injection
     pattern-sources: *java_sources
-    pattern-sanitizers: *java_sanitizers
+    pattern-sanitizers:
+      - *java_num
     pattern-sinks:
       - pattern-either:
           - pattern: (HttpServletResponse $RS).sendRedirect(...)
+          - pattern: (javax.servlet.http.HttpServletResponse $RS).sendRedirect(...)
           - pattern: (HttpServletResponse $RS).setHeader("Location", ...)
           - pattern: new RedirectView(...)
+          - pattern: new ModelAndView("redirect:" + $X)
           - pattern: '"redirect:" + $X'
 
   - id: nervve.java.xss
@@ -177,15 +237,36 @@ rules:
       confidence: high
       category: injection
     pattern-sources: *java_sources
-    pattern-sanitizers: *java_sanitizers
-    pattern-sinks:
+    pattern-sanitizers:
+      - *java_num
       - pattern-either:
-          - pattern: (HttpServletResponse $RS).getWriter().print(...)
-          - pattern: (HttpServletResponse $RS).getWriter().println(...)
-          - pattern: (HttpServletResponse $RS).getWriter().write(...)
-          - pattern: (PrintWriter $W).print(...)
-          - pattern: (PrintWriter $W).println(...)
-          - pattern: (PrintWriter $W).write(...)
+          - pattern: Encode.$F(...)
+          - pattern: org.owasp.encoder.Encode.$F(...)
+          - pattern: $E.encodeForHTML(...)
+          - pattern: $E.encodeForHTMLAttribute(...)
+          - pattern: $E.encodeForJavaScript(...)
+          - pattern: HtmlUtils.htmlEscape(...)
+          - pattern: org.springframework.web.util.HtmlUtils.htmlEscape(...)
+          - pattern: StringEscapeUtils.escapeHtml(...)
+          - pattern: StringEscapeUtils.escapeHtml4(...)
+          - pattern: org.apache.commons.lang.StringEscapeUtils.escapeHtml(...)
+          - pattern: org.apache.commons.lang3.StringEscapeUtils.escapeHtml4(...)
+          - pattern: org.apache.commons.text.StringEscapeUtils.escapeHtml4(...)
+          - pattern: $U.encodeForHTML(...)
+          - pattern: Jsoup.clean(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: (HttpServletResponse $RS).getWriter().$P(...)
+              - pattern: (javax.servlet.http.HttpServletResponse $RS).getWriter().$P(...)
+              - pattern: (jakarta.servlet.http.HttpServletResponse $RS).getWriter().$P(...)
+              - pattern: (HttpServletResponse $RS).getOutputStream().$P(...)
+              - pattern: (PrintWriter $W).$P(...)
+              - pattern: (java.io.PrintWriter $W).$P(...)
+              - pattern: (ServletOutputStream $W).$P(...)
+          - metavariable-regex:
+              metavariable: $P
+              regex: ^(print|println|write|format|printf|append)$
 
   - id: nervve.java.xpath-injection
     mode: taint
@@ -200,11 +281,19 @@ rules:
       confidence: high
       category: injection
     pattern-sources: *java_sources
-    pattern-sanitizers: *java_sanitizers
-    pattern-sinks:
+    pattern-sanitizers:
+      - *java_num
       - pattern-either:
-          - pattern: (XPath $X).evaluate(...)
-          - pattern: (XPath $X).compile(...)
+          - pattern: $E.encodeForXPath(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: (XPath $X).$M($Q, ...)
+              - pattern: (javax.xml.xpath.XPath $X).$M($Q, ...)
+          - metavariable-regex:
+              metavariable: $M
+              regex: ^(evaluate|compile|evaluateExpression)$
+          - focus-metavariable: $Q
 
   - id: nervve.java.ldap-injection
     mode: taint
@@ -219,12 +308,316 @@ rules:
       confidence: high
       category: injection
     pattern-sources: *java_sources
-    pattern-sanitizers: *java_sanitizers
+    pattern-sanitizers:
+      - *java_num
+      - pattern-either:
+          - pattern: $E.encodeForLDAP(...)
+          - pattern: $E.encodeForDN(...)
+          - pattern: LdapEncoder.filterEncode(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: (DirContext $D).search($B, $Q, ...)
+              - pattern: (javax.naming.directory.DirContext $D).search($B, $Q, ...)
+              - pattern: (InitialDirContext $D).search($B, $Q, ...)
+              - pattern: (javax.naming.directory.InitialDirContext $D).search($B, $Q, ...)
+              - pattern: (LdapContext $D).search($B, $Q, ...)
+              - pattern: (javax.naming.ldap.LdapContext $D).search($B, $Q, ...)
+              - pattern: (InitialLdapContext $D).search($B, $Q, ...)
+              - pattern: (LdapTemplate $D).search($B, $Q, ...)
+          - focus-metavariable: $Q
+
+  - id: nervve.java.trust-boundary-violation
+    mode: taint
+    languages: [java]
+    severity: WARNING
+    message: >-
+      Untrusted request data is stored in the server-side session, where other code treats it as trusted
+      (trust boundary violation). Validate the value against an allow-list before you store it.
+    metadata:
+      cwe: "CWE-501"
+      owasp: "A04:2021 Insecure Design"
+      confidence: medium
+      category: validation
+    pattern-sources: *java_sources
+    pattern-sanitizers:
+      - *java_num
     pattern-sinks:
       - pattern-either:
-          - pattern: (DirContext $D).search(...)
-          - pattern: (InitialDirContext $D).search(...)
-          - pattern: (LdapTemplate $L).search(...)
+          - pattern: (HttpSession $S).setAttribute(...)
+          - pattern: (javax.servlet.http.HttpSession $S).setAttribute(...)
+          - pattern: (HttpSession $S).putValue(...)
+          - pattern: (javax.servlet.http.HttpSession $S).putValue(...)
+          - pattern: $R.getSession().setAttribute(...)
+          - pattern: $R.getSession().putValue(...)
+          - pattern: $R.getSession($B).setAttribute(...)
+
+  - id: nervve.java.cookie-without-secure
+    languages: [java]
+    severity: WARNING
+    message: >-
+      A cookie is sent without the Secure flag, so the browser also sends it over plain HTTP where it can be read
+      on the network. Call cookie.setSecure(true) (and setHttpOnly(true)) before adding it to the response.
+    metadata:
+      cwe: "CWE-614"
+      owasp: "A05:2021 Security Misconfiguration"
+      confidence: high
+      category: configuration
+    pattern-either:
+      - pattern: (Cookie $C).setSecure(false)
+      - pattern: (javax.servlet.http.Cookie $C).setSecure(false)
+      - pattern: (jakarta.servlet.http.Cookie $C).setSecure(false)
+      - patterns:
+          - pattern: $RS.addCookie($C)
+          - pattern-inside: |
+              $T $C = new $CK(...);
+              ...
+          - metavariable-regex:
+              metavariable: $CK
+              regex: ^(Cookie|javax\.servlet\.http\.Cookie|jakarta\.servlet\.http\.Cookie)$
+          - pattern-not-inside: |
+              $C.setSecure(true);
+              ...
+          - pattern-not-inside: |
+              $C.setSecure($X);
+              ...
+
+  - id: nervve.java.weak-crypto
+    languages: [java]
+    severity: WARNING
+    message: >-
+      Broken or weak encryption algorithm or mode (DES, 3DES, RC2, RC4, Blowfish or ECB). Use AES/GCM/NoPadding
+      with a random 96-bit nonce, or ChaCha20-Poly1305.
+    metadata:
+      cwe: "CWE-327"
+      owasp: "A02:2021 Cryptographic Failures"
+      confidence: high
+      category: crypto
+    patterns:
+      - pattern-either:
+          - pattern: Cipher.getInstance("$ALG", ...)
+          - pattern: javax.crypto.Cipher.getInstance("$ALG", ...)
+          - pattern: KeyGenerator.getInstance("$ALG", ...)
+          - pattern: javax.crypto.KeyGenerator.getInstance("$ALG", ...)
+          - pattern: SecretKeyFactory.getInstance("$ALG", ...)
+          - pattern: javax.crypto.SecretKeyFactory.getInstance("$ALG", ...)
+      - metavariable-regex:
+          metavariable: $ALG
+          regex: (?i)^((DES|DESede|TripleDES|3DES|RC2|RC4|ARCFOUR|Blowfish|PBEWithMD5AndDES|PBEWithSHA1AndDESede)(/.*)?|.*/ECB/.*)$
+
+  - id: nervve.java.weak-crypto-default-mode
+    languages: [java]
+    severity: WARNING
+    message: >-
+      Cipher.getInstance("AES") (or "RSA") without a mode uses the provider default, which is ECB for AES and
+      PKCS#1 v1.5 for RSA. Name the transformation, for example "AES/GCM/NoPadding" or
+      "RSA/ECB/OAEPWithSHA-256AndMGF1Padding".
+    metadata:
+      cwe: "CWE-327"
+      owasp: "A02:2021 Cryptographic Failures"
+      confidence: medium
+      category: crypto
+    patterns:
+      - pattern-either:
+          - pattern: Cipher.getInstance("$ALG", ...)
+          - pattern: javax.crypto.Cipher.getInstance("$ALG", ...)
+      - metavariable-regex:
+          metavariable: $ALG
+          regex: (?i)^(AES|RSA)$
+
+  - id: nervve.java.weak-crypto-configured
+    languages: [java]
+    severity: WARNING
+    message: >-
+      The encryption algorithm is read from configuration and the configured value (or the default) is weak
+      (DES, 3DES, RC2, RC4, Blowfish or ECB). Configure AES/GCM/NoPadding.
+    metadata:
+      cwe: "CWE-327"
+      owasp: "A02:2021 Cryptographic Failures"
+      confidence: medium
+      category: crypto
+      nervve-config-check: cipher
+    patterns:
+      - pattern-either:
+          - pattern-inside: |
+              $A = $P.getProperty("$KEY", "$DEF");
+              ...
+          - pattern-inside: |
+              $T $A = $P.getProperty("$KEY", "$DEF");
+              ...
+          - pattern-inside: |
+              $A = $P.getProperty("$KEY");
+              ...
+          - pattern-inside: |
+              $T $A = $P.getProperty("$KEY");
+              ...
+      - pattern-either:
+          - pattern: Cipher.getInstance($A, ...)
+          - pattern: javax.crypto.Cipher.getInstance($A, ...)
+
+  - id: nervve.java.weak-hash
+    languages: [java]
+    severity: WARNING
+    message: >-
+      Weak hash algorithm (MD2, MD4, MD5 or SHA-1). Collisions can be produced, so it must not protect integrity,
+      signatures or passwords. Use SHA-256 or better, and a password hashing function (Argon2, bcrypt, PBKDF2)
+      for passwords.
+    metadata:
+      cwe: "CWE-328"
+      owasp: "A02:2021 Cryptographic Failures"
+      confidence: high
+      category: crypto
+    pattern-either:
+      - patterns:
+          - pattern-either:
+              - pattern: MessageDigest.getInstance("$ALG", ...)
+              - pattern: java.security.MessageDigest.getInstance("$ALG", ...)
+              - pattern: Mac.getInstance("$ALG", ...)
+              - pattern: javax.crypto.Mac.getInstance("$ALG", ...)
+          - metavariable-regex:
+              metavariable: $ALG
+              regex: (?i)^(MD2|MD4|MD5|SHA-?1|SHA|HmacMD5)$
+      - pattern-either:
+          - pattern: DigestUtils.md5(...)
+          - pattern: DigestUtils.md5Hex(...)
+          - pattern: DigestUtils.sha1(...)
+          - pattern: DigestUtils.sha1Hex(...)
+          - pattern: DigestUtils.sha(...)
+          - pattern: DigestUtils.shaHex(...)
+          - pattern: org.apache.commons.codec.digest.DigestUtils.md5Hex(...)
+          - pattern: org.apache.commons.codec.digest.DigestUtils.sha1Hex(...)
+          - pattern: Hashing.md5()
+          - pattern: Hashing.sha1()
+
+  - id: nervve.java.weak-hash-configured
+    languages: [java]
+    severity: WARNING
+    message: >-
+      The hash algorithm is read from configuration and the configured value (or the default) is weak (MD5 or
+      SHA-1). Configure SHA-256 or better.
+    metadata:
+      cwe: "CWE-328"
+      owasp: "A02:2021 Cryptographic Failures"
+      confidence: medium
+      category: crypto
+      nervve-config-check: hash
+    patterns:
+      - pattern-either:
+          - pattern-inside: |
+              $A = $P.getProperty("$KEY", "$DEF");
+              ...
+          - pattern-inside: |
+              $T $A = $P.getProperty("$KEY", "$DEF");
+              ...
+          - pattern-inside: |
+              $A = $P.getProperty("$KEY");
+              ...
+          - pattern-inside: |
+              $T $A = $P.getProperty("$KEY");
+              ...
+      - pattern-either:
+          - pattern: MessageDigest.getInstance($A, ...)
+          - pattern: java.security.MessageDigest.getInstance($A, ...)
+
+  - id: nervve.java.weak-random-security-value
+    mode: taint
+    languages: [java]
+    severity: WARNING
+    message: >-
+      A value from a predictable random generator (java.util.Random, Math.random or ThreadLocalRandom) is used as
+      a cookie, session value or token. An attacker who sees a few values can predict the next ones. Use
+      java.security.SecureRandom.
+    metadata:
+      cwe: "CWE-330"
+      owasp: "A02:2021 Cryptographic Failures"
+      confidence: high
+      category: crypto
+    pattern-sources:
+      - by-side-effect: true
+        patterns:
+          - pattern-either:
+              - pattern: new java.util.Random(...).nextBytes($B)
+              - pattern: new Random(...).nextBytes($B)
+          - pattern-not-inside: |
+              $T $R = $SR.getInstance(...);
+              ...
+          - focus-metavariable: $B
+      - patterns:
+          - pattern-either:
+              - pattern: (java.util.Random $R).$M(...)
+              - pattern: (Random $R).$M(...)
+          - pattern-not-inside: |
+              $T $R = $SR.getInstance(...);
+              ...
+          - pattern-not-inside: |
+              $T $R = new java.security.SecureRandom(...);
+              ...
+          - pattern-not-inside: |
+              $T $R = new SecureRandom(...);
+              ...
+      - pattern-either:
+          - pattern: new java.util.Random(...).$M(...)
+          - pattern: new Random(...).$M(...)
+          - pattern: Math.random()
+          - pattern: java.lang.Math.random()
+          - pattern: ThreadLocalRandom.current().$M(...)
+          - pattern: java.util.concurrent.ThreadLocalRandom.current().$M(...)
+          - pattern: RandomStringUtils.random(...)
+          - pattern: RandomStringUtils.randomAlphanumeric(...)
+          - pattern: RandomStringUtils.randomAlphabetic(...)
+          - pattern: RandomStringUtils.randomNumeric(...)
+    pattern-sinks:
+      - pattern-either:
+          - pattern: new Cookie(...)
+          - pattern: new javax.servlet.http.Cookie(...)
+          - pattern: new jakarta.servlet.http.Cookie(...)
+          - pattern: (Cookie $C).setValue(...)
+          - pattern: (HttpSession $S).setAttribute(...)
+          - pattern: $R.getSession().setAttribute(...)
+          - patterns:
+              - pattern-either:
+                  - pattern: $V = $E;
+                  - pattern: $T $V = $E;
+              - metavariable-regex:
+                  metavariable: $V
+                  regex: (?i)^\w*(token|secret|password|passwd|nonce|salt|otp|sessionid|session_id|apikey|api_key|csrf|resetcode|remember)\w*$
+              - focus-metavariable: $E
+
+  - id: nervve.java.insecure-random
+    languages: [java]
+    severity: INFO
+    message: >-
+      java.util.Random is predictable. If this value is a token, session id, password or key, use
+      java.security.SecureRandom.
+    metadata:
+      cwe: "CWE-338"
+      owasp: "A02:2021 Cryptographic Failures"
+      confidence: low
+      category: crypto
+    patterns:
+      - pattern-either:
+          - pattern: new java.util.Random(...)
+          - pattern: new Random(...)
+      - pattern-inside: |
+          $T $F(...) { ... }
+      - metavariable-regex:
+          metavariable: $F
+          regex: (?i).*(token|secret|password|nonce|salt|otp|session|key).*
+
+  - id: nervve.java.cookie-without-httponly
+    languages: [java]
+    severity: INFO
+    message: >-
+      A cookie is explicitly marked as readable by page scripts (HttpOnly false), so a cross-site scripting flaw can
+      steal it. Call cookie.setHttpOnly(true) unless scripts must read it.
+    metadata:
+      cwe: "CWE-1004"
+      owasp: "A05:2021 Security Misconfiguration"
+      confidence: high
+      category: configuration
+    pattern-either:
+      - pattern: (Cookie $C).setHttpOnly(false)
+      - pattern: (javax.servlet.http.Cookie $C).setHttpOnly(false)
 
   - id: nervve.java.unsafe-deserialisation
     languages: [java]
@@ -311,42 +704,3 @@ rules:
       - pattern: SSLConnectionSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER
       - pattern: |
           public boolean verify(String $H, SSLSession $S) { return true; }
-
-  - id: nervve.java.weak-crypto
-    languages: [java]
-    severity: WARNING
-    message: >-
-      Broken or weak cryptography (DES, 3DES, RC4, Blowfish, ECB mode, MD5 or SHA-1). Use AES/GCM/NoPadding for
-      encryption, SHA-256 or better for hashing and a password hashing function for passwords.
-    metadata:
-      cwe: "CWE-327"
-      owasp: "A02:2021 Cryptographic Failures"
-      confidence: high
-      category: crypto
-    patterns:
-      - pattern-either:
-          - pattern: Cipher.getInstance("$ALG", ...)
-          - pattern: MessageDigest.getInstance("$ALG", ...)
-          - pattern: KeyGenerator.getInstance("$ALG", ...)
-      - metavariable-regex:
-          metavariable: $ALG
-          regex: (?i)^((DES|DESede|TripleDES|RC2|RC4|ARCFOUR|Blowfish)(/.*)?|MD2|MD4|MD5|SHA-?1|AES|.*/ECB/.*)$
-
-  - id: nervve.java.insecure-random
-    languages: [java]
-    severity: INFO
-    message: >-
-      java.util.Random is predictable. If this value is a token, session id, password or key, use
-      java.security.SecureRandom.
-    metadata:
-      cwe: "CWE-338"
-      owasp: "A02:2021 Cryptographic Failures"
-      confidence: low
-      category: crypto
-    patterns:
-      - pattern: new java.util.Random(...)
-      - pattern-inside: |
-          $T $F(...) { ... }
-      - metavariable-regex:
-          metavariable: $F
-          regex: (?i).*(token|secret|password|nonce|salt|otp|session|key).*

@@ -2,7 +2,7 @@
 
 # Detection rules
 
-RAT Flea DevSec ships **280 built-in rules** across 12 rule sets. Runtime detections come from the customer's Falco or Tetragon rules and are identified as `NM-RT-…` by rule name. Results imported from other scanners keep the scanner's own rule identifiers.
+RAT Flea DevSec ships **287 built-in rules** across 12 rule sets. Runtime detections come from the customer's Falco or Tetragon rules and are identified as `NM-RT-…` by rule name. Results imported from other scanners keep the scanner's own rule identifiers.
 
 <div class="grid cards" markdown>
 
@@ -10,7 +10,7 @@ RAT Flea DevSec ships **280 built-in rules** across 12 rule sets. Runtime detect
 
     ---
 
-    40 rules · [jump](#sast)
+    47 rules · [jump](#sast)
 
 -   **Secrets**
 
@@ -110,6 +110,13 @@ RAT Flea DevSec ships **280 built-in rules** across 12 rule sets. Runtime detect
 | `NM-SAST-024` | Weak cryptographic algorithm | :material-alert-circle-outline:{ .med } medium | CWE-327 |
 | `NM-SAST-025` | TLS certificate or hostname verification disabled | :material-alert:{ .high } high | CWE-295 |
 | `NM-SAST-026` | XML parser allows external entities (XXE) | :material-alert:{ .high } high | CWE-611 |
+| `NM-SAST-041` | Regular expression with nested quantifiers (ReDoS) | :material-alert-circle-outline:{ .med } medium | CWE-1333 |
+| `NM-SAST-042` | Cross-site request forgery protection disabled | :material-alert-circle-outline:{ .med } medium | CWE-352 |
+| `NM-SAST-043` | CORS allows any origin | :material-alert-circle-outline:{ .med } medium | CWE-942 |
+| `NM-SAST-044` | Output rendered without HTML escaping | :material-alert-circle-outline:{ .med } medium | CWE-79 |
+| `NM-SAST-045` | Signing secret hard-coded in source | :material-alert:{ .high } high | CWE-798 |
+| `NM-SAST-046` | Every request allowed without authentication | :material-alert-circle-outline:{ .med } medium | CWE-306 |
+| `NM-SAST-047` | TLS certificate verification disabled | :material-alert:{ .high } high | CWE-295 |
 | `NM-SAST-027` | SQL query built with Sprintf or concatenation | :material-alert:{ .high } high | CWE-89 |
 | `NM-SAST-028` | Shell command built from variables | :material-alert:{ .high } high | CWE-78 |
 | `NM-SAST-029` | TLS certificate verification disabled | :material-alert:{ .high } high | CWE-295 |

@@ -42,9 +42,7 @@ Authorization: Bearer <tenant-access-token>
 
 An SPDX SBOM-only import is stored as inventory evidence. It does not represent a vulnerability scan, does not close findings and does not imply clean scanner coverage. SPDX 2.x JSON is supported; SPDX 3.x, tag/value and RDF serializations are not supported in this increment.
 
-<!-- coderabbit-ai-generated:v1 -->
 
-<!-- coderabbit-ai-generated-section:v1:f61aba5a2f6b651ec9d53de224e92aeaa36465fc21b3f9f9c666d9c798a7b1cf -->
 
 ## Advisory synchronization
 

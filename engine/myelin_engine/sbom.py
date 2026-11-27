@@ -119,10 +119,11 @@ def _pick_pypi(name, spec):
         return None
 
 
-def inventory(root: str) -> list[dict]:
+def inventory(root: str, external: bool = True) -> list[dict]:
     """Every third-party component: manifests (direct), lockfiles (exact transitive) and, for Python requirements
     without a lockfile, transitive dependencies resolved from PyPI. Licences filled in from the registries."""
-    vulndb.scan_status()["sources"].clear(); vulndb.scan_status()["errors"].clear()
+    st = vulndb.scan_status()
+    st["sources"].clear(); st["errors"].clear(); st.setdefault("resolution", set()).clear()
     direct = parse_manifests(root)
     for c in direct:
         c.setdefault("via", None)
@@ -149,14 +150,35 @@ def inventory(root: str) -> list[dict]:
                                             {manifest.get("file", "")})
     direct = [c for c in direct if (c["ecosystem"], c["name"]) not in locked_by_key]
     locked_ecos = {c["ecosystem"] for c in locked}
-    trans = [] if "pypi" in locked_ecos or vulndb.offline() else vulndb.resolve_pypi(
-        [c for c in direct if c["ecosystem"] == "pypi"])
-    comps, seen = [], set()
-    for c in direct + locked + trans:
-        k = (c["ecosystem"], c["name"], c["version"])
+    trans = [] if "pypi" in locked_ecos or vulndb.offline() else \
+        vulndb.resolve_pypi([c for c in direct if c["ecosystem"] == "pypi"])
+    from . import resolve
+    extra = resolve.extra_components(root, external)            # Trivy SBOM, npm/Gradle/NuGet resolution (see resolve.py)
+    # A version range in package.json ("^4.17.1") is not the installed version: when a lock file or the resolved tree
+    # gives the real version of the same package in the same folder, the declared entry is dropped
+    exact = {}
+    for c in locked + extra:
+        if c["ecosystem"] == "npm":
+            exact.setdefault((os.path.dirname(c["file"] or ""), c["name"]), []).append(c)
+    kept = []
+    for c in direct:
+        cands = exact.get((os.path.dirname(c["file"] or ""), c["name"])) if c["ecosystem"] == "npm" else None
+        if not cands:
+            kept.append(c)
+            continue
+        major = (c.get("version") or "").split(".")[0]
+        pick = next((x for x in cands if x["version"].split(".")[0] == major), cands[0])
+        pick["scope"] = c["scope"]                     # the declared dependency, at its installed version
+        pick.setdefault("declared", c.get("version"))
+    direct = kept
+    comps, seen = [], {}
+    for c in direct + locked + trans + extra:
+        k = (c["ecosystem"], c["name"].lower() if c["ecosystem"] in ("nuget", "maven") else c["name"], c["version"])
         if k not in seen:
-            seen.add(k)
+            seen[k] = c
             comps.append(c)
+        elif seen[k].get("license", "unknown") == "unknown" and c.get("license", "unknown") != "unknown":
+            seen[k]["license"] = c["license"]
     if not vulndb.offline():
         from concurrent.futures import ThreadPoolExecutor
         todo = [c for c in comps if c.get("license", "unknown") == "unknown"]

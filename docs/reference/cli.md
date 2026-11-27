@@ -26,14 +26,15 @@
 | `--sarif` |  |
 | `--sbom` |  |
 | `--json` |  |
+| `--report` | write a self-contained HTML assessment report for a repository |
 | `--fail-on` | (block · warn · never) Default: `block`. |
 | `--builtin-only` | skip third-party scanners even if installed |
 
 ```text
 usage: myelin scan [-h] [--image IMAGE] [--repo REPO] [--engines ENGINES]
                    [--policy POLICY] [--server SERVER] [--sarif SARIF]
-                   [--sbom SBOM] [--json JSON] [--fail-on {block,warn,never}]
-                   [--builtin-only]
+                   [--sbom SBOM] [--json JSON] [--report REPORT]
+                   [--fail-on {block,warn,never}] [--builtin-only]
                    [path]
 ```
 
@@ -107,7 +108,7 @@ block a deployment: evaluate --results, or ask the platform about --repo/--commi
 | `--fail-on` | (block · warn) Default: `block`. |
 | `--allow-unscanned` | do not fail when the commit was never scanned |
 | `--scope` | new: only findings this commit introduced can block (all · new) Default: `all`. |
-| `--require` | comma-separated engines that must have run, e.g. sast,sca,secrets (missing → block) |
+| `--require` | comma-separated areas that must be completely assessed, e.g. sast,sca,secrets (not run, partial or failed → block) |
 
 ```text
 usage: myelin gate [-h] [--results RESULTS] [--policy POLICY] [--repo REPO]

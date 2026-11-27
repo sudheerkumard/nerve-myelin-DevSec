@@ -41,6 +41,7 @@ SAST_EQUIVALENT = {
     "nervve.js.tls-verification-disabled": "NM-SAST-004", "nervve.js.jwt-unverified": "NM-SAST-009",
     "nervve.java.sql-injection": "NM-SAST-021", "nervve.java.command-injection": "NM-SAST-022",
     "nervve.java.unsafe-deserialisation": "NM-SAST-023", "nervve.java.weak-crypto": "NM-SAST-024",
+    "nervve.java.weak-hash": "NM-SAST-024", "nervve.js.hardcoded-session-secret": "NM-SAST-045",
     "nervve.java.tls-verification-disabled": "NM-SAST-025", "nervve.java.xxe": "NM-SAST-026",
     "nervve.go.sql-injection": "NM-SAST-027", "nervve.go.command-injection": "NM-SAST-028",
     "nervve.go.tls-verification-disabled": "NM-SAST-029", "nervve.go.weak-crypto": "NM-SAST-030",
@@ -109,17 +110,49 @@ def semgrep(doc: dict, repo: str) -> list[dict]:
 
 
 def gitleaks(doc: list, repo: str) -> list[dict]:
-    """Gitleaks JSON. Findings from git history keep the commit; a secret removed from the current files is still
-    exposed to anyone with the history and must be rotated."""
+    """Gitleaks JSON (grouped per secret by secrets.consolidate_gitleaks when available). A secret removed from the
+    current files is still exposed to anyone with the history and must be rotated; one finding lists every place
+    and commit the same secret appears in."""
     out = []
     for d in doc or []:
-        hist = bool(d.get("Commit"))
-        out.append({"engine": "secrets", "rule_id": d.get("RuleID"), "title": d.get("Description") or "Secret detected",
-                    "severity": "critical", "file": d.get("File"), "line": d.get("StartLine"), "repo": repo,
-                    "commit": d.get("Commit") or None,
-                    "evidence": (d.get("Secret") or d.get("Match") or "")[:4] + "…", "source_tool": "gitleaks",
-                    "remediation": "Revoke and rotate this credential now, then remove it from the code"
-                                   + (" and the git history (git filter-repo), as every clone still holds it." if hist else ".")})
+        occ = d.get("_occurrences") or []
+        head = d.get("_in_head")
+        hist = bool(d.get("Commit")) if head is None else not head
+        ctx = d.get("_context") or "code"
+        rule = str(d.get("RuleID") or "")
+        provider = bool(re.search(r"(?i)aws|github|gitlab|private-key|stripe|slack|gcp|google|azure|openai|anthropic|"
+                                  r"twilio|sendgrid|npm|pypi|shopify|heroku|databricks|hashicorp", rule))
+        if ctx == "test":
+            sev = "low"
+        elif ctx == "documentation":
+            sev = "medium"
+        elif hist:
+            sev = "high"
+        else:
+            sev = "critical" if provider else "high"
+        title = d.get("Description") or "Secret detected"
+        if hist:
+            title += " (in git history, removed from current files)"
+        commits = sorted({o["commit"] for o in occ if o.get("commit")})
+        f = {"engine": "secrets", "rule_id": rule, "title": title, "severity": sev,
+             "file": d.get("File"), "line": d.get("StartLine"), "repo": repo,
+             "commit": d.get("Commit") or None, "cwe": "CWE-798",
+             "confidence": "low" if ctx == "test" else "high" if provider else "medium",
+             "evidence": (d.get("Secret") or d.get("Match") or "")[:4] + "…", "source_tool": "gitleaks",
+             "remediation": "Revoke and rotate this credential now, then remove it from the code"
+                            + (" and the git history (git filter-repo), as every clone still holds it." if hist or commits else ".")
+                            + (" It is in a test or fixture file: if it is a real credential, replace it with a generated test value."
+                               if ctx == "test" else "")}
+        if ctx != "code":
+            f["context"] = ctx
+        if d.get("_hash"):
+            f["secret_id"] = d["_hash"]
+        if occ:
+            f["occurrences"] = len(occ)
+            f["locations"] = [{k: v for k, v in o.items() if v} for o in occ[:20]]
+            if commits:
+                f["commits"] = len(commits)
+        out.append(f)
     return out
 
 

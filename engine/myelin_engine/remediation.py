@@ -61,6 +61,6 @@ def enrich_finding(finding: dict) -> dict:
     finding["remediation"] = existing if len(existing) >= 40 else action
     finding["remediation_steps"] = [s.strip() for s in finding["remediation"].split(". ") if s.strip()]
     finding["verification"] = finding.get("verification") or verify
-    finding["remediation_source"] = "scanner" if len(existing) >= 40 else ("CWE" if cwe in CWE_GUIDANCE else "NERvvE-engine-guidance")
+    finding["remediation_source"] = "scanner" if len(existing) >= 40 else ("CWE" if cwe in CWE_GUIDANCE else "engine-guidance")
     finding["remediation_version"] = "1"
     return finding

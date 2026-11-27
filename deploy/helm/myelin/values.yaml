@@ -4,7 +4,7 @@
 
 image:
   repository: acr.example.io/nerve/myelin
-  tag: "1.5.0"
+  tag: "1.6.0"
   digest: ""                 # sha256:... — required for admission-verified (signed) deploys
   pullPolicy: IfNotPresent
 imagePullSecrets: []
