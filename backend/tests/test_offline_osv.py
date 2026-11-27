@@ -114,6 +114,29 @@ def test_offline_export_age_uses_utc_and_rejects_future_dates(tmp_path, monkeypa
     assert any("stale" in error for error in vulndb.STATUS["errors"])
 
 
+def test_offline_export_rejects_future_generated_at(tmp_path, monkeypatch):
+    export_dir = _export(tmp_path)
+    monkeypatch.setenv("MYELIN_OSV_EXPORT_DIR", export_dir)
+    manifest_path = os.path.join(export_dir, "manifest.json")
+    manifest = json.loads(open(manifest_path, encoding="utf-8").read())
+    future = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1)
+    manifest["generated_at"] = future.strftime("%Y-%m-%dT%H:%M:%SZ")
+    with open(manifest_path, "w", encoding="utf-8") as fh:
+        json.dump(manifest, fh)
+    vulndb._EXPORT.update(signature=None, index=None)
+    assert vulndb._export_index() is None
+    assert any("in the future" in error for error in vulndb.STATUS["errors"])
+
+
+def test_offline_export_rejects_invalid_max_age_policy(tmp_path, monkeypatch):
+    export_dir = _export(tmp_path)
+    monkeypatch.setenv("MYELIN_OSV_EXPORT_DIR", export_dir)
+    monkeypatch.setenv("MYELIN_OSV_MAX_AGE_DAYS", "-1")
+    vulndb._EXPORT.update(signature=None, index=None)
+    assert vulndb._export_index() is None
+    assert any("non-negative number" in error for error in vulndb.STATUS["errors"])
+
+
 def test_download_exports_writes_valid_json_manifest(tmp_path, monkeypatch):
     class Response:
         def __enter__(self): return self
