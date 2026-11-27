@@ -1,9 +1,11 @@
 # Copyright (c) 2026 Sudheer Kumar.
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
 """Air-gapped scans match components against OSV ecosystem exports on disk."""
+import hashlib
 import json
 import os
 import sys
+import time
 import zipfile
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -26,9 +28,19 @@ DOCS = [
 def _export(tmp_path):
     d = tmp_path / "osv"
     d.mkdir()
-    with zipfile.ZipFile(d / "all.zip", "w") as z:
-        for doc in DOCS:
-            z.writestr(doc["id"] + ".json", json.dumps(doc))
+    archives = []
+    for ecosystem, docs in (("PyPI", [DOCS[0]]), ("npm", DOCS[1:])):
+        archive = d / (ecosystem + ".zip")
+        with zipfile.ZipFile(archive, "w") as z:
+            for doc in docs:
+                z.writestr(doc["id"] + ".json", json.dumps(doc))
+        archives.append({"ecosystem": ecosystem, "file": archive.name,
+                         "sha256": hashlib.sha256(archive.read_bytes()).hexdigest(),
+                         "size_bytes": archive.stat().st_size})
+    manifest = {"schema_version": 1, "source": "OSV ecosystem exports",
+                "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "archives": archives}
+    (d / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     return str(d)
 
 
@@ -51,3 +63,35 @@ def test_offline_scan_uses_exports(tmp_path, monkeypatch):
     assert y["fixed_version"] == "5.4" and y["severity"] == "critical"
     res = orchestrator.scan(os.path.join(ROOT, "demo", "vulnerable-app"), "x", use_external=False)
     assert "OSV offline export" in res["intelligence"]["sources"]
+
+
+
+def test_offline_export_rejects_modified_archive(tmp_path, monkeypatch):
+    export_dir = _export(tmp_path)
+    archive = os.path.join(export_dir, "npm.zip")
+    with open(archive, "ab") as fh:
+        fh.write(b"tampered")
+    monkeypatch.setenv("MYELIN_OFFLINE", "1")
+    monkeypatch.setenv("MYELIN_OSV_EXPORT_DIR", export_dir)
+    vulndb._EXPORT.update(signature=None, index=None)
+    assert vulndb._export_index() is None
+    assert any("checksum mismatch" in error for error in vulndb.STATUS["errors"])
+
+
+def test_offline_export_cache_invalidates_when_archive_changes(tmp_path, monkeypatch):
+    export_dir = _export(tmp_path)
+    monkeypatch.setenv("MYELIN_OSV_EXPORT_DIR", export_dir)
+    vulndb._EXPORT.update(signature=None, index=None)
+    first = vulndb._export_index()
+    assert first and ("npm", "lodash") in first
+    archive = os.path.join(export_dir, "npm.zip")
+    with zipfile.ZipFile(archive, "w") as z:
+        z.writestr("empty.json", json.dumps({"id": "GHSA-empty", "affected": []}))
+    manifest_path = os.path.join(export_dir, "manifest.json")
+    manifest = json.loads(open(manifest_path, encoding="utf-8").read())
+    manifest["archives"][0]["sha256"] = hashlib.sha256(open(archive, "rb").read()).hexdigest()
+    manifest["archives"][0]["size_bytes"] = os.path.getsize(archive)
+    with open(manifest_path, "w", encoding="utf-8") as fh:
+        json.dump(manifest, fh)
+    second = vulndb._export_index()
+    assert second == {}

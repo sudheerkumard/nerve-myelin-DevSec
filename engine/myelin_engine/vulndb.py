@@ -584,7 +584,86 @@ def _pypi_vulns(c):
 
 # ------------------------------------------------------------------ offline OSV exports (air-gapped)
 OSV_EXPORT_BASE = "https://osv-vulnerabilities.storage.googleapis.com"
-_EXPORT = {"dir": None, "index": None}
+OSV_EXPORT_MANIFEST = "manifest.json"
+OSV_EXPORT_SCHEMA = 1
+_EXPORT = {"signature": None, "index": None}
+
+
+def _export_index():
+    """Load only archives declared in a checksum-verified OSV export manifest."""
+    d = os.environ.get("MYELIN_OSV_EXPORT_DIR")
+    if not d:
+        return None
+    import zipfile
+    try:
+        manifest_path = os.path.join(d, OSV_EXPORT_MANIFEST)
+        with open(manifest_path, encoding="utf-8") as fh:
+            manifest = json.load(fh)
+        if manifest.get("schema_version") != OSV_EXPORT_SCHEMA:
+            raise ValueError("unsupported OSV export manifest schema")
+        generated = manifest.get("generated_at")
+        if not generated:
+            raise ValueError("OSV export manifest has no generated_at timestamp")
+        generated_at = time.strptime(generated, "%Y-%m-%dT%H:%M:%SZ")
+        max_age = os.environ.get("MYELIN_OSV_MAX_AGE_DAYS")
+        if max_age:
+            age_days = (time.time() - time.mktime(generated_at)) / 86400
+            if age_days > float(max_age):
+                raise ValueError(f"OSV export is stale ({age_days:.1f} days; maximum {max_age})")
+        entries = manifest.get("archives")
+        if not isinstance(entries, list) or not entries:
+            raise ValueError("OSV export manifest contains no archives")
+        rows, declared = [], set()
+        for entry in entries:
+            name, expected, ecosystem = entry.get("file"), entry.get("sha256"), entry.get("ecosystem")
+            if not name or os.path.basename(name) != name or not name.endswith(".zip") or not expected:
+                raise ValueError("invalid OSV export manifest entry")
+            if ecosystem not in OSV_ECO.values():
+                raise ValueError("unsupported ecosystem in OSV export manifest")
+            if name in declared:
+                raise ValueError("duplicate OSV export archive entry")
+            declared.add(name)
+            path = os.path.join(d, name)
+            digest = hashlib.sha256()
+            with open(path, "rb") as fh:
+                for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+                    digest.update(chunk)
+            if digest.hexdigest() != expected:
+                raise ValueError("OSV export checksum mismatch: " + name)
+            if entry.get("size_bytes") is not None and os.path.getsize(path) != entry["size_bytes"]:
+                raise ValueError("OSV export size mismatch: " + name)
+            rows.append((name, os.path.getsize(path), os.stat(path).st_mtime_ns, expected, ecosystem))
+        actual = {fn for fn in os.listdir(d) if fn.endswith(".zip")}
+        if actual != declared:
+            raise ValueError("OSV export archive set does not match manifest")
+        signature = hashlib.sha256((os.path.realpath(d) + json.dumps(sorted(rows))).encode()).hexdigest()
+        if _EXPORT["signature"] == signature and _EXPORT["index"] is not None:
+            return _EXPORT["index"]
+        idx = {}
+        for entry in entries:
+            with zipfile.ZipFile(os.path.join(d, entry["file"])) as archive:
+                bad = archive.testzip()
+                if bad:
+                    raise ValueError("corrupt OSV archive member: " + bad)
+                for member in archive.namelist():
+                    if not member.endswith(".json"):
+                        continue
+                    doc = json.loads(archive.read(member))
+                    for affected_item in doc.get("affected") or []:
+                        pkg = affected_item.get("package") or {}
+                        eco = next((key for key, value in OSV_ECO.items() if value == pkg.get("ecosystem")), None)
+                        if eco:
+                            idx.setdefault((eco, norm_name(eco, pkg.get("name", ""))), []).append(doc)
+        STATUS["sources"].add("OSV offline export")
+        STATUS["sources"].add("OSV export manifest verified")
+        STATUS["sources"].add("OSV export generated: " + generated)
+        STATUS["sources"].add("OSV export ecosystems: " + ", ".join(sorted({e["ecosystem"] for e in entries})))
+        _EXPORT.update(signature=signature, index=idx)
+        return idx
+    except (OSError, ValueError, TypeError, KeyError, zipfile.BadZipFile, json.JSONDecodeError) as exc:
+        STATUS["errors"].add("offline OSV export invalid: " + str(exc)[:180])
+        _EXPORT.update(signature=None, index=None)
+        return None
 
 
 def _vkey(eco, v):
@@ -672,17 +751,35 @@ def _offline_osv(comps):
 
 
 def download_exports(dest: str, ecosystems=tuple(OSV_ECO.values())) -> list[str]:
-    """On a connected host: fetch the OSV ecosystem exports (all.zip) into dest for transfer to an air-gapped site."""
+    """Download supported OSV ecosystem archives and write a verifiable bundle manifest."""
     os.makedirs(dest, exist_ok=True)
-    got = []
+    got, entries = [], []
     for eco in ecosystems:
-        url = f"{OSV_EXPORT_BASE}/{urllib.request.quote(eco)}/all.zip"
-        path = os.path.join(dest, f"{eco}.zip")
+        if eco not in OSV_ECO.values():
+            raise ValueError("unsupported OSV ecosystem: " + str(eco))
+        filename = eco.replace("/", "_") + ".zip"
+        path = os.path.join(dest, filename)
+        url = f"{OSV_EXPORT_BASE}/{urllib.parse.quote(eco, safe='')}/all.zip"
         req = urllib.request.Request(url, headers={"User-Agent": "NERvvE-DevSecOps"})
-        with urllib.request.urlopen(req, timeout=300) as r, open(path + ".part", "wb") as fh:  # myelin:ignore[NM-SAST-010] -- fixed OSV export host
-            shutil_copy(r, fh)
+        with urllib.request.urlopen(req, timeout=300) as response, open(path + ".part", "wb") as fh:  # myelin:ignore[NM-SAST-010] -- fixed OSV export host
+            shutil_copy(response, fh)
         os.replace(path + ".part", path)
+        digest = hashlib.sha256()
+        with open(path, "rb") as fh:
+            for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+                digest.update(chunk)
+        entries.append({"ecosystem": eco, "file": filename, "sha256": digest.hexdigest(),
+                        "size_bytes": os.path.getsize(path)})
         got.append(path)
+    manifest = {"schema_version": OSV_EXPORT_SCHEMA, "source": "OSV ecosystem exports",
+                "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "archives": entries}
+    temporary = os.path.join(dest, OSV_EXPORT_MANIFEST + ".part")
+    with open(temporary, "w", encoding="utf-8") as fh:
+        json.dump(manifest, fh, indent=2, sort_keys=True)
+        fh.write("\\n")
+    os.replace(temporary, os.path.join(dest, OSV_EXPORT_MANIFEST))
+    _EXPORT.update(signature=None, index=None)
     return got
 
 
