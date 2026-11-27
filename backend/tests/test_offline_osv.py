@@ -1,8 +1,10 @@
 # Copyright (c) 2026 Sudheer Kumar.
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
 """Air-gapped scans match components against OSV ecosystem exports on disk."""
+import hashlib
 import json
 import os
+import time
 import sys
 import zipfile
 
@@ -26,11 +28,23 @@ DOCS = [
 def _export(tmp_path):
     d = tmp_path / "osv"
     d.mkdir()
-    with zipfile.ZipFile(d / "all.zip", "w") as z:
-        for doc in DOCS:
-            z.writestr(doc["id"] + ".json", json.dumps(doc))
+    entries = []
+    for ecosystem in ("PyPI", "npm"):
+        filename = ecosystem.replace("/", "_") + ".zip"
+        path = d / filename
+        with zipfile.ZipFile(path, "w") as z:
+            for doc in DOCS:
+                if any((x.get("package") or {}).get("ecosystem") == ecosystem for x in doc.get("affected", [])):
+                    z.writestr(doc["id"] + ".json", json.dumps(doc))
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        entries.append({"ecosystem": ecosystem, "file": filename, "sha256": digest,
+                        "size_bytes": path.stat().st_size})
+    (d / "manifest.json").write_text(json.dumps({
+        "schema_version": 1, "source": "OSV ecosystem exports",
+        "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "archives": entries
+    }), encoding="utf-8")
     return str(d)
-
 
 def test_version_ranges():
     assert vulndb.affected(DOCS[0], "pypi", "pyyaml", "5.3.1") and not vulndb.affected(DOCS[0], "pypi", "pyyaml", "5.4")
@@ -51,3 +65,24 @@ def test_offline_scan_uses_exports(tmp_path, monkeypatch):
     assert y["fixed_version"] == "5.4" and y["severity"] == "critical"
     res = orchestrator.scan(os.path.join(ROOT, "demo", "vulnerable-app"), "x", use_external=False)
     assert "OSV offline export" in res["intelligence"]["sources"]
+
+
+
+def test_offline_export_rejects_checksum_mismatch(tmp_path, monkeypatch):
+    directory = _export(tmp_path)
+    archive = tmp_path / "osv" / "npm.zip"
+    archive.write_bytes(archive.read_bytes() + b"tampered")
+    monkeypatch.setenv("MYELIN_OFFLINE", "1")
+    monkeypatch.setenv("MYELIN_OSV_EXPORT_DIR", directory)
+    assert vulndb._export_index() is None
+    assert any("checksum mismatch" in error for error in vulndb.STATUS["errors"])
+
+
+def test_offline_export_requires_manifest(tmp_path, monkeypatch):
+    directory = tmp_path / "osv"
+    directory.mkdir()
+    with zipfile.ZipFile(directory / "all.zip", "w") as archive:
+        archive.writestr("empty.json", "{}")
+    monkeypatch.setenv("MYELIN_OSV_EXPORT_DIR", str(directory))
+    assert vulndb._export_index() is None
+    assert any("manifest missing or invalid" in error for error in vulndb.STATUS["errors"])
