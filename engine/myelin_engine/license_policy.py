@@ -126,7 +126,12 @@ def parse_expression(expression: str) -> dict:
     return _Parser(expression).parse()
 
 
+_NETWORK = {"AGPL-1.0", "AGPL-3.0", "AGPL-3.0-only", "AGPL-3.0-or-later", "SSPL-1.0"}
+
+
 def _classify(identifier: str) -> str:
+    if identifier in _NETWORK:
+        return "network_copyleft"
     if identifier in _STRONG:
         return "strong_copyleft"
     if identifier in _WEAK:
@@ -196,6 +201,71 @@ def evaluate_expression(expression: str, policy: dict | None = None) -> dict:
             "legal_advice": False}
 
 
+# What each category means for the team using the component. Triage guidance, not legal advice.
+OBLIGATIONS = {
+    "permissive": "Keep the copyright and licence notice in your distribution (third-party notices file).",
+    "weak_copyleft": "Changes to this component's own files must be published under the same licence. Using it "
+                     "unmodified as a separate library from proprietary code is normally allowed.",
+    "strong_copyleft": "If you distribute software that includes or links this component, the whole work must be "
+                       "released as source code under the same licence.",
+    "network_copyleft": "Offering the software to users over a network counts as distribution: the source of the "
+                        "whole service must be made available under the same licence.",
+    "unknown": "No usage rights are established until the licence is identified.",
+}
+_APACHE_NOTE = " Apache-2.0 also requires you to keep any NOTICE file and to state significant changes."
+
+
+def explain(item: dict, package: str | None = None, version: str | None = None) -> dict:
+    """A specific reason, the obligations and the recommended action for one component's licence decision."""
+    expr = str(item.get("expression") or "unknown").strip()
+    who = f"{package} {version}".strip() if package else "This component"
+    cat = item.get("category") or "unknown"
+    decision = item.get("decision")
+    if expr.lower() in ("unknown", "", "noassertion", "none"):
+        reason = (f"{who} declares no licence in the SBOM, and none was found in its package registry metadata.")
+        action = ("Find the licence in the project's repository (LICENSE file, pom.xml <licenses>, package metadata). "
+                  "If it is your organisation's own package, add it to the policy as proprietary. Without a licence "
+                  "you have no right to use or distribute it.")
+        return {"reason": reason, "obligations": OBLIGATIONS["unknown"], "action": action}
+    if item.get("category") == "invalid":
+        return {"reason": f"'{expr}' is not a valid SPDX licence expression ({item.get('reason')}).",
+                "obligations": OBLIGATIONS["unknown"],
+                "action": "Correct the licence field at the source or map the text to an SPDX identifier."}
+    branches = item.get("branches") or []
+    if branches:
+        parts = "; ".join(f"{b.get('identifier') or b.get('expression')} → {b.get('decision')}" for b in branches)
+        kind = "a choice of licences" if " OR " in expr.upper() else "several licences that all apply"
+        reason = f"{who} is under {kind} ({expr}): {parts}."
+        if " OR " in expr.upper():
+            action = ("Record which licence you use; choosing an allowed option resolves the review."
+                      if decision != "allow" else "No action: every option is allowed by policy.")
+        else:
+            action = "Meet the obligations of every licence listed." if decision != "deny" else "Replace the component."
+        obligations = " ".join(dict.fromkeys(OBLIGATIONS.get(b.get("category") or "unknown", "") for b in branches))
+        return {"reason": reason, "obligations": obligations, "action": action}
+    ident = item.get("identifier") or expr
+    label = {"permissive": "a permissive licence", "weak_copyleft": "a weak (file-level) copyleft licence",
+             "strong_copyleft": "a strong copyleft licence", "network_copyleft": "a network copyleft licence",
+             "unknown": "a licence identifier the policy does not recognise"}.get(cat, "a licence")
+    if decision == "deny":
+        verdict = "Your policy denies it."
+        action = "Replace the component, or obtain a commercial licence and record a policy exception."
+    elif decision == "review":
+        verdict = ("Your policy requires legal or compliance approval for it." if cat != "unknown"
+                   else "It needs to be mapped before it can be approved.")
+        action = ("Ask legal/compliance to confirm how the component is used (distributed, linked, network service) "
+                  "and record the approval." if cat != "unknown"
+                  else "Check the licence text; map it to an SPDX identifier or a LicenseRef in policy.")
+    else:
+        verdict = "Your policy allows it."
+        action = "No action beyond keeping the licence notice."
+    if item.get("exception"):
+        verdict += f" It carries the exception {item['exception']}, which must be checked for your use."
+    obligations = OBLIGATIONS.get(cat, OBLIGATIONS["unknown"]) + (_APACHE_NOTE if ident.startswith("Apache") else "")
+    return {"reason": f"{who} is licensed under {ident}, {label}. {verdict}", "obligations": obligations,
+            "action": action}
+
+
 def evaluate_components(components: list[dict], policy: dict | None = None) -> list[dict]:
     """Return one licence decision per component without mutating source SBOM evidence."""
     results = []
@@ -207,7 +277,8 @@ def evaluate_components(components: list[dict], policy: dict | None = None) -> l
             decision = {"expression": expression, "decision": "review", "reason": str(exc),
                         "category": "invalid", "policy_version": (policy or {}).get("version", "default-1"),
                         "legal_advice": False}
+        detail = explain(decision, component.get("name"), component.get("version"))
         results.append({"component": component.get("purl") or component.get("name"),
                         "package": component.get("name"), "version": component.get("version"),
-                        **decision})
+                        **decision, "policy_reason": decision.get("reason"), **detail})
     return results

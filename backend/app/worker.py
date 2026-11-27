@@ -62,30 +62,11 @@ def main() -> int:
             if _STOP:
                 break
             try:
-                job = store.claim_import_job(worker_id, settings.worker_lease_seconds,
-                                             settings.worker_max_attempts)
-                if not job:
-                    continue
-                claimed = True
-                source = str(job.get("source") or "").upper()
-                if job.get("kind") != "advisory_sync" or source not in platform.advisory_feeds.SOURCES:
-                    store.update_import_job(job["id"], "failed", error="unsupported worker job kind or source")
-                    log.error("rejected unsupported job id=%s kind=%s source=%s",
-                              job.get("id"), job.get("kind"), source)
-                    continue
-                targets = (job.get("counters") or {}).get("targets") or []
-                log.info("claimed job id=%s tenant=%s source=%s attempt=%s",
-                         job["id"], tenant_id, source,
-                         (job.get("counters") or {}).get("attempts"))
-                # The synchronizer is idempotent at the source/advisory key and records
-                # a terminal succeeded/failed state in the tenant's database.
-                platform._run_advisory_feed_sync(
-                    job["id"], source, tenant_id,
-                    targets if source == "OSV" else [],
-                    targets if source != "OSV" else [],
-                    job.get("requested_by") or "myelin-worker", scope=job.get("counters"),
-                )
-                log.info("finished job id=%s", job["id"])
+                n = platform.drain_advisory_jobs(store, tenant_id, worker_id, settings.worker_lease_seconds,
+                                                 settings.worker_max_attempts, stop=lambda: _STOP)
+                if n:
+                    claimed = True
+                    log.info("finished %d job(s) tenant=%s", n, tenant_id)
             except Exception:
                 log.exception("worker cycle failed tenant=%s", tenant_id)
         if not claimed:

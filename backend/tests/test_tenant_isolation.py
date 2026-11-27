@@ -213,3 +213,24 @@ def test_cloud_inventories_accounts_and_runtime_events_are_isolated(env):
         store.get_account(env["b"], acc["id"])
     with pytest.raises(cnapp.CloudError):
         store.delete_inventory(env["b"], "k8s:acme-cluster")
+
+
+def test_sbom_projects_and_repository_purge_in_postgres(env):
+    from app.store import PgStore
+    from app.db.models import Finding
+    from app.db.session import tenant_tx
+    a = PgStore(env["urls"]["app"], env["a"])
+    b = PgStore(env["urls"]["app"], env["b"])
+    a.save_sbom_project("suite", {"name": "suite", "components": 2, "summary": {}, "licences": [{"package": "x"}],
+                                  "vulnerabilities": [], "sbom": {"bomFormat": "CycloneDX", "components": []}}, "t")
+    a.save_sbom_project("suite", {"name": "suite", "components": 3, "summary": {}, "licences": [], "vulnerabilities": [],
+                                  "sbom": {"bomFormat": "CycloneDX"}}, "t")       # replace, not duplicate
+    assert [p["components"] for p in a.sbom_projects()] == [3] and "licences" not in a.sbom_projects()[0]
+    assert a.sbom_project("suite")["sbom"]["bomFormat"] == "CycloneDX" and b.sbom_project("suite") is None
+    assert not [p for p in a.pipelines() if str(p.get("repo", "")).startswith("sbom-project:")]
+    assert b.delete_sbom_project("suite") is False and a.delete_sbom_project("suite") is True
+    with tenant_tx(env["urls"]["app"], env["a"]) as s:
+        s.add(Finding(id="NM-purge", tenant_id=env["a"], fingerprint="fp-purge", repo="gone-repo", engine="sast",
+                      severity="low", priority="P3", mrs=1.0, data={"title": "x"}))
+    assert b.purge_repo("gone-repo")["findings"] == 0                                 # other tenant: nothing
+    assert a.purge_repo("gone-repo")["findings"] == 1 and not [f for f in a.findings() if f["repo"] == "gone-repo"]

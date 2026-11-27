@@ -7,6 +7,7 @@ PgStore    PostgreSQL. Every method opens a transaction bound to the caller's te
            identity), so row-level security applies to every statement. Routes never see a tenant id
            from the request itself.
 """
+import json
 import uuid
 from collections import Counter
 from datetime import datetime, timezone
@@ -171,6 +172,28 @@ class DemoStore:
         f["vex_documents"] = [*f.get("vex_documents", []), annotation]
         self.record_finding_event(fid, "vex_statement_recorded", actor, annotation)
         return f
+    def save_sbom_project(self, name, record, actor):
+        self.db.setdefault("sbom_projects", {})[name] = {**record, "updated_by": actor,
+                                                          "updated_at": datetime.now(timezone.utc).isoformat()}
+
+    def sbom_projects(self):
+        return list((self.db.get("sbom_projects") or {}).values())
+
+    def sbom_project(self, name):
+        return (self.db.get("sbom_projects") or {}).get(name)
+
+    def delete_sbom_project(self, name):
+        return (self.db.get("sbom_projects") or {}).pop(name, None) is not None
+
+    def purge_repo(self, repo):
+        """Delete a repository's findings, scans, SBOMs and record. The audit log keeps the deletion event."""
+        before = len(self.db.get("findings", []))
+        self.db["findings"] = [f for f in self.db.get("findings", []) if f.get("repo") != repo]
+        self.db["repos"] = [r for r in self.db.get("repos", []) if r.get("name") != repo]
+        (self.db.get("sboms") or {}).pop(repo, None)
+        self.db["pipelines"] = [p for p in self.db.get("pipelines", []) if p.get("repo") != repo]
+        return {"findings": before - len(self.db["findings"])}
+
     def record_finding_event(self, fid, event, actor, detail):
         f = self.get_finding(fid)
         if not f:
@@ -482,7 +505,8 @@ class PgStore:
     def pipelines(self):
         with self._tx() as s:
             return [{"id": r.id, "repo": r.repo, "decision": r.decision, "started": r.started_at.isoformat(), **r.data}
-                    for r in s.scalars(select(Scan).order_by(Scan.started_at.desc()).limit(200))]
+                    for r in s.scalars(select(Scan).where(~Scan.repo.like("sbom-project:%"))
+                                       .order_by(Scan.started_at.desc()).limit(200))]
 
     def trend(self):
         return build_trend(self.findings())
@@ -669,6 +693,44 @@ class PgStore:
             audit_log.append(s, self.tid, actor, "finding.vex_statement_recorded",
                 {"finding": fid, "source_digest": annotation.get("source_digest"), "state": annotation.get("state")})
             return self._finding(r)
+    SBOM_PREFIX = "sbom-project:"
+
+    def save_sbom_project(self, name, record, actor):
+        """An uploaded-SBOM project is kept as its own scan record; it never adds findings or a repository."""
+        from sqlalchemy import delete
+        doc = record.get("sbom")
+        data = {k: v for k, v in record.items() if k != "sbom"}
+        data.update(kind="sbom_project", updated_by=actor)
+        with self._tx() as s:
+            s.execute(delete(Scan).where(Scan.repo == self.SBOM_PREFIX + name))
+            s.add(Scan(id="sbom-" + uuid.uuid4().hex[:10], tenant_id=self.tid, repo=self.SBOM_PREFIX + name,
+                       decision="sbom", data=json.loads(json.dumps(data, default=str)), sbom=doc))
+
+    def sbom_projects(self):
+        with self._tx() as s:
+            rows = s.scalars(select(Scan).where(Scan.repo.like(self.SBOM_PREFIX + "%")).order_by(Scan.started_at.desc()))
+            return [{k: v for k, v in (r.data or {}).items() if k not in ("licences", "vulnerabilities")}
+                    | {"updated_at": r.started_at.isoformat()} for r in rows]
+
+    def sbom_project(self, name):
+        with self._tx() as s:
+            r = s.scalars(select(Scan).where(Scan.repo == self.SBOM_PREFIX + name)).first()
+            return ({**(r.data or {}), "sbom": r.sbom, "updated_at": r.started_at.isoformat()} if r else None)
+
+    def delete_sbom_project(self, name):
+        from sqlalchemy import delete
+        with self._tx() as s:
+            return s.execute(delete(Scan).where(Scan.repo == self.SBOM_PREFIX + name)).rowcount > 0
+
+    def purge_repo(self, repo):
+        """Delete a repository's findings, scans (with their SBOMs) and record. The audit log keeps the event."""
+        from sqlalchemy import delete
+        with self._tx() as s:
+            n = s.execute(delete(Finding).where(Finding.repo == repo)).rowcount
+            m = s.execute(delete(Scan).where(Scan.repo == repo)).rowcount
+            s.execute(delete(Repo).where(Repo.name == repo))
+            return {"findings": n, "scans": m}
+
     def record_finding_event(self, fid, event, actor, detail):
         with self._tx() as s:
             r = s.get(Finding, fid)

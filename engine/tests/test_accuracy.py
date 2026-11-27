@@ -120,3 +120,38 @@ def test_nuget_lowest_applicable_version():
     assert resolve._nuget_lowest("[1.1.0, )", avail) == "1.2.0"
     assert resolve._nuget_lowest("2.0.0", avail) == "2.0.0"
     assert resolve._nuget_lowest("[1.0.0]", avail) == "1.0.0"
+
+
+def test_test_paths_and_public_emulator_keys(tmp_path):
+    from myelin_engine.secrets import TEST_PATH
+    for p in ("src/Shared/TestCertificates/leaf.key", "src/Foo.UnitTests/a.cs", "samples/x/appsettings.json", "tests/a.py"):
+        assert TEST_PATH.search(p), p
+    for p in ("src/latest/a.py", "app/Testimonials/a.js", "src/Attestation/a.cs", "src/Api/Startup.cs"):
+        assert not TEST_PATH.search(p), p
+    (tmp_path / "Helper.cs").write_text('var c = "DefaultEndpointsProtocol=https;AccountName=devstoreaccount1;AccountKey='
+                                        'Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==";\n')
+    assert not [f for f in secrets.scan_path(str(tmp_path), "r") if f["rule_id"] == "NM-SEC-006"]
+
+
+def test_licence_reasons_are_specific():
+    from myelin_engine.license_policy import evaluate_components
+    rows = evaluate_components([{"name": "a", "version": "1", "license": "MIT"}, {"name": "b", "version": "2", "license": "unknown"},
+                                {"name": "c", "version": "3", "license": "AGPL-3.0-only"},
+                                {"name": "d", "version": "4", "license": "MIT OR GPL-2.0-only"}])
+    assert "a 1 is licensed under MIT, a permissive licence" in rows[0]["reason"]
+    assert "declares no licence" in rows[1]["reason"] and rows[1]["decision"] == "review"
+    assert rows[2]["category"] == "network_copyleft" and "network" in rows[2]["obligations"]
+    assert "choice of licences" in rows[3]["reason"] and "Record which licence" in rows[3]["action"]
+    assert all(r["obligations"] and r["action"] for r in rows)
+
+
+def test_maven_licence_follows_parent_pom(monkeypatch):
+    from myelin_engine import vulndb
+    poms = {"maven-compiler-plugin-3.13.0.pom": "<project><parent><groupId>org.apache.maven.plugins</groupId><artifactId>maven-plugins"
+            "</artifactId><version>41</version></parent></project>",
+            "maven-plugins-41.pom": "<project><parent><groupId>org.apache.maven</groupId><artifactId>maven-parent</artifactId>"
+            "<version>41</version></parent></project>",
+            "maven-parent-41.pom": "<project><licenses><license><name>Apache-2.0</name></license></licenses></project>"}
+    monkeypatch.setattr(vulndb, "_http_text", lambda url, ttl=0: poms.get(url.rsplit("/", 1)[-1], ""))
+    lic = vulndb.licence({"ecosystem": "maven", "name": "org.apache.maven.plugins:maven-compiler-plugin", "version": "3.13.0"})
+    assert lic == "Apache-2.0"

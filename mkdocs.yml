@@ -106,6 +106,7 @@ nav:
           - Source providers: SOURCE-PROVIDERS.md
           - CD pipelines & deployment gate: CD-PIPELINE-SECURITY.md
           - Supply-chain defence: SUPPLY-CHAIN-DEFENCE.md
+          - SBOM analysis: SBOM-ANALYSIS.md
           - Developer tools: DEVELOPER-TOOLS.md
       - Cloud & runtime:
           - Cloud, Kubernetes, identities, runtime: CLOUD-SECURITY.md

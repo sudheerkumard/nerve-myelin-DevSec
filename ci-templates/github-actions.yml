@@ -4,7 +4,7 @@
 # Copy to .github/workflows/myelin.yml. Pin every `uses:` to a full commit SHA in your org
 # (RAT Flea DevSec reports NM-CICD-001 until you do; Renovate/Dependabot keep the pins current).
 # MYELIN_CLI_PACKAGE: the RAT Flea DevSec CLI to install, e.g.
-# git+https://github.com/sudheerkumard/nervve-devsecops@v1.6.0 or a wheel on your internal package index
+# git+https://github.com/sudheerkumard/nervve-devsecops@v1.6.1 or a wheel on your internal package index
 name: myelin-secure-pipeline
 on:
   pull_request:            # untrusted PR code runs WITHOUT secrets (never pull_request_target + checkout)
@@ -26,7 +26,7 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - name: Install RAT Flea DevSec CLI
-        run: pip install "${{ vars.MYELIN_CLI_PACKAGE }}"        # or run in the CLI image ghcr.io/sudheerkumard/myelin-cli:1.6.0
+        run: pip install "${{ vars.MYELIN_CLI_PACKAGE }}"        # or run in the CLI image ghcr.io/sudheerkumard/myelin-cli:1.6.1
       - name: RAT Flea DevSec scan (SCA, SAST, secrets, IaC, pipeline posture, licences, AI-BOM)
         env:
           MYELIN_SERVER: ${{ vars.MYELIN_SERVER }}

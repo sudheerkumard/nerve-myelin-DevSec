@@ -6,6 +6,32 @@ MAJOR for breaking changes, MINOR for new features, PATCH for fixes. Each sectio
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-11-28
+
+### Added
+- **SBOM analysis.** Upload CycloneDX (JSON or XML) or SPDX JSON files, or a ZIP of them, as one project. Every component
+  gets a licence decision and is matched against known vulnerabilities. The result is a separate report (HTML with
+  mitigation steps, CSV, merged CycloneDX); it does not add findings to the dashboard.
+- **Remediation plan** on the Findings page: the filtered findings grouped into fix items with numbered steps, how to
+  verify and every affected location.
+- **Repositories: Export all** downloads one ZIP with a CSV of every repository and the latest report of each.
+- **Repositories: Remove and delete all data** removes a repository with its findings, scan history, SBOM and reports.
+- **Product demo** walks through the real screens of the console (repositories, findings, licences, SBOM analysis,
+  pipelines, compliance) with a talk track, on live or sample data.
+- The logo turns continuously (paused when the system asks for reduced motion).
+
+### Changed
+- Licence governance gives a specific reason per package (licence, category, policy decision), the obligations and the
+  action to take; licences missing from the SBOM are looked up in the package registry, including Maven parent POMs.
+  The table has fixed column widths, filters by repository/SBOM project, decision and text, and exports to CSV.
+- Advisory feed sync (OSV, CISA KEV, EPSS, NVD, GitHub, Red Hat) runs in the API by default, so the Sync buttons work
+  without a separate worker. Source cards show never synced / sync running / synced / failed and refresh while a sync runs.
+- Large repositories: the archive download waits up to 5 minutes between data (`MYELIN_SCM_READ_TIMEOUT`) and falls
+  back to a shallow git clone on a timeout or when the archive is too large; limits raised to 500 MB archives and 3 GB
+  extracted (configurable).
+- Secrets in test folders are recognised in more layouts (`TestCertificates/`, `Foo.UnitTests/`, `samples/`) and rated
+  low; the published Azure Storage and Cosmos DB emulator keys and AWS documentation keys are not reported.
+
 ## [1.6.0] - 2026-11-27
 
 ### Highlights

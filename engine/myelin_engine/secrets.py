@@ -35,7 +35,26 @@ STRONG_PW = re.compile(
     r"|(?i:passw(?:or)?d|pwd|credentials?)\b[^\n]{0,20}?[:=]?\s*['\"]?(" + PW + r")(?![\w@#$%!&])")
 EMAILISH = re.compile(r"^[\w.+-]+@[\w-]+\.[\w.]+$")
 HASHLIKE = re.compile(r"(?i)^(pbkdf2|argon2|bcrypt|scrypt|sha\d+|md5)[$_:]|^\$\d[aby]?\$")
-TEST_PATH = re.compile(r"(^|/)(tests?|spec|__tests__|fixtures?|testdata)/|(^|/)test_[^/]+$|_test\.\w+$|\.spec\.\w+$")
+_TEST_LOWER = re.compile(r"(?i)(^|/)([\w.-]*[._-])?(tests?|testing|testdata|testassets|test[_-]?data|fixtures?|mocks?|"
+                         r"__tests__|specs?|samples?|examples?)([._-][\w.-]*)?/|(^|/)test_[^/]+$|_test\.\w+$|\.(spec|test)\.\w+$")
+_TEST_CAMEL = re.compile(r"(^|[/.])(\w*[a-z])?Tests?([A-Z]\w*)?/|(^|/)\w+Tests?\.\w+$")
+
+
+class _TestPath:
+    """Test, fixture, sample and example locations: snake/kebab names (tests/, test-data/, foo.tests/) and .NET/Java
+    CamelCase project folders (UnitTests/, TestCertificates/, Foo.IntegrationTests/)."""
+    def search(self, path):
+        p = str(path or "").replace("\\", "/")
+        return _TEST_LOWER.search(p) or _TEST_CAMEL.search(p)
+
+
+TEST_PATH = _TestPath()
+# Credentials published on purpose for local emulators and documentation: never real secrets.
+KNOWN_PUBLIC = {
+    "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==",   # Azure Storage emulator (Azurite)
+    "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD9b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==",   # Azure Cosmos DB emulator
+    "AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",                           # AWS documentation
+}
 
 SKIP_DIRS = {".git", "node_modules", "vendor", ".venv", "venv", "__pycache__", "dist", "build", ".pytest_cache", ".mypy_cache",
              ".ruff_cache", ".tox", ".nox", "htmlcov", ".coverage", ".next", ".cache"}
@@ -93,7 +112,7 @@ def scan_path(root: str, repo: str = "local") -> list[dict]:
                     if not m:
                         continue
                     val = m.group(m.lastindex or 0)
-                    if PLACEHOLDERS.search(val):
+                    if PLACEHOLDERS.search(val) or val in KNOWN_PUBLIC or any(k in line for k in KNOWN_PUBLIC):
                         continue
                     if rid == "NM-SEC-010" and entropy(val) < 3.0:
                         continue
@@ -159,7 +178,7 @@ def consolidate_gitleaks(doc, root: str):
     for d in doc or []:
         secret = str(d.get("Secret") or "")
         rule = str(d.get("RuleID") or "")
-        if not secret or PLACEHOLDER_VALUE.search(secret):
+        if not secret or PLACEHOLDER_VALUE.search(secret) or secret in KNOWN_PUBLIC or any(k in secret for k in KNOWN_PUBLIC):
             continue
         if rule == "generic-api-key" and (float(d.get("Entropy") or entropy(secret)) < 3.3 or EMAILISH.match(secret)
                                           or HASHLIKE.search(secret)):

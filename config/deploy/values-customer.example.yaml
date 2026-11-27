@@ -6,7 +6,7 @@
 # Everything not listed here keeps the hardened defaults in deploy/helm/myelin/values.yaml.
 image:
   repository: registry.customer.example/nerve/myelin
-  tag: "1.6.0"
+  tag: "1.6.1"
   digest: ""                 # set sha256:... so the platform itself passes signed-image admission control
 publicUrl: https://myelin.customer.example
 trustedProxies: "10.244.0.0/16"

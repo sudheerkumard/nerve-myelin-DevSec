@@ -50,11 +50,27 @@ private temporary folder (links, devices and path escapes are skipped; size limi
 code is not retained. Only users with the scan permission (security lead, tenant admin) can add or scan repositories;
 viewers and auditors can read the reports. Each organisation sees only its own repositories.
 
+## Export and remove repositories
+
+**⇩ Export all** on the Repositories page downloads one ZIP: `repositories.csv` (every repository with its status,
+gate decision, findings by severity, components and areas assessed) and the latest full report of each scanned
+repository under `reports/`.
+
+**Remove** asks what to do with the data:
+
+- *Remove the repository only*: the repository leaves the list; its findings history and reports stay.
+- *Remove and delete all its data*: also deletes its findings, scan history, SBOM and reports. The audit log keeps a
+  record of the deletion. Use it for a repository you scanned once and do not need any more.
+
+The API equivalents are `GET /api/v1/repos/sources/export` and `DELETE /api/v1/repos/sources/{id}?purge=true`.
+
 ## Troubleshooting
 
 | Message | Fix |
 |---|---|
 | "the provider answered HTTP 404 / 403 ..." | The address is wrong, or the repository is private and the token is missing, expired or lacks **Contents: Read-only** (GitHub) / **read_repository** (GitLab). Remove the repository and add it again with a new token. |
 | "private repositories need a secret vault" | The installation has no vault configured. The Windows evaluation stack includes one; in production configure Vault / OpenBao (`VAULT_ADDR`). |
-| "the repository archive is larger than 300 MB" | Very large monorepositories: scan them in CI with `myelin scan` instead. |
+| "cannot reach the provider: The read operation timed out" | Very large repositories (for example SDK monorepositories) can take minutes before the provider starts sending the archive. The platform now waits up to `MYELIN_SCM_READ_TIMEOUT` seconds (default 300) between data, and on a timeout falls back to a shallow `git clone`. Behind a slow proxy raise the value on the API service. |
+| "the repository archive is larger than 500 MB" | Raise `MYELIN_SCM_MAX_ARCHIVE_MB` (and `MYELIN_SCM_MAX_EXTRACTED_MB`, default 3072, and the scan volume size `scanning.tmpSize` in Helm), or scan the repository in CI with `myelin scan`. The platform tries a shallow `git clone` automatically when the archive is too large. |
+| "cloning took longer than 30 minutes" | Raise `MYELIN_SCM_CLONE_TIMEOUT` (seconds), or scan in CI. |
 | "the vault refused to store the token" | The vault policy is read-only. Re-run `start-enterprise.ps1` (it updates the policy), or ask your vault administrator to allow create/update on `secret/data/myelin/tenants/*`. |

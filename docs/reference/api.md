@@ -2,7 +2,7 @@
 
 # REST API
 
-The platform exposes **113 operations**. The live, interactive OpenAPI document is served at `/docs` and `/openapi.json` on every installation.
+The platform exposes **120 operations**. The live, interactive OpenAPI document is served at `/docs` and `/openapi.json` on every installation.
 
 !!! info "Authentication"
     Send `X-API-Key: <key>` from pipelines and integrations (keys are created per tenant, hashed and expiring), or sign in through the console (OIDC with MFA; cookie session with CSRF token). Every call runs with the permissions of the key's or user's role, inside one tenant.
@@ -88,6 +88,7 @@ The platform exposes **113 operations**. The live, interactive OpenAPI document 
 | `POST` | `/api/findings/{fid}/explain` | AI remediation assistant: what it is, why it matters here, step-by-step fix, verification and references. |
 | `POST` | `/api/findings/{fid}/status` | Set Status |
 | `GET` | `/api/v1/findings/export` | Findings as CSV (opens in Excel), with CVE links and triage decisions. |
+| `GET` | `/api/v1/findings/remediation-plan` | HTML remediation plan: the findings grouped into fix items with numbered steps, verification and locations. |
 | `POST` | `/api/v1/findings/{fid}/verify-remediation` | Verify Remediation |
 
 ## Health · `health`
@@ -214,7 +215,8 @@ The platform exposes **113 operations**. The live, interactive OpenAPI document 
 | `GET` | `/api/v1/repos/providers` | Sources Providers |
 | `GET` | `/api/v1/repos/sources` | Sources List |
 | `POST` | `/api/v1/repos/sources` | Add a repository and start its first scan. A pasted token goes straight to the vault. |
-| `DELETE` | `/api/v1/repos/sources/{sid}` | Sources Delete |
+| `GET` | `/api/v1/repos/sources/export` | Every repository with its scan status and finding counts, plus each one's latest report, in one ZIP. |
+| `DELETE` | `/api/v1/repos/sources/{sid}` | Remove a repository. purge=true also deletes its findings, scan history, SBOMs and reports. |
 | `GET` | `/api/v1/repos/sources/{sid}/report` | Sources Report |
 | `GET` | `/api/v1/repos/sources/{sid}/sbom` | Sources Sbom |
 | `POST` | `/api/v1/repos/sources/{sid}/scan` | Sources Scan |
@@ -231,6 +233,16 @@ The platform exposes **113 operations**. The live, interactive OpenAPI document 
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` | `/api/sbom/{repo}` | Sbom |
+
+## Sbom Projects · `sbom-projects`
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/v1/sbom-projects` | Sbom Project List |
+| `POST` | `/api/v1/sbom-projects` | Analyse uploaded SBOMs as one project. The result is kept as its own report: it does not create findings, |
+| `DELETE` | `/api/v1/sbom-projects/{name}` | Sbom Project Delete |
+| `GET` | `/api/v1/sbom-projects/{name}` | Sbom Project Get |
+| `GET` | `/api/v1/sbom-projects/{name}/report` | Sbom Project Report |
 
 ## Scanners · `scanners`
 

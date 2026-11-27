@@ -5,6 +5,7 @@ against local fake servers (see test_engine_intel.py)."""
 import os
 
 os.environ.setdefault("MYELIN_OFFLINE", "1")
+os.environ.setdefault("MYELIN_ADVISORY_INLINE", "0")
 
 # Always test the engine from this checkout, never an older copy installed in site-packages.
 import sys  # noqa: E402

@@ -25,6 +25,7 @@ except ImportError:  # metrics optional in the CLI image
     REQS = LAT = AUTHFAIL = LIC_DAYS = LIC_USABLE = None
 
 MAX_BODY = 25 * 1024 * 1024
+MAX_UPLOAD_BODY = 100 * 1024 * 1024        # SBOM project uploads (base64 JSON of SBOM files or ZIPs)
 SECURITY_HEADERS = {
     "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
     "X-Content-Type-Options": "nosniff",
@@ -66,7 +67,8 @@ def install(app: FastAPI, settings) -> None:
     @app.middleware("http")
     async def _ops(request: Request, call_next):
         rid = request.headers.get("x-request-id", "")[:64] or uuid.uuid4().hex
-        if int(request.headers.get("content-length") or 0) > MAX_BODY:
+        limit = MAX_UPLOAD_BODY if request.url.path == "/api/v1/sbom-projects" else MAX_BODY
+        if int(request.headers.get("content-length") or 0) > limit:
             return JSONResponse({"detail": "request too large"}, status_code=413)
         t0 = time.perf_counter()
         response = await call_next(request)

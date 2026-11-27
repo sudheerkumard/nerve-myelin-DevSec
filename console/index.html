@@ -250,7 +250,10 @@ svg text{fill:var(--tx3);font-size:10.5px;font-family:inherit}
 .product-mark circle{transform-box:fill-box;transform-origin:center;animation:brand-signal .85s ease-out .22s both}
 @keyframes brand-land{0%{opacity:0;transform:translateY(8px) scale(.8)}65%{opacity:1;transform:translateY(-3px) scale(1.04)}100%{transform:translateY(0) scale(1)}}
 @keyframes brand-signal{0%{transform:scale(.55)}60%{transform:scale(1.22)}100%{transform:scale(1)}}
-@media(prefers-reduced-motion:reduce){.product-mark,.product-mark circle{animation:none}}
+.brand .product-mark,.si-logo .product-mark{transform-origin:50% 50%;animation:brand-land .8s cubic-bezier(.17,.68,.33,1.14) both,brand-spin 6s linear .8s infinite}
+.brand .product-mark:hover{animation-play-state:running,paused}
+@keyframes brand-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.product-mark,.product-mark circle,.brand .product-mark,.si-logo .product-mark{animation:none}}
 .brand b,.si-logo b{letter-spacing:0}
 .si-logo .product-mark{width:60px;height:48px}
 #productDemo{width:min(600px,calc(100% - 32px));max-height:calc(100dvh - 32px);padding:24px;border:1px solid #304356;border-radius:16px;background:#101e2b;color:#f3faf8;box-shadow:0 24px 70px #0008}
@@ -442,6 +445,7 @@ const ICON = {
   findings:'<path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/>',
   pipelines:'<circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M6 9v3a3 3 0 003 3h6"/>',
   supply:'<path d="M21 16V8l-9-5-9 5v8l9 5zM3.3 7L12 12l8.7-5M12 22V12"/>',
+  sboms:'<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6M8 13h8M8 17h5"/>',
   intel:'<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4M11 7v4l3 2"/>',
   campaigns:'<path d="M4 5h16M4 12h10M4 19h7M18 10v8M14 14h8"/>',
   vex:'<path d="M4 4h16v16H4zM8 9h8M8 13h8M8 17h5"/>',
@@ -469,13 +473,13 @@ const ICON = {
 };
 const NAV = [
   ["Start", [["welcome", "Welcome"]]],
-  ["Security", [["overview", "Executive overview"], ["findings", "Findings"], ["pipelines", "Pipelines & posture"], ["defence", "Supply-chain defence"], ["supply", "Artifact integrity"], ["posture", "Repository posture"], ["crypto", "Cryptography & PQC"], ["graph", "Risk graph"], ["intel", "Vulnerability intelligence"], ["licenses", "Licence governance"], ["campaigns", "Remediation campaigns"], ["vex", "VEX / CSAF intelligence"], ["scanners", "Scanner intake"], ["baseline", "Baseline gate"], ["repos", "Repositories"], ["apptest", "Live app testing"]]],
+  ["Security", [["overview", "Executive overview"], ["findings", "Findings"], ["pipelines", "Pipelines & posture"], ["defence", "Supply-chain defence"], ["supply", "Artifact integrity"], ["posture", "Repository posture"], ["crypto", "Cryptography & PQC"], ["graph", "Risk graph"], ["intel", "Vulnerability intelligence"], ["licenses", "Licence governance"], ["sboms", "SBOM analysis"], ["campaigns", "Remediation campaigns"], ["vex", "VEX / CSAF intelligence"], ["scanners", "Scanner intake"], ["baseline", "Baseline gate"], ["repos", "Repositories"], ["apptest", "Live app testing"]]],
   ["Cloud & runtime", [["cnapp", "Cloud overview"], ["cloud", "Cloud posture"], ["kubernetes", "Kubernetes posture"], ["identities", "Identities & entitlements"], ["runtime", "Runtime protection"]]],
   ["Demo", [["live", "Live scan"]]],
   ["Governance", [["compliance", "Compliance"], ["cra", "EU CRA readiness"], ["policies", "Policy as code"], ["policyLifecycle", "Policy lifecycle"], ["exceptions", "Exception register"], ["audit", "Audit log"], ["integrations", "Integrations"]]],
   ["About", [["why", "Why RAT Flea DevSec"]]]
 ];
-const TITLES = {cnapp:["Cloud overview","Attack paths, cloud and cluster posture, identities and runtime in one place"],cloud:["Cloud posture","Azure, AWS and Google Cloud configuration against the CIS foundations benchmarks"],kubernetes:["Kubernetes posture","Pod Security Standards, RBAC, exposure and isolation"],identities:["Identities & entitlements","Who can do what across cloud accounts and clusters"],runtime:["Runtime protection","Falco and Tetragon detections mapped to MITRE ATT&CK"],defence:["Supply-chain defence","Malicious packages, typosquats, worms and CI token theft"],posture:["Repository posture","19 practice checks mapped to the OSPS Baseline"],crypto:["Cryptography & PQC","CBOM inventory and post-quantum migration"],cra:["EU CRA readiness","Article 14 reporting clocks and Annex I evidence"],welcome:["Welcome","Customer briefing"],overview:["Executive overview","Risk posture across every repository, pipeline and artifact"],findings:["Findings","One prioritized queue across 15 engines, from code to cloud to runtime, ranked by exploitability"],pipelines:["Pipelines & posture","Every run gated by policy, every pipeline hardened against OWASP CI/CD Top 10"],supply:["Artifact integrity","SBOM, build metadata and verified deployment evidence"],graph:["Supply-chain risk graph","Evidence-backed relationships across repositories, builds, components and findings"],intel:["Vulnerability intelligence","Advisory-oriented view across stored CVEs and exploit signals"],licenses:["Licence governance","SPDX expression policy evaluation against tenant SBOM evidence"],campaigns:["Remediation campaigns","Grouped, accountable and verifiable remediation work"],vex:["VEX / CSAF intelligence","Preview and validate vulnerability exploitability statements"],scanners:["Scanner intake","Normalize external scanner reports into MYELIN findings"],baseline:["Baseline gate","Evaluate introduced findings against a recorded scan baseline"],repos:["Repositories","Coverage and risk by repository"],apptest:["Live app testing","Running APIs tested as real users — offline or online"],live:["Live scan","Run the RAT Flea DevSec engine against a real repository"],compliance:["Compliance","Continuous control evidence mapped from findings"],policies:["Policy as code","One policy drives PR checks, pipeline gates and admission"],policyLifecycle:["Policy lifecycle","Immutable versions, independent approvals, inheritance and controlled rollback"],exceptions:["Exception register","Time-boxed, scoped exceptions with independent approval"],audit:["Audit log","Immutable record of security decisions"],integrations:["Integrations","Source control, CI, clouds, clusters, runtime sensors, ticketing, SIEM and developer tools"],why:["Why RAT Flea DevSec","Where RAT Flea DevSec is different"]};
+const TITLES = {cnapp:["Cloud overview","Attack paths, cloud and cluster posture, identities and runtime in one place"],cloud:["Cloud posture","Azure, AWS and Google Cloud configuration against the CIS foundations benchmarks"],kubernetes:["Kubernetes posture","Pod Security Standards, RBAC, exposure and isolation"],identities:["Identities & entitlements","Who can do what across cloud accounts and clusters"],runtime:["Runtime protection","Falco and Tetragon detections mapped to MITRE ATT&CK"],defence:["Supply-chain defence","Malicious packages, typosquats, worms and CI token theft"],posture:["Repository posture","19 practice checks mapped to the OSPS Baseline"],crypto:["Cryptography & PQC","CBOM inventory and post-quantum migration"],cra:["EU CRA readiness","Article 14 reporting clocks and Annex I evidence"],welcome:["Welcome","Customer briefing"],overview:["Executive overview","Risk posture across every repository, pipeline and artifact"],findings:["Findings","One prioritized queue across 15 engines, from code to cloud to runtime, ranked by exploitability"],pipelines:["Pipelines & posture","Every run gated by policy, every pipeline hardened against OWASP CI/CD Top 10"],supply:["Artifact integrity","SBOM, build metadata and verified deployment evidence"],graph:["Supply-chain risk graph","Evidence-backed relationships across repositories, builds, components and findings"],intel:["Vulnerability intelligence","Advisory-oriented view across stored CVEs and exploit signals"],licenses:["Licence governance","SPDX expression policy evaluation against tenant SBOM evidence"],sboms:["SBOM analysis","Upload SBOM files or a ZIP of them for a licence and vulnerability report per project"],campaigns:["Remediation campaigns","Grouped, accountable and verifiable remediation work"],vex:["VEX / CSAF intelligence","Preview and validate vulnerability exploitability statements"],scanners:["Scanner intake","Normalize external scanner reports into MYELIN findings"],baseline:["Baseline gate","Evaluate introduced findings against a recorded scan baseline"],repos:["Repositories","Coverage and risk by repository"],apptest:["Live app testing","Running APIs tested as real users — offline or online"],live:["Live scan","Run the RAT Flea DevSec engine against a real repository"],compliance:["Compliance","Continuous control evidence mapped from findings"],policies:["Policy as code","One policy drives PR checks, pipeline gates and admission"],policyLifecycle:["Policy lifecycle","Immutable versions, independent approvals, inheritance and controlled rollback"],exceptions:["Exception register","Time-boxed, scoped exceptions with independent approval"],audit:["Audit log","Immutable record of security decisions"],integrations:["Integrations","Source control, CI, clouds, clusters, runtime sensors, ticketing, SIEM and developer tools"],why:["Why RAT Flea DevSec","Where RAT Flea DevSec is different"]};
 function renderNav(cur) {
   const ct = {findings: S.api["/api/summary"].kpis.open_findings, pipelines: S.api["/api/summary"].kpis.blocked_24h};
   $("#nav").innerHTML = NAV.map(([g, items]) => `<div class="grp">${g}</div>` + items.map(([id, l]) =>
@@ -725,7 +729,12 @@ VIEWS.findings = async () => {
     <select id="fr"><option value="">All repositories</option>${repos.map(r => `<option>${r}</option>`).join("")}</select>
     <select id="fsv" title="CISA SSVC decision"><option value="">Any SSVC decision</option><option>Act</option><option>Attend</option><option value="Track*">Track*</option><option>Track</option></select>
     <select id="fst"><option value="open">Open</option><option value="fixed">Fixed</option><option value="risk_accepted">Risk accepted</option><option value="all">All</option></select>
-    <span class="sp"></span><span class="muted small" id="fcount"></span>${MODE === "live" ? '<button class="btn sm" id="fcsv" title="CSV for Excel, with CVE links and triage decisions">⇩ Export CSV</button>' : ""}</div><div class="card" style="padding:0" id="ftable"></div>`;
+    <span class="sp"></span><span class="muted small" id="fcount"></span>${MODE === "live" ? '<button class="btn sm" id="fplan" title="Findings grouped into fix items with step-by-step mitigation">⇩ Remediation plan</button> <button class="btn sm" id="fcsv" title="CSV for Excel, with CVE links, triage decisions and mitigation steps">⇩ Export CSV</button>' : ""}</div><div class="card" style="padding:0" id="ftable"></div>`;
+  if ($("#fplan")) $("#fplan").onclick = () => {
+    const q = new URLSearchParams({status: $("#fst").value}); if ($("#fr").value) q.set("repo", $("#fr").value);
+    if ($("#fe") && $("#fe").value) q.set("engine", $("#fe").value);
+    fetchBlob("/api/v1/findings/remediation-plan?" + q);
+  };
   if ($("#fcsv")) $("#fcsv").onclick = async () => {
     const q = new URLSearchParams({status: $("#fst").value}); if ($("#fr").value) q.set("repo", $("#fr").value);
     const r = await fetch(API_BASE + "/api/v1/findings/export?" + q, {credentials: "same-origin", headers: authHeaders("GET")});
@@ -906,31 +915,123 @@ VIEWS.pipelines = async () => {
 VIEWS.intel = async () => {
   const [d, jobData]=await Promise.all([api("/api/v1/intelligence/vulnerabilities"),api("/api/v1/intelligence/feeds/jobs")]), s=d.summary;
   const cards=[kpi(fmt(s.unique_cves),"Unique CVEs","Across stored findings"),kpi(fmt(s.open_cves),"Open CVEs","At least one open instance"),kpi(fmt(s.kev_open),"Known exploited","Open CVEs marked KEV","var(--crit)"),kpi(fmt(s.fix_available),"Fix available","Open CVEs with a recorded fixed version")];
-  $("#view").innerHTML='<div class="grid g4">'+cards.join("")+'</div><div class="card" style="margin-top:14px"><h3>Advisory source health</h3><p class="muted small">Advisory updates are queued for this tenant. OSV checks stored SBOMs. NVD, GitHub and Red Hat fetch recent upstream changes. The next repository scan uses synchronized records.</p><div class="filters"><button class="btn pri" id="syncOSV">Sync OSV</button><button class="btn" id="syncKEV">Sync CISA KEV</button><button class="btn" id="syncEPSS">Sync EPSS</button><button class="btn" id="syncNVD">Sync NVD</button><button class="btn" id="syncGITHUB">Sync GitHub Advisories</button><button class="btn" id="syncREDHAT">Sync Red Hat CSAF</button><span class="muted small" id="syncStatus">No sync requested in this view.</span></div><div class="grid g3">'+d.advisory_feeds.map(x=>'<div class="card"><b>'+esc(x.name)+'</b><div class="chip warn">'+esc(x.state.replaceAll("_"," "))+'</div><div class="muted small">Last successful sync: '+esc(x.last_successful_sync||"not recorded")+'</div></div>').join("")+'</div></div><div class="card" style="margin-top:12px"><h3>Import and synchronization history</h3><div style="overflow:auto"><table><tr><th>Job</th><th>Source</th><th>Status</th><th>Records</th><th>Started</th><th>Finished</th><th>Error</th></tr>'+jobData.items.map(x=>'<tr><td class="mono">'+esc(x.id)+'</td><td>'+esc(x.source)+'</td><td>'+esc(x.status)+'</td><td>'+esc(x.counters?.stored??0)+'</td><td>'+esc(x.started_at||"—")+'</td><td>'+esc(x.finished_at||"—")+'</td><td>'+esc(x.error||"—")+'</td></tr>').join("")+'</table></div></div><div class="card" style="margin-top:14px"><h3>Vulnerability inventory</h3><div style="overflow:auto"><table><tr><th>CVE</th><th>Severity</th><th>CVSS</th><th>EPSS</th><th>KEV</th><th>Open</th><th>Repositories</th><th>Fix versions</th></tr>'+d.items.map(x=>'<tr><td class="mono">'+esc(x.cve)+'</td><td>'+esc(x.severity||"—")+'</td><td>'+esc(x.cvss??"—")+'</td><td>'+(x.epss==null?"—":(x.epss*100).toFixed(1)+"%")+'</td><td>'+(x.kev?'<span class="chip bad">KEV</span>':"—")+'</td><td>'+x.open_instances+'</td><td>'+esc(x.repositories.join(", "))+'</td><td>'+esc(x.fixed_versions.join(", ")||"No fix recorded")+'</td></tr>').join("")+'</table></div></div><p class="muted small">'+d.limitations.map(esc).join(" · ")+'</p>';
+  $("#view").innerHTML='<div class="grid g4">'+cards.join("")+'</div><div class="card" style="margin-top:14px"><h3>Advisory source health</h3><p class="muted small">Advisory updates are queued for this tenant. OSV checks stored SBOMs. NVD, GitHub and Red Hat fetch recent upstream changes. The next repository scan uses synchronized records.</p><div class="filters"><button class="btn pri" id="syncOSV">Sync OSV</button><button class="btn" id="syncKEV">Sync CISA KEV</button><button class="btn" id="syncEPSS">Sync EPSS</button><button class="btn" id="syncNVD">Sync NVD</button><button class="btn" id="syncGITHUB">Sync GitHub Advisories</button><button class="btn" id="syncREDHAT">Sync Red Hat CSAF</button><span class="muted small" id="syncStatus">No sync requested in this view.</span></div><div class="grid g3">'+d.advisory_feeds.map(x=>'<div class="card"><b>'+esc(x.name)+'</b><div class="chip '+({synced:"ok",failed:"bad",running:"warn"}[x.state]||"")+'">'+esc(({not_synced:"never synced",synced_empty:"synced · no records",source_documents:"documents"}[x.state])||x.state.replaceAll("_"," "))+'</div>'+(x.records?'<div class="small">'+fmt(x.records)+' records</div>':'')+'<div class="muted small">Last successful sync: '+esc(x.last_successful_sync||"not recorded")+'</div></div>').join("")+'</div></div><div class="card" style="margin-top:12px"><h3>Import and synchronization history</h3><div style="overflow:auto"><table><tr><th>Job</th><th>Source</th><th>Status</th><th>Records</th><th>Started</th><th>Finished</th><th>Error</th></tr>'+jobData.items.map(x=>'<tr><td class="mono">'+esc(x.id)+'</td><td>'+esc(x.source)+'</td><td>'+esc(x.status)+'</td><td>'+esc(x.counters?.stored??0)+'</td><td>'+esc(x.started_at||"—")+'</td><td>'+esc(x.finished_at||"—")+'</td><td>'+esc(x.error||"—")+'</td></tr>').join("")+'</table></div></div><div class="card" style="margin-top:14px"><h3>Vulnerability inventory</h3><div style="overflow:auto"><table><tr><th>CVE</th><th>Severity</th><th>CVSS</th><th>EPSS</th><th>KEV</th><th>Open</th><th>Repositories</th><th>Fix versions</th></tr>'+d.items.map(x=>'<tr><td class="mono">'+esc(x.cve)+'</td><td>'+esc(x.severity||"—")+'</td><td>'+esc(x.cvss??"—")+'</td><td>'+(x.epss==null?"—":(x.epss*100).toFixed(1)+"%")+'</td><td>'+(x.kev?'<span class="chip bad">KEV</span>':"—")+'</td><td>'+x.open_instances+'</td><td>'+esc(x.repositories.join(", "))+'</td><td>'+esc(x.fixed_versions.join(", ")||"No fix recorded")+'</td></tr>').join("")+'</table></div></div><p class="muted small">'+d.limitations.map(esc).join(" · ")+'</p>';
   document.querySelectorAll("[data-retry-job]").forEach(button=>button.onclick=async()=>{button.disabled=true;try{await api("/api/v1/intelligence/feeds/jobs/"+encodeURIComponent(button.dataset.retryJob)+"/retry",{method:"POST"});await VIEWS.intel();}catch(e){toast("Retry failed: "+e.message);button.disabled=false;}});
+  if (d.advisory_feeds.some(x => x.state === "running") && !window._intelPoll) { window._intelPoll = setTimeout(async () => { window._intelPoll = null; if (location.hash.replace("#", "") === "intel") { try { await VIEWS.intel(); } catch (e) {} } }, 5000); }
   for (const [id, source] of [["syncOSV","OSV"],["syncKEV","KEV"],["syncEPSS","EPSS"],["syncNVD","NVD"],["syncGITHUB","GITHUB"],["syncREDHAT","REDHAT"]]) {
     const button=$("#"+id);
     if(button) button.onclick=async()=>{const status=$("#syncStatus");button.disabled=true;status.textContent="Submitting "+source+" sync…";try{const r=await api("/api/v1/intelligence/feeds/"+source+"/sync",{method:"POST",body:JSON.stringify({limit:500,mode:["NVD","GITHUB","REDHAT"].includes(source)?"changes":"inventory"})});status.textContent="Job "+r.job.id+" queued. Refreshing source health…";setTimeout(async()=>{try{await VIEWS.intel();}catch(e){}},1500);}catch(e){status.textContent="Sync failed: "+e.message;}finally{button.disabled=false;}};
   }
 };
-VIEWS.licenses = async () => {
-  const report = await api("/api/v1/licenses/report");
+VIEWS.licenses = async (repoSel) => {
+  const repo = repoSel === undefined ? (window._licRepo || "") : repoSel;
+  window._licRepo = repo;
+  const report = await api("/api/v1/licenses/report" + (repo ? "?repo=" + encodeURIComponent(repo) : ""));
   const live = MODE === "live";
   const counts = report.counts || {allow:0,review:0,deny:0};
   const rows = report.items || [];
+  const repos = report.all_repositories || report.repositories || [];
   $("#view").innerHTML = '<div class="grid g4">'
-    + kpi(fmt(counts.allow||0),"Allowed","Explicitly permitted by policy")
-    + kpi(fmt(counts.review||0),"Needs review","Legal/compliance approval or unknown identifier","var(--med)")
-    + kpi(fmt(counts.deny||0),"Denied","Explicit policy prohibition","var(--crit)")
-    + kpi(fmt(report.components_evaluated||0),"Evaluated components",live?"Persisted tenant SBOM evidence":"Offline snapshot is not evaluated")
+    + kpi(fmt(counts.allow||0),"Allowed","Permitted by policy")
+    + kpi(fmt(counts.review||0),"Needs review","Approval needed or licence unknown","var(--med)")
+    + kpi(fmt(counts.deny||0),"Denied","Prohibited by policy","var(--crit)")
+    + kpi(fmt(report.components_evaluated||0),"Evaluated components",live?"From stored SBOMs":"Offline snapshot is not evaluated")
     + '</div><div class="card" style="margin-top:14px"><h3>Licence policy evaluation</h3><p class="muted small">'
-    + (live ? "Tenant SBOM evidence evaluated against the platform default SPDX policy. AND obligations accumulate; OR alternatives remain visible. Unknown identifiers require review. Per-tenant policy customization is not yet available. This is not legal advice." : "Offline sample data is shown as evidence only. Connect the live API to evaluate it against tenant policy.")
-    + '</p><div class="chip '+(live?"warn":"")+'">'+(live?"Policy "+esc(report.policy_version||"default")+" · live tenant evaluation":"Sample evidence · evaluation disabled offline")+'</div>'
-    + (report.note?'<p class="muted small">'+esc(report.note)+'</p>':"")
-    + '<div style="overflow:auto;margin-top:12px"><table><tr><th>Repository</th><th>Package</th><th>Version</th><th>SPDX expression</th><th>Decision</th><th>Licence analysis</th><th>Reason</th></tr>'
-    + rows.map(x=>'<tr><td>'+esc(x.repo||"—")+'</td><td class="mono small">'+esc(x.package||"—")+'</td><td>'+esc(x.version||"—")+'</td><td class="mono small">'+esc(x.expression||"—")+'</td><td><span class="chip '+(x.decision==="deny"?"bad":x.decision==="review"?"warn":x.decision==="allow"?"ok":"")+'">'+esc(x.decision||"not evaluated")+'</span></td><td class="small">'+licAnalysis(x)+'</td><td class="small">'+esc(x.reason||"—")+'</td></tr>').join("")
-    + '</table></div>'+(report.missing_sbom_repositories?.length?'<p class="muted small">No SBOM evidence: '+report.missing_sbom_repositories.map(esc).join(", ")+'</p>':"")
+    + (live ? "Every component in the stored SBOMs is checked against the SPDX licence policy. Licences missing from an SBOM are looked up in the package registry. This is triage, not legal advice." : "Offline sample data is shown as evidence only. Connect the live API to evaluate it against tenant policy.")
+    + '</p><div class="filters"><select id="licRepo"><option value="">All repositories and SBOM projects</option>'
+    + repos.map(r => '<option value="'+esc(r)+'"'+(r===repo?" selected":"")+'>'+esc(r)+'</option>').join("")
+    + '</select><select id="licDec"><option value="">All decisions</option><option value="deny">Denied</option><option value="review">Needs review</option><option value="allow">Allowed</option></select>'
+    + '<input id="licQ" placeholder="Search package or licence" style="min-width:220px"><button class="btn" id="licCsv">⇩ Export CSV</button>'
+    + '<span class="chip '+(live?"warn":"")+'">'+(live?"Policy "+esc(report.policy_version||"default"):"Sample evidence")+'</span></div>'
+    + '<div style="overflow:auto;margin-top:12px"><table class="lic" style="table-layout:fixed;width:100%;min-width:1100px"><colgroup><col style="width:11%"><col style="width:20%"><col style="width:7%"><col style="width:11%"><col style="width:7%"><col style="width:12%"><col style="width:32%"></colgroup>'
+    + '<tr><th>Repository</th><th>Package</th><th>Version</th><th>Licence</th><th>Decision</th><th>Category</th><th>Reason and action</th></tr><tbody id="licRows"></tbody></table></div>'
+    + (report.missing_sbom_repositories?.length?'<p class="muted small">No SBOM evidence: '+report.missing_sbom_repositories.map(esc).join(", ")+'</p>':"")
     + '</div><div class="card" style="margin-top:12px"><h3>Policy safeguards</h3><ul><li>Unknown and custom LicenseRef identifiers require review.</li><li>Malformed SPDX expressions are retained as review items, not discarded.</li><li>OR expressions expose alternatives; they do not silently select a legal interpretation.</li><li>WITH exceptions remain reviewable and require applicability assessment.</li><li>Evaluation is policy triage, not legal advice.</li></ul></div>';
+  const cell = 'style="overflow-wrap:anywhere;white-space:normal;vertical-align:top"';
+  const draw = () => {
+    const dec = $("#licDec").value, q = $("#licQ").value.toLowerCase();
+    const list = rows.filter(x => (!dec || x.decision === dec) && (!q || (String(x.package)+" "+String(x.expression)).toLowerCase().includes(q)));
+    $("#licRows").innerHTML = list.slice(0, 1500).map(x => '<tr><td '+cell+' class="small">'+esc(x.repo||"—")+'</td><td '+cell+' class="mono small">'+esc(x.package||"—")+'</td><td '+cell+' class="small">'+esc(x.version||"—")+'</td><td '+cell+' class="mono small">'+esc(x.expression||"—")+(x.license_source==="package registry"?'<div class="muted small">from package registry</div>':'')+'</td><td '+cell+'><span class="chip '+(x.decision==="deny"?"bad":x.decision==="review"?"warn":x.decision==="allow"?"ok":"")+'">'+esc(x.decision||"not evaluated")+'</span></td><td '+cell+' class="small">'+licAnalysis(x)+'</td><td '+cell+' class="small">'+esc(x.reason||"—")+(x.obligations?'<div class="muted" style="margin-top:4px"><b>Obligations:</b> '+esc(x.obligations)+'</div>':'')+(x.action?'<div style="margin-top:4px"><b>Action:</b> '+esc(x.action)+'</div>':'')+'</td></tr>').join("")
+      + (list.length > 1500 ? '<tr><td colspan="7" class="muted small">Showing 1,500 of '+fmt(list.length)+'. Export CSV for the full list.</td></tr>' : "")
+      + (!list.length ? '<tr><td colspan="7" class="muted">No components match.</td></tr>' : "");
+  };
+  draw();
+  $("#licDec").onchange = draw; $("#licQ").oninput = draw;
+  $("#licRepo").onchange = () => VIEWS.licenses($("#licRepo").value);
+  $("#licCsv").onclick = () => {
+    const q = v => '"' + String(v ?? "").replaceAll('"', '""') + '"';
+    const lines = [["repository","package","version","licence","decision","category","reason","obligations","action"].join(",")]
+      .concat(rows.map(x => [x.repo,x.package,x.version,x.expression,x.decision,x.category,x.reason,x.obligations,x.action].map(q).join(",")));
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([lines.join("\r\n")], {type: "text/csv"}));
+    a.download = "licence-report" + (repo ? "-" + repo : "") + ".csv"; a.click();
+  };
+};
+async function fetchBlob(path, dl) {
+  try {
+    const r = await fetch(API_BASE + path, {credentials: "same-origin", headers: authHeaders("GET")});
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.status);
+    const u = URL.createObjectURL(await r.blob());
+    if (dl) { const a = document.createElement("a"); a.href = u; a.download = dl; a.click(); } else window.open(u, "_blank");
+  } catch (e) { toast(String(e.message || e)); }
+}
+const b64 = file => new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(",")[1] || ""); r.onerror = () => bad(r.error); r.readAsDataURL(file); });
+VIEWS.sboms = async (detail) => {
+  const live = MODE === "live";
+  if (!live) { $("#view").innerHTML = '<div class="card"><h3>SBOM analysis</h3><p class="muted">Connect the live API to upload SBOMs.</p></div>'; return; }
+  const list = (await api("/api/v1/sbom-projects")).items || [];
+  const canWrite = can("scans:write");
+  const enc = encodeURIComponent;
+  const sevChips = v => ["critical","high","medium","low"].filter(k => v && v[k]).map(k => `<span class="chip ${k==="critical"||k==="high"?"bad":k==="medium"?"warn":""}">${v[k]} ${k}</span>`).join(" ") || '<span class="muted small">none known</span>';
+  $("#view").innerHTML = `${canWrite ? `<div class="card"><h3>Upload SBOMs</h3>
+    <p class="muted small">Upload one or more CycloneDX (JSON or XML) or SPDX JSON files, or a ZIP containing them. All files become one project:
+    every component is checked for licence obligations and known vulnerabilities. The result is a separate report — it does not add findings to the dashboard.</p>
+    <div class="filters"><input id="sbName" placeholder="Project name, e.g. Payments platform 2.4" style="min-width:280px" maxlength="120">
+    <input type="file" id="sbFiles" multiple accept=".json,.xml,.zip,.spdx,.cdx,.bom,application/json,application/zip">
+    <button class="btn pri" id="sbGo">Analyse</button><span class="muted small" id="sbMsg"></span></div></div>` : ""}
+    <div class="card" style="margin-top:12px"><h3>SBOM projects</h3>
+    ${list.length ? `<div style="overflow:auto"><table><tr><th>Project</th><th>Files</th><th>Components</th><th>Licences</th><th>Vulnerabilities</th><th>Uploaded</th><th></th></tr>
+    ${list.map(p => { const d = (p.summary||{}).licence_decisions || {}; return `<tr><td><b>${esc(p.name)}</b><div class="muted small">${esc(((p.summary||{}).ecosystems||[]).join(", "))}</div></td>
+      <td>${(p.files||[]).length}${(p.files||[]).some(f => f.error) ? ' <span class="chip warn" title="Some files could not be read">!</span>' : ""}</td><td>${fmt(p.components||0)}</td>
+      <td>${d.deny ? `<span class="chip bad">${d.deny} denied</span> ` : ""}${d.review ? `<span class="chip warn">${d.review} review</span> ` : ""}<span class="chip ok">${d.allow||0} allowed</span></td>
+      <td>${sevChips((p.summary||{}).vulnerability_severity)}</td><td class="small muted">${esc(p.uploaded_by||"")}<br>${ago(p.uploaded_at||p.updated_at)}</td>
+      <td style="white-space:nowrap"><button class="btn sm pri" data-sbv="${esc(p.name)}">View</button> <button class="btn sm" data-sbr="${esc(p.name)}">Report</button>
+      <button class="btn sm" data-sbc="${esc(p.name)}">CSV</button> <button class="btn sm" data-sbx="${esc(p.name)}">CycloneDX</button>
+      ${canWrite ? `<button class="btn sm" data-sbd="${esc(p.name)}">Delete</button>` : ""}</td></tr>`; }).join("")}</table></div>` : '<p class="muted">No SBOM projects yet.</p>'}</div><div id="sbDetail"></div>`;
+  if ($("#sbGo")) $("#sbGo").onclick = async () => {
+    const name = $("#sbName").value.trim(), files = [...$("#sbFiles").files];
+    if (!name) return toast("Give the project a name");
+    if (!files.length) return toast("Choose SBOM files or a ZIP");
+    const total = files.reduce((a, f) => a + f.size, 0);
+    if (total > 70 * 1024 * 1024) return toast("Upload at most 70 MB at a time (zip large SBOM sets)");
+    $("#sbGo").disabled = true; $("#sbMsg").textContent = "Uploading and analysing " + files.length + " file(s)…";
+    try {
+      const payload = {name, files: await Promise.all(files.map(async f => ({filename: f.name, content_b64: await b64(f)})))};
+      const r = await api("/api/v1/sbom-projects", {method: "POST", body: JSON.stringify(payload)});
+      toast(`${r.components} components analysed`); await VIEWS.sboms(name);
+    } catch (e) { $("#sbMsg").textContent = "Failed: " + e.message; $("#sbGo").disabled = false; }
+  };
+  document.querySelectorAll("[data-sbv]").forEach(b => b.onclick = () => VIEWS.sboms(b.dataset.sbv));
+  document.querySelectorAll("[data-sbr]").forEach(b => b.onclick = () => fetchBlob(`/api/v1/sbom-projects/${enc(b.dataset.sbr)}/report`));
+  document.querySelectorAll("[data-sbc]").forEach(b => b.onclick = () => fetchBlob(`/api/v1/sbom-projects/${enc(b.dataset.sbc)}/report?format=csv`, `sbom-report-${b.dataset.sbc}.csv`));
+  document.querySelectorAll("[data-sbx]").forEach(b => b.onclick = () => fetchBlob(`/api/v1/sbom-projects/${enc(b.dataset.sbx)}/report?format=cyclonedx`, `${b.dataset.sbx}.cdx.json`));
+  document.querySelectorAll("[data-sbd]").forEach(b => b.onclick = async () => {
+    if (!confirm(`Delete SBOM project '${b.dataset.sbd}' and its report?`)) return;
+    try { await api(`/api/v1/sbom-projects/${enc(b.dataset.sbd)}`, {method: "DELETE"}); toast("Deleted"); VIEWS.sboms(); } catch (e) { toast(e.message); } });
+  if (!detail || typeof detail !== "string") return;
+  const p = await api(`/api/v1/sbom-projects/${enc(detail)}`);
+  const cell = 'style="overflow-wrap:anywhere;white-space:normal;vertical-align:top"';
+  const lic = (p.licences || []).slice().sort((a, b) => ({deny:0,review:1,allow:2}[a.decision] ?? 3) - ({deny:0,review:1,allow:2}[b.decision] ?? 3));
+  const vul = p.vulnerabilities || [];
+  $("#sbDetail").innerHTML = `<div class="card" style="margin-top:12px"><h3>${esc(p.name)}</h3>
+    <div class="grid g4">${kpi(fmt(p.components||0),"Components","After merging all files")}${kpi(fmt(((p.summary||{}).licence_decisions||{}).deny||0),"Licences denied","","var(--crit)")}${kpi(fmt(((p.summary||{}).licence_decisions||{}).review||0),"Licences to review","","var(--med)")}${kpi(fmt(vul.length),"Known vulnerabilities","Across all components")}</div>
+    <h4 style="margin-top:14px">Files</h4><table><tr><th>File</th><th>Format</th><th>Components</th><th>Problem</th></tr>${(p.files||[]).map(f => `<tr><td class="mono small">${esc(f.file)}</td><td class="small">${esc(f.format||"")}</td><td>${f.components ?? ""}</td><td class="small" style="color:var(--crit)">${esc(f.error||"")}</td></tr>`).join("")}</table>
+    <h4 style="margin-top:14px">Licences</h4><div style="overflow:auto"><table style="table-layout:fixed;width:100%;min-width:1000px"><colgroup><col style="width:22%"><col style="width:8%"><col style="width:12%"><col style="width:8%"><col style="width:11%"><col></colgroup>
+    <tr><th>Package</th><th>Version</th><th>Licence</th><th>Decision</th><th>Category</th><th>Reason and action</th></tr>
+    ${lic.slice(0, 1500).map(x => `<tr><td ${cell} class="mono small">${esc(x.package)}</td><td ${cell} class="small">${esc(x.version)}</td><td ${cell} class="mono small">${esc(x.expression)}${x.license_source === "package registry" ? '<div class="muted small">from registry</div>' : ""}</td><td ${cell}><span class="chip ${x.decision==="deny"?"bad":x.decision==="review"?"warn":"ok"}">${esc(x.decision)}</span></td><td ${cell} class="small">${licAnalysis(x)}</td><td ${cell} class="small">${esc(x.reason)}<div class="muted"><b>Obligations:</b> ${esc(x.obligations||"")}</div><div><b>Action:</b> ${esc(x.action||"")}</div></td></tr>`).join("")}</table></div>
+    <h4 style="margin-top:14px">Vulnerabilities</h4>${vul.length ? `<div style="overflow:auto"><table style="table-layout:fixed;width:100%;min-width:1000px"><colgroup><col style="width:8%"><col style="width:20%"><col style="width:14%"><col><col style="width:12%"></colgroup><tr><th>Severity</th><th>Component</th><th>Advisory</th><th>Title</th><th>Fixed in</th></tr>
+    ${vul.map(v => `<tr><td ${cell}><span class="chip ${v.severity==="critical"||v.severity==="high"?"bad":v.severity==="medium"?"warn":""}">${esc(v.severity)}</span></td><td ${cell} class="mono small">${esc(v.package)}@${esc(v.version)}</td><td ${cell} class="mono small">${esc(v.cve||v.advisory||"")}${v.kev?' <span class="chip bad">KEV</span>':""}</td><td ${cell} class="small">${esc(v.title)}<div class="muted">${esc(v.remediation||"")}</div></td><td ${cell} class="small">${esc(v.fixed_version||"no fix published")}</td></tr>`).join("")}</table></div>` : '<p class="muted">No known vulnerabilities for these component versions.</p>'}
+    <p class="muted small">Full mitigation steps for every vulnerability are in the Report and CSV.</p></div>`;
+  $("#sbDetail").scrollIntoView({behavior: "smooth"});
 };
 const LIC_CAT = {permissive: ["Permissive", "ok"], weak_copyleft: ["Weak copyleft", "warn"], strong_copyleft: ["Strong copyleft", "bad"], network_copyleft: ["Network copyleft", "bad"], unknown: ["Unknown / custom", "warn"], invalid: ["Invalid expression", "bad"]};
 function licAnalysis(x) {
@@ -1314,7 +1415,7 @@ VIEWS.repos = async () => {
   const scanCard = live ? `<div class="card" style="margin-bottom:14px">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><h3 style="margin:0">Scan a repository</h3>
       <div class="muted small">Paste the address of a repository on GitHub, GitLab, Bitbucket, Azure DevOps, AWS CodeCommit, Google Cloud or any Git server. RAT Flea DevSec downloads a read-only snapshot and runs every engine — code (SAST), open-source dependencies (SCA), secrets, Infrastructure as Code, pipeline posture, licences, AI components — and builds the SBOM. One full report per repository.</div></div>
-      ${canScan ? '<div style="display:flex;gap:8px"><button class="btn" id="rsImp">⇪ Import many</button><button class="btn pri" id="rsAdd">＋ Add repository</button></div>' : ""}</div>
+      <div style="display:flex;gap:8px">${MODE === "live" ? '<button class="btn" id="rsExp" title="One ZIP: a CSV of every repository and the latest full report of each">⇩ Export all</button>' : ""}${canScan ? '<button class="btn" id="rsImp">⇪ Import many</button><button class="btn pri" id="rsAdd">＋ Add repository</button>' : ""}</div></div>
     <div id="rsForm"></div>
     ${srcs.length ? `<table style="margin-top:12px"><tr><th>Repository</th><th>Status</th><th>Gate</th><th>Findings</th><th></th></tr>${srcs.map(x => `<tr>
       <td><b>${esc(x.name)}</b> <span class="chip">${esc({github: "GitHub", gitlab: "GitLab", bitbucket: "Bitbucket", azure: "Azure DevOps", codecommit: "AWS CodeCommit", gcp: "Google Cloud", git: "Git"}[x.provider] || x.provider)}</span> ${x.private ? '<span class="chip">private</span>' : ""}<div class="muted small mono">${esc(x.url)}${x.branch ? " · " + esc(x.branch) : ""}${x.last_commit ? " · " + esc(x.last_commit) : ""}</div></td>
@@ -1345,9 +1446,27 @@ VIEWS.repos = async () => {
   });
   document.querySelectorAll("[data-rscan]").forEach(b => b.onclick = async () => {
     try { await api(`/api/v1/repos/sources/${b.dataset.rscan}/scan`, {method: "POST"}); toast("Scan started"); VIEWS.repos(); } catch (e) { toast(e.message); } });
-  document.querySelectorAll("[data-rdel]").forEach(b => b.onclick = async () => {
-    if (!confirm(`Remove '${b.dataset.n}'? Its findings history is kept.`)) return;
-    try { await api(`/api/v1/repos/sources/${b.dataset.rdel}`, {method: "DELETE"}); toast("Removed"); VIEWS.repos(); } catch (e) { toast(e.message); } });
+  document.querySelectorAll("[data-rdel]").forEach(b => b.onclick = () => {
+    const box = document.createElement("div");
+    box.className = "card"; box.style.cssText = "position:fixed;inset:auto 0 0 0;margin:auto;top:30%;max-width:520px;z-index:99;box-shadow:0 10px 40px rgba(0,0,0,.35)";
+    box.innerHTML = `<h3>Remove ${esc(b.dataset.n)}</h3><p class="small">Choose what happens to the data from its scans.</p>
+      <label style="display:block;margin:8px 0"><input type="radio" name="rmMode" value="keep" checked> Remove the repository only, keep findings history and reports</label>
+      <label style="display:block;margin:8px 0"><input type="radio" name="rmMode" value="purge"> Remove the repository <b>and delete all its data</b>: findings, scan history, SBOM and reports (cannot be undone)</label>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button class="btn" id="rmNo">Cancel</button><button class="btn pri" id="rmYes">Remove</button></div>`;
+    document.body.appendChild(box);
+    box.querySelector("#rmNo").onclick = () => box.remove();
+    box.querySelector("#rmYes").onclick = async () => {
+      const purge = box.querySelector("input[name=rmMode]:checked").value === "purge";
+      if (purge && !confirm(`Delete all findings, SBOM and reports of '${b.dataset.n}'? This cannot be undone.`)) return;
+      box.remove();
+      try { await api(`/api/v1/repos/sources/${b.dataset.rdel}` + (purge ? "?purge=true" : ""), {method: "DELETE"}); toast(purge ? "Removed and data deleted" : "Removed"); VIEWS.repos(); } catch (e) { toast(e.message); }
+    };
+  });
+  if ($("#rsExp")) $("#rsExp").onclick = async () => {
+    const r = await fetch(API_BASE + "/api/v1/repos/sources/export", {credentials: "same-origin", headers: authHeaders("GET")});
+    if (!r.ok) return toast("Export failed: " + r.status);
+    const a = document.createElement("a"); a.href = URL.createObjectURL(await r.blob()); a.download = "repositories-" + new Date().toISOString().slice(0, 10) + ".zip"; a.click();
+  };
   clearTimeout(window._rPoll);
   if (srcs.some(x => x.status === "running" || x.status === "queued") && !($("#rsForm") && $("#rsForm").innerHTML))
     window._rPoll = setTimeout(() => { if (location.hash === "#repos") VIEWS.repos(); }, 4000);
@@ -1946,10 +2065,13 @@ function renderProductDemo() {
   $("#demoNext").textContent = productDemoStep === PRODUCT_DEMO.length - 1 ? "Finish" : "Next →";
 }
 function openProductDemo() {
-  productDemoStep = 0;
-  renderProductDemo();
-  $("#productDemo").showModal();
-  $("#demoNext").focus();
+  // A walk through the real screens of this console (live or sample data). The sample live-scan step is skipped
+  // against a live tenant, and so is any step whose screen is not in this edition's navigation.
+  try { $("#productDemo").open && $("#productDemo").close(); } catch (e) {}
+  document.body.classList.remove("nav-open");
+  const views = new Set(NAV.flatMap(([, items]) => items.map(([id]) => id)).concat(["welcome"]));
+  TOUR.steps = STEPS.filter(st => views.has(st.view) && !(MODE === "live" && st.view === "live"));
+  TOUR.i = 0; showStep();
 }
 $("#demoBack").onclick = () => { if (productDemoStep > 0) { productDemoStep--; renderProductDemo(); } };
 $("#demoNext").onclick = () => {
@@ -1965,26 +2087,30 @@ const STEPS = [
   {view: "live", sel: ".hero", t: "Scan a real repository, live", d: "RAT Flea DevSec runs seven engines against a real multi-language repository: the same single command that runs in any CI system.", say: "Nothing here is pre-recorded. Watch the gate decide.", act: () => runLive()},
   {view: "live", sel: "#liveRes", t: "The gate blocks only real risk", d: "Live cloud keys, Log4Shell and Spring4Shell (both CISA KEV) and a poisoned-pipeline path in the GitHub workflow block the merge; everything else becomes a warning with an owner and an SLA.", say: "Exit code 1: the merge is blocked, SARIF and SBOM are published, and the developer knows exactly why.", wait: 600},
   {view: "findings", sel: "#drawer .bd .grid", wait: 1100, t: "Every score is explainable", d: "Open any finding to see the score breakdown, blast radius across repositories, compliance mapping and one-click remediation.", say: "No black box: CVSS, exploit probability, KEV, reachability and exposure, each with its weight.", act: () => setTimeout(() => { const r = document.querySelector("tr[data-id]"); r && openFinding(r.dataset.id); }, 500)},
+  {view: "repos", sel: "#view .card", t: "Scan any repository", d: "Paste a GitHub, GitLab, Bitbucket, Azure DevOps or any Git address. Code, dependencies, secrets, infrastructure as code and pipelines are scanned together; one click exports every repository's results.", say: "No agent and no pipeline change to start: paste a link and get a full assessment."},
+  {view: "licenses", sel: "#view .grid", t: "Licence obligations, per package", d: "Every component's licence is checked against policy with the reason, the obligations and the action to take. Missing licences are looked up in the package registry.", say: "Legal sees exactly which packages need a decision and why."},
+  {view: "sboms", sel: "#view .card", t: "Bring your own SBOM", d: "Upload CycloneDX or SPDX files, or a ZIP of them, as one project and get a licence and vulnerability report with mitigation steps, without touching the dashboard.", say: "Supplier SBOMs get the same scrutiny as your own code."},
   {view: "pipelines", sel: "#plPosture", t: "Your pipeline is an attack surface", d: "RAT Flea DevSec analyses GitHub Actions, GitLab CI, Azure Pipelines and Jenkins against the OWASP Top 10 CI/CD risks: injection, unpinned actions, over-privileged tokens, unsigned artifacts.", say: "Your pipeline holds your secrets and signs your releases. It deserves the same scrutiny as the code it ships."},
   {view: "supply", sel: "#scVerify", t: "Only trusted artifacts reach production", d: "Keyless signing, SLSA provenance and SBOM attestation at build; verified again at Kubernetes admission.", say: "If it wasn't built by your pipeline and passed your policy, it doesn't run."},
   {view: "compliance", sel: "#coKpis", t: "Audit evidence, continuously", d: "Findings map automatically to PCI DSS, ISO 27001, SOC 2, NIST SSDF, DORA, EU CRA and RBI/SEBI controls, and export as evidence packs.", say: "Audit preparation becomes a report, not a project."},
   {view: "why", sel: ".hero", t: "Why RAT Flea DevSec", d: "Code, pipeline and artifact in one platform, explainable prioritisation, sovereign deployment options and an open ecosystem.", say: "Proposal: a 30-day proof of value on three to five repositories, measured on P0 count, MTTR and pipeline posture."}];
-const TOUR = {i: -1, view: null};
+const TOUR = {i: -1, view: null, steps: null};
+const tourSteps = () => TOUR.steps || STEPS;
 function clearHL() { document.querySelectorAll(".tour-hl").forEach(e => e.classList.remove("tour-hl")); }
-function startTour() { TOUR.i = 0; showStep(); }
-function endTour() { TOUR.i = -1; TOUR.view = null; clearHL(); $("#tour").classList.remove("open"); }
+function startTour() { TOUR.steps = null; TOUR.i = 0; showStep(); }
+function endTour() { TOUR.i = -1; TOUR.view = null; TOUR.steps = null; clearHL(); $("#tour").classList.remove("open"); }
 async function showStep() {
-  const st = STEPS[TOUR.i]; TOUR.view = st.view; clearHL();
+  const ST = tourSteps(), st = ST[TOUR.i]; TOUR.view = st.view; clearHL();
   if ((location.hash || "#welcome").slice(1) !== st.view) { location.hash = st.view; await new Promise(r => setTimeout(r, 500)); }
   else closeAll();
-  $("#tour").innerHTML = `<div class="prog"><i style="width:${(TOUR.i + 1) / STEPS.length * 100}%"></i></div><div class="hd">Guided demo · step ${TOUR.i + 1} of ${STEPS.length}<span class="sp"></span><button class="btn sm" onclick="endTour()">✕</button></div>
+  $("#tour").innerHTML = `<div class="prog"><i style="width:${(TOUR.i + 1) / ST.length * 100}%"></i></div><div class="hd">Product demo · step ${TOUR.i + 1} of ${ST.length}<span class="sp"></span><button class="btn sm" onclick="endTour()">✕</button></div>
    <div class="bd"><h4>${st.t}</h4><p>${st.d}</p><div class="say"><span class="muted small">Talk track</span><br>“${st.say}”</div></div>
-   <div class="ft"><button class="btn sm" onclick="stepBy(-1)" ${TOUR.i === 0 ? "disabled" : ""}>← Back</button><span class="sp"></span><span class="muted small" style="align-self:center">← → keys</span><button class="btn sm pri" onclick="stepBy(1)">${TOUR.i === STEPS.length - 1 ? "Finish" : "Next →"}</button></div>`;
+   <div class="ft"><button class="btn sm" onclick="stepBy(-1)" ${TOUR.i === 0 ? "disabled" : ""}>← Back</button><span class="sp"></span><span class="muted small" style="align-self:center">← → keys</span><button class="btn sm pri" onclick="stepBy(1)">${TOUR.i === ST.length - 1 ? "Finish" : "Next →"}</button></div>`;
   $("#tour").classList.add("open");
   if (st.act) st.act();
   setTimeout(() => { const el = document.querySelector(st.sel); if (el) { el.classList.add("tour-hl"); el.scrollIntoView({behavior: "smooth", block: "center"}); } }, st.wait || 250);
 }
-function stepBy(d) { const n = TOUR.i + d; if (n >= STEPS.length) { endTour(); toast("Demo complete — thank you"); return; } if (n >= 0) { TOUR.i = n; showStep(); } }
+function stepBy(d) { const n = TOUR.i + d; if (n >= tourSteps().length) { endTour(); toast("Demo complete — thank you"); return; } if (n >= 0) { TOUR.i = n; showStep(); } }
 document.addEventListener("keydown", e => { if (TOUR.i < 0 || ["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement.tagName)) return; if (e.key === "ArrowRight") stepBy(1); if (e.key === "ArrowLeft") stepBy(-1); });
 
 /* ───────── utils ───────── */

@@ -13,7 +13,11 @@ import json
 import os
 import re
 import shutil
+import logging
+import socket
+import threading
 import sys
+import urllib.parse
 import uuid
 from collections import Counter, defaultdict
 from dataclasses import dataclass
@@ -499,6 +503,22 @@ def _mitigation_cells(g: dict, f: dict) -> list:
             f.get("occurrences") or 1, "; ".join(locs)[:2000]]
 
 
+@app.get("/api/v1/findings/remediation-plan")
+def findings_remediation_plan(status: str = "open", repo: str | None = None, engine: str | None = None,
+                              c: Ctx = Depends(ctx("findings:read"))):
+    """HTML remediation plan: the findings grouped into fix items with numbered steps, verification and locations."""
+    from fastapi.responses import HTMLResponse
+    from myelin_engine import mitigation as MIT
+    _expire(c)
+    fs = [f for f in c.store.findings() if (status == "all" or f.get("status") == status) and (not repo or f.get("repo") == repo)
+          and (not engine or f.get("engine") == engine)]
+    scope = " · ".join(x for x in [f"repository {repo}" if repo else "all repositories",
+                                   f"engine {engine}" if engine else "", f"status {status}"] if x)
+    return HTMLResponse(MIT.plan_html(fs, c.store.tenant().get("name", ""), scope),
+                        headers={"Content-Disposition": 'inline; filename="remediation-plan.html"',
+                                 "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'"})
+
+
 @app.get("/api/v1/findings/export")
 def findings_export(status: str = "open", repo: str | None = None, c: Ctx = Depends(ctx("findings:read"))):
     """Findings as CSV (opens in Excel), with CVE links and triage decisions."""
@@ -942,6 +962,45 @@ def sbom(repo: str, c: Ctx = Depends(ctx("findings:read"))):
     return _public_sbom(doc)
 
 
+_LIC_CACHE: dict = {}
+
+
+def _resolve_unknown_licences(components: list[dict], budget: int = 150) -> None:
+    """Look up licences the SBOM does not declare (package registry metadata, Maven parent POMs), at most `budget`
+    lookups per report and cached per process. Offline deployments skip the lookup."""
+    import time as _t
+    from myelin_engine import vulndb
+    if vulndb.offline():
+        return
+    deadline = _t.monotonic() + 20
+    for comp in components:
+        if str(comp.get("license") or "unknown").lower() not in ("unknown", "", "noassertion"):
+            continue
+        purl = str(comp.get("purl") or "")
+        m = re.match(r"pkg:([a-z]+)/(.+)@([^?#]+)", purl)
+        if not m:
+            continue
+        eco = {"pypi": "pypi", "npm": "npm", "maven": "maven", "nuget": "nuget", "composer": "composer",
+               "gem": "gem", "cargo": "cargo"}.get(m.group(1))
+        if not eco:
+            continue
+        name = urllib.parse.unquote(m.group(2))
+        if eco == "maven":
+            name = name.replace("/", ":", 1)
+        key = (eco, name, m.group(3))
+        if key not in _LIC_CACHE:
+            if budget <= 0 or _t.monotonic() > deadline:
+                continue
+            budget -= 1
+            try:
+                _LIC_CACHE[key] = vulndb.licence({"ecosystem": eco, "name": name, "version": m.group(3)}) or ""
+            except Exception:
+                _LIC_CACHE[key] = ""
+        if _LIC_CACHE[key]:
+            comp["license"] = _LIC_CACHE[key]
+            comp["license_source"] = "package registry"
+
+
 @app.get("/api/v1/licenses/report", dependencies=[Depends(feature("license"))])
 def licence_policy_report(repo: str | None = None, c: Ctx = Depends(ctx("findings:read"))):
     """Evaluate retained tenant SBOM licence evidence against the platform default policy.
@@ -951,6 +1010,14 @@ def licence_policy_report(repo: str | None = None, c: Ctx = Depends(ctx("finding
     from myelin_engine.license_policy import evaluate_components
 
     repositories = c.store.repos()
+    if repo and repo.startswith("SBOM: "):
+        rec = c.store.sbom_project(repo[6:]) or {}
+        rows = [{**x, "repo": repo, "policy_version": "default-1"} for x in rec.get("licences") or []]
+        counts = {k: sum(1 for i in rows if i["decision"] == k) for k in ("allow", "review", "deny")}
+        return {"policy_version": "default-1", "policy_versions": ["default-1"], "legal_advice": False,
+                "repositories": [repo], "all_repositories": sorted(str(x.get("name")) for x in repositories if x.get("name"))
+                + ["SBOM: " + str(p.get("name")) for p in c.store.sbom_projects()],
+                "components_evaluated": len(rows), "counts": counts, "missing_sbom_repositories": [], "items": rows[:5000]}
     selected = [repo] if repo else [str(x.get("name")) for x in repositories if x.get("name")]
     rows = []
     missing_sboms = []
@@ -970,6 +1037,7 @@ def licence_policy_report(repo: str | None = None, c: Ctx = Depends(ctx("finding
                           or first.get("expression") or license_object.get("id")
                           or license_object.get("name") or "unknown")
             components.append({**component, "license": expression})
+        _resolve_unknown_licences(components)
         effective_policy = _effective_policy(c.store, repo=repository)
         licence_policy = effective_policy.get("licence_policy")
         for item in evaluate_components(components, licence_policy):
@@ -980,6 +1048,8 @@ def licence_policy_report(repo: str | None = None, c: Ctx = Depends(ctx("finding
     policy_versions = sorted({str(item.get("policy_version") or "default-1") for item in rows})
     return {"policy_version": policy_versions[0] if len(policy_versions) == 1 else "mixed",
             "policy_versions": policy_versions or ["default-1"], "legal_advice": False, "repositories": selected,
+            "all_repositories": sorted(str(x.get("name")) for x in repositories if x.get("name"))
+            + ["SBOM: " + str(p.get("name")) for p in c.store.sbom_projects()],
             "components_evaluated": len(rows), "counts": counts,
             "missing_sbom_repositories": missing_sboms, "items": rows[:5000]}
 
@@ -2046,14 +2116,137 @@ def sources_sbom(sid: str, c: Ctx = Depends(ctx("findings:read"))):
 
 
 @app.delete("/api/v1/repos/sources/{sid}", status_code=204)
-def sources_delete(sid: str, c: Ctx = Depends(ctx("scans:run"))):
+def sources_delete(sid: str, purge: bool = False, c: Ctx = Depends(ctx("scans:run"))):
+    """Remove a repository. purge=true also deletes its findings, scan history, SBOMs and reports."""
     src = _rs(lambda: SOURCES.get(c.p.tenant_id, sid))
     if src["status"] == "running" and not RS.is_stale(src):
         raise HTTPException(409, "a scan is in progress")
     _rs(lambda: SOURCES.delete(c.p.tenant_id, sid))
     if ENTERPRISE and src.get("credential_ref"):
         sm.forget(src["credential_ref"])
+    if purge:
+        counts = c.store.purge_repo(src["name"])
+        c.store.audit_event("repo.source.purged", c.p.actor,
+                            {"text": f"Repository '{src['name']}' removed and its data deleted", **counts})
+        return
     c.store.audit_event("repo.source.removed", c.p.actor, {"text": f"Repository '{src['name']}' removed (findings history kept)"})
+
+
+@app.get("/api/v1/repos/sources/export")
+def sources_export(c: Ctx = Depends(ctx("findings:read"))):
+    """Every repository with its scan status and finding counts, plus each one's latest report, in one ZIP."""
+    import io
+    import zipfile as _zip
+    from fastapi.responses import Response
+    rows = _rs(lambda: SOURCES.list(c.p.tenant_id))
+    buf = io.BytesIO()
+    q = lambda v: '"' + str("" if v is None else v).replace('"', '""') + '"'  # noqa: E731
+    lines = [",".join(["repository", "url", "provider", "branch", "status", "last_scan", "commit", "gate", "critical",
+                       "high", "medium", "low", "info", "total_findings", "components", "areas_assessed", "error"])]
+    tenant_name = c.store.tenant().get("name", "")
+    with _zip.ZipFile(buf, "w", _zip.ZIP_DEFLATED) as z:
+        for src in rows:
+            pub = RS.public(src)
+            summ = pub.get("summary") or {}
+            sev = summ.get("by_severity") or {}
+            lines.append(",".join(q(x) for x in [
+                src.get("name"), src.get("url"), src.get("provider"), src.get("branch") or "default", pub.get("status"),
+                pub.get("last_run_at"), (src.get("last_commit") or "")[:12], summ.get("decision"),
+                sev.get("critical", 0), sev.get("high", 0), sev.get("medium", 0), sev.get("low", 0), sev.get("info", 0),
+                sum(sev.values()), summ.get("components", 0), " ".join(summ.get("assessed") or []), pub.get("last_error")]))
+            if src.get("last_result"):
+                try:
+                    html = RS.render_report(src, tenant_name)
+                    safe = re.sub(r"[^A-Za-z0-9._-]+", "_", str(src.get("name") or src["id"]))[:80]
+                    z.writestr(f"reports/{safe}.html", html)
+                except Exception:
+                    continue
+        z.writestr("repositories.csv", "\r\n".join(lines))
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d")
+    return Response(buf.getvalue(), media_type="application/zip",
+                    headers={"Content-Disposition": f'attachment; filename="repositories-{stamp}.zip"'})
+
+
+# ─── SBOM projects: upload SBOM files (or a ZIP of them) for a licence and vulnerability report ─────────────────
+class SbomFileIn(BaseModel):
+    filename: str = Field(min_length=1, max_length=300)
+    content_b64: str = Field(min_length=4, max_length=140_000_000)
+
+
+class SbomProjectIn(BaseModel):
+    name: str = Field(min_length=1, max_length=120, pattern=r"^[A-Za-z0-9][A-Za-z0-9 ._()-]{0,119}$")
+    files: list[SbomFileIn] = Field(min_length=1, max_length=200)
+    replace: bool = True
+
+
+def _sbom_project_or_404(c, name):
+    rec = c.store.sbom_project(name)
+    if not rec:
+        raise HTTPException(404, "SBOM project not found")
+    return rec
+
+
+@app.post("/api/v1/sbom-projects", status_code=201)
+def sbom_project_upload(body: SbomProjectIn, c: Ctx = Depends(ctx("scans:write"))):
+    """Analyse uploaded SBOMs as one project. The result is kept as its own report: it does not create findings,
+    repositories or pipeline runs, so the security dashboard is not affected."""
+    from myelin_engine import sbom_analysis
+    if not body.replace and c.store.sbom_project(body.name):
+        raise HTTPException(409, "an SBOM project with this name exists")
+    files = []
+    for f in body.files:
+        try:
+            files.append((f.filename, base64.b64decode(f.content_b64, validate=True)))
+        except (ValueError, TypeError):
+            raise HTTPException(422, f"{f.filename}: content is not valid base64") from None
+    policy = (_effective_policy(c.store, repo=None) or {}).get("licence_policy")
+    try:
+        rec = sbom_analysis.analyse(body.name, files, policy)
+    except sbom_analysis.SbomError as e:
+        raise HTTPException(422, str(e)) from None
+    rec["uploaded_by"] = c.p.actor
+    rec["uploaded_at"] = datetime.now(timezone.utc).isoformat()
+    c.store.save_sbom_project(body.name, rec, c.p.actor)
+    c.store.audit_event("sbom.project.analysed", c.p.actor,
+                        {"text": f"SBOM project '{body.name}': {rec['components']} components from {len(rec['files'])} file(s)",
+                         "components": rec["components"]})
+    return {k: v for k, v in rec.items() if k not in ("sbom",)}
+
+
+@app.get("/api/v1/sbom-projects")
+def sbom_project_list(c: Ctx = Depends(ctx("findings:read"))):
+    return {"items": [{k: v for k, v in r.items() if k not in ("licences", "vulnerabilities", "sbom")}
+                      for r in c.store.sbom_projects()]}
+
+
+@app.get("/api/v1/sbom-projects/{name}")
+def sbom_project_get(name: str, c: Ctx = Depends(ctx("findings:read"))):
+    rec = _sbom_project_or_404(c, name)
+    return {k: v for k, v in rec.items() if k != "sbom"}
+
+
+@app.get("/api/v1/sbom-projects/{name}/report")
+def sbom_project_report(name: str, format: str = Query("html", pattern="^(html|csv|cyclonedx)$"),
+                        c: Ctx = Depends(ctx("findings:read"))):
+    from fastapi.responses import HTMLResponse, Response
+    from myelin_engine import sbom_analysis
+    rec = _sbom_project_or_404(c, name)
+    safe = re.sub(r"[^A-Za-z0-9._-]+", "_", name)
+    if format == "csv":
+        return Response(sbom_analysis.to_csv(rec), media_type="text/csv",
+                        headers={"Content-Disposition": f'attachment; filename="sbom-report-{safe}.csv"'})
+    if format == "cyclonedx":
+        return JSONResponse(rec.get("sbom") or {}, headers={"Content-Disposition": f'attachment; filename="{safe}.cdx.json"'})
+    return HTMLResponse(sbom_analysis.render_html(rec, c.store.tenant().get("name", "")),
+                        headers={"Content-Disposition": f'inline; filename="sbom-report-{safe}.html"',
+                                 "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'"})
+
+
+@app.delete("/api/v1/sbom-projects/{name}", status_code=204)
+def sbom_project_delete(name: str, c: Ctx = Depends(ctx("scans:write"))):
+    if not c.store.delete_sbom_project(name):
+        raise HTTPException(404, "SBOM project not found")
+    c.store.audit_event("sbom.project.deleted", c.p.actor, {"text": f"SBOM project '{name}' and its report deleted"})
 
 
 # ─── ticketing (Jira, ServiceNow, Azure Boards, webhooks) ─────────────────────
@@ -2310,6 +2503,52 @@ def _feed_store(tenant_id):
     return PgStore(DB_URL, tenant_id) if ENTERPRISE else DEMO
 
 
+def drain_advisory_jobs(store, tenant_id, worker_id, lease_seconds=900, max_attempts=5, stop=lambda: False) -> int:
+    """Claim and run this tenant's queued advisory jobs until none are left. Shared by the worker and the API."""
+    done = 0
+    while not stop():
+        job = store.claim_import_job(worker_id, lease_seconds, max_attempts)
+        if not job:
+            break
+        source = str(job.get("source") or "").upper()
+        if job.get("kind") != "advisory_sync" or source not in advisory_feeds.SOURCES:
+            store.update_import_job(job["id"], "failed", error="unsupported worker job kind or source")
+            continue
+        targets = (job.get("counters") or {}).get("targets") or []
+        _run_advisory_feed_sync(job["id"], source, tenant_id, targets if source == "OSV" else [],
+                                targets if source != "OSV" else [], job.get("requested_by") or "myelin-worker",
+                                scope=job.get("counters"))
+        done += 1
+    return done
+
+
+_INLINE_DRAINS: set = set()
+
+
+def _kick_advisory_jobs(tenant_id):
+    """Run queued advisory jobs in the API process, so sync works without a separately deployed worker.
+
+    Jobs are claimed under the same database lease as the worker, so running both is safe. Set
+    MYELIN_ADVISORY_INLINE=0 when a dedicated worker should do all synchronization."""
+    if os.getenv("MYELIN_ADVISORY_INLINE", "1").lower() in ("0", "false", "no"):
+        return
+    key = str(tenant_id)
+    if key in _INLINE_DRAINS:
+        return
+    _INLINE_DRAINS.add(key)
+
+    def run():
+        try:
+            store = _feed_store(tenant_id)
+            drain_advisory_jobs(store, tenant_id, f"api-{socket.gethostname()}-{os.getpid()}",
+                                settings.worker_lease_seconds, settings.worker_max_attempts)
+        except Exception:
+            logging.getLogger("myelin.advisory").exception("inline advisory sync failed")
+        finally:
+            _INLINE_DRAINS.discard(key)
+    threading.Thread(target=run, name="advisory-sync", daemon=True).start()
+
+
 def _run_advisory_feed_sync(job_id, source, tenant_id, purls, cves, actor, *, scope=None):
     """Fixed-host, bounded advisory synchronization. No user-supplied URLs are fetched."""
     import httpx, time
@@ -2440,6 +2679,7 @@ def start_advisory_sync(source: str, body: AdvisorySyncIn = AdvisorySyncIn(),
         "requested_by": c.p.actor, "counters": {"targets": targets, "requested": body.limit if changes else len(targets), **scope}, "error": "", "created_at": datetime.now(timezone.utc).isoformat(),
         "started_at": None, "finished_at": None}
     c.store.create_import_job(item)
+    _kick_advisory_jobs(c.p.tenant_id if ENTERPRISE else None)
     return {"job": item, "note": "Job persisted to the tenant queue. A separately deployed MYELIN worker claims it using a database lease, retries after worker interruption and records the outcome. Configure MYELIN_WORKER_TENANT_IDS, NVD_API_KEY and GITHUB_ADVISORY_TOKEN in the worker environment."}
 
 
@@ -2457,6 +2697,7 @@ def retry_advisory_sync(job_id: str, c: Ctx = Depends(ctx("scans:write"))):
         c.store.requeue_import_job(job_id, c.p.actor)
     except ValueError as exc:
         raise HTTPException(409, str(exc)) from None
+    _kick_advisory_jobs(c.p.tenant_id if ENTERPRISE else None)
     return {"job_id": job_id, "status": "queued", "note": "The durable worker will claim this job."}
 
 
@@ -2553,7 +2794,9 @@ def vulnerability_intelligence(c: Ctx = Depends(ctx("findings:read"))):
                                   ("NVD", "NVD", c.store.advisory_records("NVD", limit=5000)), ("GitHub Advisory Database", "GITHUB", github_records),
                                   ("Red Hat CSAF", "REDHAT", c.store.advisory_records("REDHAT", limit=5000))):
         latest = next((j for j in jobs if j.get("source") == source and j.get("status") == "succeeded"), None)
-        feeds.append({"name": name, "state": "synced" if records else ("synced_empty" if latest else ("failed" if any(j.get("source") == source and j.get("status") == "failed" for j in jobs) else "not_configured")),
+        feeds.append({"name": name, "state": "synced" if records else ("synced_empty" if latest else ("failed" if any(j.get("source") == source and j.get("status") == "failed" for j in jobs)
+                                   else "running" if any(j.get("source") == source and j.get("status") in ("queued", "running") for j in jobs)
+                                   else "not_synced")),
             "records": len(records), "last_successful_sync": latest.get("finished_at") if latest else None})
     feeds.append({"name": "CSAF/VEX", "state": "source_documents", "records": len(c.store.intelligence_documents()), "last_successful_sync": None})
     return {"source": "tenant_findings", "generated_at": datetime.now(timezone.utc).isoformat(),

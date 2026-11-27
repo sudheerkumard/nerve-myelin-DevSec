@@ -36,10 +36,11 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-MAX_ARCHIVE = 300 * 1024 * 1024
-MAX_EXTRACTED = 1024 * 1024 * 1024
-MAX_FILES = 100_000
-GIT_TIMEOUT = 600
+MAX_ARCHIVE = int(os.environ.get("MYELIN_SCM_MAX_ARCHIVE_MB", "500")) * 1024 * 1024
+MAX_EXTRACTED = int(os.environ.get("MYELIN_SCM_MAX_EXTRACTED_MB", "3072")) * 1024 * 1024
+MAX_FILES = int(os.environ.get("MYELIN_SCM_MAX_FILES", "250000"))
+GIT_TIMEOUT = int(os.environ.get("MYELIN_SCM_CLONE_TIMEOUT", "1800"))
+READ_TIMEOUT = int(os.environ.get("MYELIN_SCM_READ_TIMEOUT", "300"))     # seconds without data before giving up
 
 PROVIDERS = {
     "github": "GitHub", "gitlab": "GitLab", "bitbucket": "Bitbucket", "azure": "Azure DevOps Repos",
@@ -148,8 +149,15 @@ def _guard_host(host):
 def _http(url, headers, limit=MAX_ARCHIVE, want_json=False):
     req = urllib.request.Request(url, headers={"User-Agent": "RAT-Flea-DevSec", **headers})
     try:
-        with urllib.request.urlopen(req, timeout=60) as r:  # myelin:ignore[NM-SAST-010] -- provider API host fixed by detect()
-            data = r.read(limit + 1)
+        with urllib.request.urlopen(req, timeout=READ_TIMEOUT) as r:  # myelin:ignore[NM-SAST-010] -- provider API host fixed by detect()
+            chunks, got = [], 0
+            while got <= limit:
+                chunk = r.read(1024 * 1024)
+                if not chunk:
+                    break
+                chunks.append(chunk)
+                got += len(chunk)
+            data = b"".join(chunks)
     except urllib.error.HTTPError as e:
         if e.code in (401, 403, 404):
             raise ScmError(f"the provider answered HTTP {e.code}: the repository or branch does not exist, or it is private and "
@@ -158,7 +166,7 @@ def _http(url, headers, limit=MAX_ARCHIVE, want_json=False):
     except (urllib.error.URLError, OSError) as e:
         raise ScmError(f"cannot reach the provider: {getattr(e, 'reason', e)}") from None
     if len(data) > limit:
-        raise ScmError(f"the repository archive is larger than {limit // (1024 * 1024)} MB")
+        raise ScmError(f"the repository archive is larger than {limit // (1024 * 1024)} MB (MYELIN_SCM_MAX_ARCHIVE_MB)")
     return json.loads(data) if want_json else data
 
 
@@ -322,7 +330,7 @@ def _git(info, branch, token, dest):
         try:
             cp = subprocess.run(base + depth + ["--", info["url"], work], env=env, capture_output=True, text=True, timeout=GIT_TIMEOUT)
         except subprocess.TimeoutExpired:
-            raise ScmError("cloning took longer than 10 minutes") from None
+            raise ScmError(f"cloning took longer than {GIT_TIMEOUT // 60} minutes (MYELIN_SCM_CLONE_TIMEOUT)") from None
         if cp.returncode == 0:
             break
         last = (cp.stderr or "").strip().splitlines()[-1:] or ["clone failed"]
@@ -338,7 +346,7 @@ def _git(info, branch, token, dest):
     commit = subprocess.run(["git", "-C", work, "rev-parse", "HEAD"], env=env, capture_output=True, text=True).stdout.strip()
     size = sum(f.stat().st_size for f in Path(work).rglob("*") if f.is_file() and ".git" not in f.parts)
     if size > MAX_EXTRACTED:
-        raise ScmError("the repository is larger than 1 GB")
+        raise ScmError(f"the repository is larger than {MAX_EXTRACTED // (1024 * 1024)} MB (MYELIN_SCM_MAX_EXTRACTED_MB)")
     shutil.rmtree(os.path.join(work, ".git"), ignore_errors=True)
     shutil.rmtree(home, ignore_errors=True)
     return work, commit
@@ -353,7 +361,18 @@ def fetch(url: str, provider: str | None, branch: str | None, token: str | None,
     if info["provider"] in ("github", "gitlab") and info["host"] not in ("github.com", "gitlab.com"):
         _guard_host(info["host"])                                              # GitHub Enterprise / self-managed GitLab
     req_url, headers, kind = _archive_request(info, branch, token)
-    data = _http(req_url, {k: v for k, v in headers.items() if v})
+    try:
+        data = _http(req_url, {k: v for k, v in headers.items() if v})
+    except ScmError as e:
+        # Very large repositories: the provider can take minutes to build the archive, or it exceeds the size limit.
+        # A shallow git clone streams the same snapshot and is resumable by the provider's git service.
+        if not re.search(r"timed out|larger than|reach the provider|HTTP 5\d\d", str(e)) or not shutil.which("git") \
+                or not info.get("url"):
+            raise
+        try:
+            return _git(info, branch, token, dest)
+        except ScmError as g:
+            raise ScmError(f"{e}; the git clone fallback also failed: {g}") from None
     is_zip, is_gz = data[:4] == b"PK\x03\x04", data[:2] == b"\x1f\x8b"
     if (kind == "zip" and not is_zip) or (kind == "tar" and not is_gz and data[257:262] != b"ustar"):
         if data.lstrip()[:15].lower().startswith((b"<!doctype", b"<html")):

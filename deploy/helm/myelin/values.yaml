@@ -4,7 +4,7 @@
 
 image:
   repository: acr.example.io/nerve/myelin
-  tag: "1.6.0"
+  tag: "1.6.1"
   digest: ""                 # sha256:... — required for admission-verified (signed) deploys
   pullPolicy: IfNotPresent
 imagePullSecrets: []
@@ -95,7 +95,7 @@ ingress:
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/proxy-body-size: "25m"
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
     nginx.ingress.kubernetes.io/limit-rps: "50"
     nginx.ingress.kubernetes.io/ssl-protocols: "TLSv1.2 TLSv1.3"
 

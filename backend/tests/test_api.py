@@ -99,7 +99,7 @@ def test_vulnerability_intelligence_aggregates_existing_evidence_without_claimin
     assert d["source"] == "tenant_findings"
     assert d["summary"]["unique_cves"] > 0
     feeds = {x["name"]: x["state"] for x in d["advisory_feeds"]}
-    assert all(feeds[name] == "not_configured" for name in ("OSV", "CISA KEV", "EPSS", "NVD", "GitHub Advisory Database"))
+    assert all(feeds[name] == "not_synced" for name in ("OSV", "CISA KEV", "EPSS", "NVD", "GitHub Advisory Database"))
     assert feeds["CSAF/VEX"] == "source_documents"
     assert any(x["kev"] for x in d["items"])
     assert all(isinstance(x["repositories"], list) for x in d["items"])

@@ -290,3 +290,54 @@ def guidance(f: dict) -> dict:
 def as_text(f: dict) -> str:
     g = guidance(f)
     return " ".join(f"{i}. {s}" for i, s in enumerate(g["steps"], 1))
+
+
+def plan_html(findings: list[dict], organisation: str = "", scope: str = "") -> str:
+    """A remediation plan: findings grouped into fix items (same rule and package/secret), ordered by priority,
+    each with the numbered steps, how to verify and every affected location."""
+    import html
+    import time
+    from collections import OrderedDict
+    e = lambda x: html.escape("" if x is None else str(x), quote=True)  # noqa: E731
+    pri = {"P0": 0, "P1": 1, "P2": 2, "P3": 3, "P4": 4}
+    sev = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
+    fs = sorted(findings, key=lambda f: (pri.get(f.get("priority"), 5), sev.get(f.get("severity"), 5), -(f.get("mrs") or 0)))
+    groups: OrderedDict = OrderedDict()
+    for f in fs:
+        key = (f.get("engine"), f.get("rule_id"), f.get("package") or f.get("secret_id") or f.get("title"),
+               f.get("fixed_version") if f.get("engine") in ("sca", "container") else None)
+        groups.setdefault(key, []).append(f)
+    items = []
+    for n, (key, gs) in enumerate(groups.items(), 1):
+        f = gs[0]
+        g = guidance(f)
+        repos = sorted({x.get("repo") or "" for x in gs})
+        locs = []
+        for x in gs[:40]:
+            loc = f"{x.get('repo')}: {x.get('file') or x.get('package') or ''}" + (f":{x['line']}" if x.get("line") else "")
+            locs.append(f"<li class=mono>{e(loc)}</li>")
+        more = f"<li>… and {len(gs) - 40} more</li>" if len(gs) > 40 else ""
+        steps = "".join(f"<li>{e(s)}</li>" for s in g["steps"])
+        items.append(f"""<section class=item><h3><span class="chip {e(f.get('severity'))}">{e(f.get('severity'))}</span>
+{e(f.get('priority') or '')} · {n}. {e(f.get('title'))}</h3>
+<div class=meta>{e(f.get('engine'))} · rule {e(f.get('rule_id'))}{' · ' + e(f.get('cve')) if f.get('cve') else ''}
+{' · CWE ' + e(f.get('cwe')) if f.get('cwe') else ''} · {len(gs)} occurrence(s) in {len(repos)} repositor{'y' if len(repos) == 1 else 'ies'}
+{' · fix within ' + e(f.get('sla_days')) + ' days' if f.get('sla_days') else ''}</div>
+<p><b>What to do:</b> {e(g['summary'])}</p><ol>{steps}</ol>
+<p><b>Verify:</b> {e(g['verify'])} · <a href="{e(g['reference'])}">guidance</a></p>
+<details><summary>Affected locations ({len(gs)})</summary><ul>{''.join(locs)}{more}</ul></details></section>""")
+    counts = {k: sum(1 for f in fs if f.get("priority") == k) for k in ("P0", "P1", "P2", "P3")}
+    gen = time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime())
+    return f"""<!DOCTYPE html><html lang=en><head><meta charset=utf-8><title>Remediation plan</title><style>
+body{{font:13px/1.5 system-ui,Segoe UI,Arial,sans-serif;color:#0f172a;margin:28px;max-width:1100px}}h1{{font-size:22px;margin:0}}
+.item{{border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;margin:12px 0;break-inside:avoid}}h3{{font-size:15px;margin:0 0 4px}}
+.meta{{color:#64748b;font-size:12px}}.mono{{font-family:ui-monospace,Consolas,monospace;font-size:12px}}ol{{margin:6px 0;padding-left:20px}}
+.chip{{display:inline-block;padding:0 8px;border-radius:10px;font-size:11px;border:1px solid #cbd5e1;text-transform:uppercase}}
+.critical,.high{{background:#fef2f2;color:#b91c1c}}.medium{{background:#fffbeb;color:#b45309}}.low,.info{{background:#f1f5f9}}
+.kpis{{display:flex;gap:10px;margin:12px 0}}.kpis div{{border:1px solid #e2e8f0;border-radius:8px;padding:8px 14px}}.kpis b{{font-size:20px;display:block}}
+</style></head><body><h1>Remediation plan</h1><div class=meta>{e(organisation)} · {e(scope)} · generated {gen} ·
+{len(fs)} findings grouped into {len(groups)} fix items</div>
+<div class=kpis><div><b>{counts['P0']}</b>P0 · fix today</div><div><b>{counts['P1']}</b>P1 · 7 days</div><div><b>{counts['P2']}</b>P2 · 30 days</div>
+<div><b>{counts['P3']}</b>P3 · 90 days</div></div>{''.join(items) or '<p>No findings match.</p>'}
+<p class=meta>RAT Flea DevSec Product designed and developed by Sudheer Kumar — https://github.com/sudheerkumard/nervve-devsecops</p>
+</body></html>"""

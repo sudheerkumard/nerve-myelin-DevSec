@@ -6,7 +6,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.demo
-    image: ghcr.io/sudheerkumard/nerve-myelin-demo:1.6.0
+    image: ghcr.io/sudheerkumard/nerve-myelin-demo:1.6.1
     ports: ["127.0.0.1:8080:8080"]   # demo binds to localhost only
     env_file:
       - ${MYELIN_ENV_FILE:-config/backend/myelin.env.demo}

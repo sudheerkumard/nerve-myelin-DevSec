@@ -46,8 +46,13 @@ An SPDX SBOM-only import is stored as inventory evidence. It does not represent 
 
 ## Advisory synchronization
 
-The API queues jobs; the separately deployed MYELIN worker claims them using a PostgreSQL lease and an explicit
-tenant allowlist. The worker stores normalized records with their source, revision time and content digest. Repository
+The API queues jobs and, by default, runs them straight away in a background thread of the API process, so the
+**Sync** buttons work without any extra service. The optional separately deployed MYELIN worker claims jobs with the
+same PostgreSQL lease and an explicit tenant allowlist; running both is safe. To leave synchronization to the worker
+only, set `MYELIN_ADVISORY_INLINE=0` on the API. The source cards show **never synced**, **sync running**,
+**synced**, **synced · no records** or **failed** (with the error in the job history below them). OSV inventory sync
+needs at least one stored SBOM; NVD, GitHub and EPSS need CVEs in the findings. Outbound HTTPS to the feed hosts must
+be allowed (behind a TLS-inspecting proxy, add its CA as described in first-time setup). The worker stores normalized records with their source, revision time and content digest. Repository
 scans read the current tenant catalog and match installed dependency versions. Syncing a feed does not itself change
 finding status or scan an application.
 

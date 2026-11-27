@@ -535,10 +535,21 @@ def licence(c) -> str:
             return lic
     elif c["ecosystem"] == "maven" and ":" in c["name"]:
         g, a = c["name"].split(":", 1)
-        pom = _safe(_http_text, f"{MAVEN_URL}/{g.replace('.', '/')}/{a}/{c['version']}/{a}-{c['version']}.pom") or ""
-        m = re.search(r"<licenses>.*?<name>\s*([^<]{2,80}?)\s*</name>", pom, re.S)
-        if m:
-            return SPDX_FROM_NAME.get(m.group(1).lower(), m.group(1))
+        v = c["version"]
+        for _ in range(5):                          # licences are often declared only in a parent POM
+            pom = _safe(_http_text, f"{MAVEN_URL}/{g.replace('.', '/')}/{a}/{v}/{a}-{v}.pom") or ""
+            m = re.search(r"<licenses>.*?<name>\s*([^<]{2,80}?)\s*</name>", pom, re.S)
+            if m:
+                return SPDX_FROM_NAME.get(m.group(1).lower(), m.group(1))
+            par = re.search(r"<parent>(.*?)</parent>", pom, re.S)
+            if not par:
+                break
+            pg = re.search(r"<groupId>\s*([^<]+?)\s*</groupId>", par.group(1))
+            pa = re.search(r"<artifactId>\s*([^<]+?)\s*</artifactId>", par.group(1))
+            pv = re.search(r"<version>\s*([^<$]+?)\s*</version>", par.group(1))
+            if not (pg and pa and pv):
+                break
+            g, a, v = pg.group(1), pa.group(1), pv.group(1)
     elif c["ecosystem"] == "nuget":
         leaf = _safe(_http_json, f"{NUGET_URL}/v3/registration5-semver1/{c['name'].lower()}/{c['version'].lower()}.json") or {}
         ce = leaf.get("catalogEntry")
