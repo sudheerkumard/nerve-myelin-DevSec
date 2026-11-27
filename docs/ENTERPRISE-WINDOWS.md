@@ -11,9 +11,15 @@ Helm chart on Kubernetes (`docs/enterprise/OPERATIONS.md`).
 
 ## Prerequisites (once)
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:631f6acf27d304a4f243ae96934749804e1219a3673339de34259a3b089d87bc -->
+
 1. **Docker Desktop** running ("Engine running"), with at least 6 GB memory in Settings → Resources.
-2. The repository and `.venv` from `scripts\windows\setup-myelin.ps1`.
+2. A checkout of the repository. The Docker console does not require a host Python environment. Run `scripts\windows\setup-myelin.ps1` if you also want the laptop CLI or need to generate a local licence with the optional licensing tool.
 3. An authenticator app on your phone: Microsoft Authenticator or Google Authenticator.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 ## Start
 

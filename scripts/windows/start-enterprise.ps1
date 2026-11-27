@@ -76,9 +76,6 @@ if (-not $ip -or $ip.ToString() -ne "127.0.0.1") {
 }
 Ok "myelin.localtest.me and auth.localtest.me -> 127.0.0.1"
 
-$VPy = Join-Path $Root (Join-Path ".venv" (Join-Path "Scripts" "python.exe"))
-if (-not (Test-Path $VPy)) { throw "Run scripts\windows\setup-myelin.ps1 first (it creates .venv)." }
-
 Step "Secrets"
 # Generated in PowerShell (no Python): Windows PowerShell 5.1 mangles quotes in multi-line native arguments.
 $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
@@ -116,6 +113,10 @@ if ($existing["MYELIN_ZAP_URL"]) {
 if (-not (Test-Path $LicTool)) {
   Ok "Community edition: no licence key needed (all features enabled)"
 } elseif (-not (Select-String -Path $EnvFile -Pattern "^MYELIN_LICENSE=NMLIC1\." -Quiet)) {
+  $VPy = Join-Path $Root ".venv\Scripts\python.exe"
+  if (-not (Test-Path $VPy -PathType Leaf)) {
+    throw "Local licence generation requires $VPy. Run scripts\windows\setup-myelin.ps1 to create this checkout's .venv."
+  }
   Step "Licence"
   $KeyDir = Join-Path $HOME "nerve-keys"
   $existing = Get-ChildItem $KeyDir -Filter "*.key" -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -210,6 +211,6 @@ Write-Host "                 Microsoft Authenticator or Google Authenticator (MF
 Write-Host "  Keycloak admin https://auth.localtest.me:8444/admin   user kcadmin   password $kcPass"
 Write-Host "  Live-scan test accounts: powershell -ExecutionPolicy Bypass -File scripts\windows\myelin-secret.ps1 -Tenant globex -Name customer-a"
 Write-Host "  Stop           powershell -ExecutionPolicy Bypass -File scripts\windows\start-enterprise.ps1 -Stop"
-Write-Host "  New organisation  powershell -ExecutionPolicy Bypass -File scripts\windows\new-tenant.ps1 -Slug <id> -Name \"<name>\" -User <username>"
+Write-Host '  New organisation  powershell -ExecutionPolicy Bypass -File scripts\windows\new-tenant.ps1 -Slug <id> -Name "<name>" -User <username>'
 Write-Host "  Problems?      docs\getting-started\first-time-setup.md"
 if (-not $NoBrowser) { Start-Process $Console }
