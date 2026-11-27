@@ -10,7 +10,7 @@ import re
 
 _LIT = r"""(?:'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")"""   # a complete string literal (no concatenation/template)
 SAST = [
-    ("NM-SAST-001", r"(?is)execute\(\s*(?:f[\"']\s*(?:SELECT|INSERT|UPDATE|DELETE)\b[^\"']*\{\s*(?:request|user|input|params|arg|data|payload|value|id\w*|oid)\b|[\"'][^\"']*[\"']\s*(?:\+|%)\s*(?:request|user|input|params|arg|data|payload|value|id\w*|oid)\b|[\"']\s*(?:SELECT|INSERT|UPDATE|DELETE)\b[^\"']*[\"']\.format\s*\()", "SQL injection: query built from untrusted input", "critical", "CWE-89", (".py",)),
+    ("NM-SAST-001", r"(?is)execute\(\s*(?:f[\"']\s*(?:SELECT|INSERT|UPDATE|DELETE)\\w*[^\"']*\{\s*(?:request|user|input|params|arg|data|payload|value|id\w*|oid)\\w*|[\"'][^\"']*[\"']\s*(?:\+|%)\s*(?:request|user|input|params|arg|data|payload|value|id\w*|oid)\\w*|[\"']\s*(?:SELECT|INSERT|UPDATE|DELETE)\\w*[^\"']*[\"']\.format\s*\()", "SQL injection: query built from untrusted input", "critical", "CWE-89", (".py",)),
     ("NM-SAST-002", r"\b(eval|exec)\s*\(\s*(request|input|req\.|params)", "Code injection via eval/exec on user input", "critical", "CWE-95", (".py", ".js", ".ts")),
     ("NM-SAST-003", r"subprocess\.\w+\(.*shell\s*=\s*True|os\.system\(", "OS command injection risk (shell=True / os.system)", "high", "CWE-78", (".py",)),
     ("NM-SAST-004", r"(?i)verify\s*=\s*False|rejectUnauthorized\s*:\s*false", "TLS certificate validation disabled", "high", "CWE-295", (".py", ".js", ".ts")),
