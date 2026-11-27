@@ -45,6 +45,8 @@ def test_pypi_advisories_are_queried_when_osv_returns_no_matches(monkeypatch):
                  "file": "requirements.txt", "purl": "pkg:pypi/sample-lib@1.0", "scope": "required"}
     advisory = {"id": "PYSEC-2026-1", "aliases": ["CVE-2026-1234"], "summary": "Example advisory",
                 "details": "", "_fixed": ["1.1"], "severity": [], "database_specific": {}}
+    monkeypatch.setenv("MYELIN_OFFLINE", "0")          # the backend suite defaults to offline
+    monkeypatch.delenv("MYELIN_OSV_EXPORT_DIR", raising=False)
     monkeypatch.setattr(vulndb, "_osv", lambda comps: {})
     monkeypatch.setattr(vulndb, "_pypi_vulns", lambda component: [advisory])
     vulndb.STATUS["sources"].clear()
@@ -58,6 +60,8 @@ def test_pypi_advisories_are_queried_when_osv_returns_no_matches(monkeypatch):
 
 def test_osv_and_pypi_duplicate_advisories_are_deduplicated(monkeypatch):
     from myelin_engine import vulndb
+    monkeypatch.setenv("MYELIN_OFFLINE", "0")
+    monkeypatch.delenv("MYELIN_OSV_EXPORT_DIR", raising=False)
 
     component = {"ecosystem": "pypi", "name": "sample-lib", "version": "1.0",
                  "file": "requirements.txt", "purl": "pkg:pypi/sample-lib@1.0", "scope": "required"}
