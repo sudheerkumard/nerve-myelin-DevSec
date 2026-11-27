@@ -606,18 +606,34 @@ def _export_index():
         if not generated:
             raise ValueError("OSV export manifest has no generated_at timestamp")
         generated_at = time.strptime(generated, "%Y-%m-%dT%H:%M:%SZ")
+        if time.strftime("%Y-%m-%dT%H:%M:%SZ", generated_at) != generated:
+            raise ValueError("OSV export generated_at must be a UTC timestamp")
+        age_days = (time.time() - calendar.timegm(generated_at)) / 86400
+        # Small clock skew is tolerated, but future-dated bundles must not bypass
+        # the freshness policy or make a stale export appear current.
+        if age_days < -(5 / 1440):
+            raise ValueError("OSV export generated_at is in the future")
         max_age = os.environ.get("MYELIN_OSV_MAX_AGE_DAYS")
-        if max_age:
-            age_days = (time.time() - calendar.timegm(generated_at)) / 86400
-            if age_days > float(max_age):
+        if max_age is not None:
+            try:
+                max_age_days = float(max_age)
+            except (TypeError, ValueError):
+                raise ValueError("MYELIN_OSV_MAX_AGE_DAYS must be a non-negative number")
+            if not math.isfinite(max_age_days) or max_age_days < 0:
+                raise ValueError("MYELIN_OSV_MAX_AGE_DAYS must be a non-negative number")
+            if age_days > max_age_days:
                 raise ValueError(f"OSV export is stale ({age_days:.1f} days; maximum {max_age})")
         entries = manifest.get("archives")
         if not isinstance(entries, list) or not entries:
             raise ValueError("OSV export manifest contains no archives")
         rows, declared = [], set()
         for entry in entries:
+            if not isinstance(entry, dict):
+                raise ValueError("invalid OSV export manifest entry")
             name, expected, ecosystem = entry.get("file"), entry.get("sha256"), entry.get("ecosystem")
-            if not name or os.path.basename(name) != name or not name.endswith(".zip") or not expected:
+            if (not isinstance(name, str) or not name or os.path.basename(name) != name
+                    or not name.endswith(".zip") or not isinstance(expected, str)
+                    or not re.fullmatch(r"[0-9a-fA-F]{64}", expected)):
                 raise ValueError("invalid OSV export manifest entry")
             if ecosystem not in OSV_ECO.values():
                 raise ValueError("unsupported ecosystem in OSV export manifest")
