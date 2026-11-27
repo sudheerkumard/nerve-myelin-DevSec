@@ -85,4 +85,4 @@ def test_offline_export_requires_manifest(tmp_path, monkeypatch):
         archive.writestr("empty.json", "{}")
     monkeypatch.setenv("MYELIN_OSV_EXPORT_DIR", str(directory))
     assert vulndb._export_index() is None
-    assert any("manifest missing or invalid" in error for error in vulndb.STATUS["errors"])
+    assert any("offline OSV export invalid" in error for error in vulndb.STATUS["errors"])
