@@ -2,7 +2,7 @@
 
 ## What this change adds
 
-NERvvE's built-in dependency inventory now reads exact package versions from the following lockfile families:
+RAT Flea's built-in dependency inventory now reads exact package versions from the following lockfile families:
 
 | Ecosystem | Lockfile / source | Notes |
 |---|---|---|
@@ -22,9 +22,9 @@ Maven pom.xml and Go go.mod manifests are also parsed by the existing manifest i
 
 ## Independent advisory engines
 
-When installed, the source scan invokes Trivy and Grype independently. Their normalized findings are correlated with NERvvE's OSV / PyPI advisory matching and merged by the existing finding correlation layer.
+When installed, the source scan invokes Trivy and Grype independently. Their normalized findings are correlated with RAT Flea's OSV / PyPI advisory matching and merged by the existing finding correlation layer.
 
-Grype uses its own Syft-backed package cataloging and vulnerability database. This gives the scan a second package discovery and advisory-matching path rather than relying exclusively on NERvvE's manifest parser.
+Grype uses its own Syft-backed package cataloging and vulnerability database. This gives the scan a second package discovery and advisory-matching path rather than relying exclusively on RAT Flea's manifest parser.
 
 The Docker runtime now includes a pinned Grype release. Offline deployments must maintain the required Grype vulnerability database through an approved mirror or database transfer process; a missing database must be visible as a scanner error, not interpreted as zero vulnerabilities.
 
@@ -35,7 +35,7 @@ The Docker runtime now includes a pinned Grype release. Offline deployments must
 - Go go.sum is a checksum ledger, not a definitive selected dependency graph.
 - Different scanners can disagree because their package catalogs, advisory sources, affected-version logic and CPE/PURL matching differ.
 - A clean scan is meaningful only when the dependency inventory is complete and each configured scanner/advisory source completed successfully.
-- NERvvE must report unsupported or malformed lockfiles and unavailable scanner databases as coverage gaps.
+- RAT Flea must report unsupported or malformed lockfiles and unavailable scanner databases as coverage gaps.
 
 ## Regression tests
 
@@ -62,7 +62,7 @@ SCA coverage exposes complete and status fields. A scan with advisory-feed error
 
 ## Vulnerability classes and product coverage
 
-NERvvE combines multiple analysis methods because vulnerability detection is not one scanner task:
+RAT Flea combines multiple analysis methods because vulnerability detection is not one scanner task:
 
 - **Source-code weaknesses:** injection (SQL, OS command, LDAP and template), path traversal, SSRF, insecure deserialization, XSS, broken access control patterns, weak cryptography, unsafe TLS validation and insecure file handling. Coverage depends on the language and available rule pack; the scan report lists unsupported languages.
 - **Dependency and supply-chain risks:** known CVEs and ecosystem advisories (including GHSA/PYSEC where published), vulnerable version ranges, malicious packages, typosquatting and dependency confusion. Package inventory comes from manifests, lockfiles, imported SBOMs and supported artifact scanners.
@@ -72,7 +72,7 @@ NERvvE combines multiple analysis methods because vulnerability detection is not
 - **Live application and API weaknesses:** safe read-only checks by default; active testing requires explicit authorisation and a suitable non-production target.
 - **Cloud, identity and runtime posture:** configuration, excessive privilege, exposure and runtime detections through the corresponding collectors and integrations.
 
-No static scanner can guarantee detection of every vulnerability. Dynamic behavior, unsupported languages, proprietary package sources, generated code, platform-specific dependency resolution, unreachable code and vulnerabilities not yet disclosed in an advisory feed can all create blind spots. NERvvE therefore reports the files, ecosystems, scanners, intelligence sources, errors and partial-coverage status. Missing data is not reported as a clean bill of health.
+No static scanner can guarantee detection of every vulnerability. Dynamic behavior, unsupported languages, proprietary package sources, generated code, platform-specific dependency resolution, unreachable code and vulnerabilities not yet disclosed in an advisory feed can all create blind spots. RAT Flea therefore reports the files, ecosystems, scanners, intelligence sources, errors and partial-coverage status. Missing data is not reported as a clean bill of health.
 
 
 ## Advisory precision, exploit evidence and VEX
@@ -88,6 +88,6 @@ Operational rule: a missing exploit reference does not mean no exploit exists; a
 
 ## Structured prioritisation evidence (NVD SSVC and affected products)
 
-When NVD supplies structured SSVC metrics or CVE-record affected-product data, NERvvE preserves those source records as evidence on the finding. These fields are supplemental context: the scanner does not translate an unrecognised SSVC schema into an invented priority, and it does not use NVD product CPE/CVE affected-product records as a substitute for ecosystem-specific OSV package ranges. Product matching requires an explicit, validated mapping between the scanned component and the vendor/product identity.
+When NVD supplies structured SSVC metrics or CVE-record affected-product data, RAT Flea preserves those source records as evidence on the finding. These fields are supplemental context: the scanner does not translate an unrecognised SSVC schema into an invented priority, and it does not use NVD product CPE/CVE affected-product records as a substitute for ecosystem-specific OSV package ranges. Product matching requires an explicit, validated mapping between the scanned component and the vendor/product identity.
 
 SCA findings also carry EPSS percentile, CISA KEV catalog details and the NVD evidence object so downstream reporting can display the source values and timestamps. A missing field remains unknown. Risk ranking should combine exploit evidence, package reachability, deployment exposure, business criticality and fix availability, while retaining each underlying source field for audit.

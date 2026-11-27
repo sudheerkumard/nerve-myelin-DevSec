@@ -158,7 +158,7 @@ class AuthService:
                         "(or myelin admin tenant-create), then sign in again. See the first-time setup guide in the documentation.")
             elif "tenant" in low:
                 hint = ("Your account is not linked to an organisation. In Keycloak (realm 'myelin') open Users, select the user named "
-                        "in the reason below, set the field 'NERvvE DevSecOps tenant' to an existing organisation (for example acme "
+                        "in the reason below, set the field 'RAT Flea DevSec tenant' to an existing organisation (for example acme "
                         "or globex), assign a role such as myelin-tenant-admin, save, then sign in again. On the evaluation stack, "
                         "scripts\\windows\\new-tenant.ps1 -User <username> does this for you. With another identity provider, ask "
                         "your administrator to add the tenant claim.")
@@ -169,7 +169,7 @@ class AuthService:
             else:
                 hint = "Sign-in could not be completed."
             page = f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Sign-in problem · NERvvE DevSecOps</title><style>body{{margin:0;min-height:100vh;display:grid;place-items:center;background:#070b12;
+<title>Sign-in problem · RAT Flea DevSec</title><style>body{{margin:0;min-height:100vh;display:grid;place-items:center;background:#070b12;
 font-family:Arial,sans-serif;color:#e6edf6}}.c{{width:min(440px,92vw);background:#0f1622;border:1px solid #1f2a3a;border-radius:16px;padding:30px}}
 h1{{font-size:22px;margin:0 0 10px}}p{{color:#9fb0c3;line-height:1.5}}code{{color:#7fd8cc;font-size:12px}}a{{display:inline-block;margin-top:14px;
 background:#1d4ed8;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none}}</style></head><body><div class="c">

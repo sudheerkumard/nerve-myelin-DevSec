@@ -237,7 +237,7 @@ def match_advisories(comps: list[dict], repo: str = "local", reachable_hint: set
                     "reachable": _reach(pkg, reachable_hint),
                     "exposure": "internet", "dependency_type": _dep_type(c),
                     "autofix": True,
-                    "remediation": f"Upgrade {pkg} to {fixed} or later. NERvvE DevSecOps AutoFix can open a PR with the upgrade and lockfile refresh.",
+                    "remediation": f"Upgrade {pkg} to {fixed} or later. RAT Flea DevSec AutoFix can open a PR with the upgrade and lockfile refresh.",
                 })
         kind = licence_kind(c.get("license"))
         if kind == "strong":
@@ -300,7 +300,7 @@ def cyclonedx(comps: list[dict], name: str = "application") -> dict:
         "bomFormat": "CycloneDX", "specVersion": "1.5", "serialNumber": f"urn:uuid:{uuid.uuid4()}", "version": 1,
         "metadata": {
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "tools": [{"vendor": "NERvvE DevSecOps", "name": "NERvvE DevSecOps", "version": "1.0.0"}],
+            "tools": [{"vendor": "RAT Flea DevSec", "name": "RAT Flea DevSec", "version": "1.0.0"}],
             "component": {"type": "application", "bom-ref": app_ref, "name": name},
             "properties": [{"name": "myelin:inventory", "value": "manifest-and-lockfile-derived"}],
         },

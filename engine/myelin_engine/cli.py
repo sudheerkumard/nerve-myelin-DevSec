@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Sudheer Kumar.
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
-"""myelin — the NERvvE DevSecOps pipeline CLI.
+"""myelin — the RAT Flea DevSec pipeline CLI.
 
   myelin scan   [PATH] [--repo NAME] [--engines sca,sast,...] [--policy FILE] [--server URL]
                [--sarif out.sarif] [--sbom out.cdx.json] [--json out.json] [--fail-on block|warn|never]
@@ -55,11 +55,11 @@ def to_sarif(findings):
             res["suppressions"] = [{
                 "kind": "inSource",
                 "status": "accepted",
-                "justification": suppression.get("reason") or "Suppressed by NERVVE DEVSECOPS governance",
+                "justification": suppression.get("reason") or "Suppressed by RAT FLEA DEVSEC governance",
             }]
         results.append(res)
     return {"$schema": "https://json.schemastore.org/sarif-2.1.0.json", "version": "2.1.0",
-            "runs": [{"tool": {"driver": {"name": "NERvvE DevSecOps", "version": __version__, "informationUri": "https://github.com/sudheerkumard/nervve-devsecops", "rules": list(rules.values())}},
+            "runs": [{"tool": {"driver": {"name": "RAT Flea DevSec", "version": __version__, "informationUri": "https://github.com/sudheerkumard/nervve-devsecops", "rules": list(rules.values())}},
                       "results": results}]}
 
 
@@ -80,7 +80,7 @@ def print_report(res, decision):
     for f in fs:
         by.setdefault(f["engine"], {}).setdefault(f["severity"], 0)
         by[f["engine"]][f["severity"]] += 1
-    print(f"\n{C['b']}NERvvE DevSecOps scan · {res['repo']}{C['end']}  ({res['duration_s']}s, {res['components']} components, tools: {', '.join(res['tools'])})")
+    print(f"\n{C['b']}RAT Flea DevSec scan · {res['repo']}{C['end']}  ({res['duration_s']}s, {res['components']} components, tools: {', '.join(res['tools'])})")
     cov = res.get("coverage") or {}
     if cov:
         done = [k for k, c in cov.items() if c.get("assessed")]
@@ -203,11 +203,11 @@ def cmd_dast(a):
             print(f"identities: {e}", file=sys.stderr)
             return 2
         if not a.openapi:
-            print("--identities needs --openapi so NERvvE knows which operations to test", file=sys.stderr)
+            print("--identities needs --openapi so RAT Flea knows which operations to test", file=sys.stderr)
             return 2
     mode = "zap-active + active checks" if (a.active and a.zap) else "active checks" if a.active else "zap-baseline" if a.zap else \
         "safe, read-only, crawling" if a.crawl else "safe, read-only"
-    print(f"{C['b']}NERvvE DevSecOps live application assessment{C['end']} · {a.target}  (mode: {mode}"
+    print(f"{C['b']}RAT Flea DevSec live application assessment{C['end']} · {a.target}  (mode: {mode}"
           f"{', authorisation tests with ' + str(len(ids['identities'])) + ' identities' if ids else ''})")
     print("  Only scan systems you own or are authorised in writing to test.")
     res = assessment.run(a.target, a.openapi, headers, ids, a.name, a.criticality, a.max_requests, a.delay, not a.insecure,
@@ -246,7 +246,7 @@ def cmd_vex(a):
 
 
 def cmd_gate(a):
-    """Gate a deployment. Local mode: evaluate a results file. Platform mode (--repo): ask NERvvE DevSecOps for the
+    """Gate a deployment. Local mode: evaluate a results file. Platform mode (--repo): ask RAT Flea DevSec for the
     decision on the commit being deployed — fails closed when the commit was never scanned (unless --allow-unscanned)."""
     if a.results:
         res = json.load(open(a.results))
@@ -343,7 +343,7 @@ def cmd_precommit(a):
     d = policy.evaluate(fs, policy.load(a.policy) if a.policy else policy.DEFAULT_POLICY)
     for f in fs[:30]:
         print(f"{C.get(f['severity'], '')}{f['severity']:<8}{C['end']} {f['rule_id']:<12} {f.get('file')}:{f.get('line') or ''}  {f['title']}")
-    print(f"NERvvE DevSecOps pre-commit: {d['decision'].upper()} ({len(fs)} finding(s) in {len(files)} staged file(s))")
+    print(f"RAT Flea DevSec pre-commit: {d['decision'].upper()} ({len(fs)} finding(s) in {len(files)} staged file(s))")
     return 1 if d["decision"] == "block" or (a.fail_on == "warn" and d["decision"] == "warn") else 0
 
 
@@ -404,10 +404,10 @@ def cmd_cloud(a):
             else:
                 inv = collect_k8s.collect({**(cred or {}), "server": a.server_url or (cred or {}).get("server", "")}, a.account or "")
     except (http.CollectorError, ValueError, OSError, KeyError) as e:
-        print(f"[NERvvE DevSecOps] cloud: {e}", file=sys.stderr)
+        print(f"[RAT Flea DevSec] cloud: {e}", file=sys.stderr)
         return 2
     except ImportError as e:
-        print(f"[NERvvE DevSecOps] cloud: {e.name} is required for this collector (pip install boto3 / cryptography)", file=sys.stderr)
+        print(f"[RAT Flea DevSec] cloud: {e.name} is required for this collector (pip install boto3 / cryptography)", file=sys.stderr)
         return 2
     if a.out:
         with open(a.out, "w") as fh:
@@ -415,7 +415,7 @@ def cmd_cloud(a):
         print(f"inventory written to {a.out} (carry it to an offline platform and upload it there)")
     found = evaluate(inv)
     s = summary(inv)
-    print(f"\n  NERvvE DevSecOps cloud posture · {inv['provider']} {inv['account']} · {s['resources']} resources, {s['identities']} identities")
+    print(f"\n  RAT Flea DevSec cloud posture · {inv['provider']} {inv['account']} · {s['resources']} resources, {s['identities']} identities")
     order = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
     for f in sorted(found, key=lambda x: order.get(x["severity"], 9))[:200]:
         print(f"  {f['severity'].upper():8} {f['rule_id']:11} {f['title'][:100]}")
@@ -457,7 +457,7 @@ def cmd_runtime(a):
 
 def main():
     _safe_console()
-    p = argparse.ArgumentParser(prog="myelin", description="NERvvE DevSecOps CLI")
+    p = argparse.ArgumentParser(prog="myelin", description="RAT Flea DevSec CLI")
     sub = p.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("scan")
     s.add_argument("path", nargs="?", default=".")
@@ -507,14 +507,14 @@ def main():
     pc = sub.add_parser("precommit", help="scan the files staged for commit (git pre-commit hook)")
     pc.add_argument("--policy"); pc.add_argument("--fail-on", choices=["block", "warn"], default="block")
     pc.add_argument("files", nargs="*", help="files to check (default: git diff --cached)")
-    sub.add_parser("mcp", help="run the NERvvE DevSecOps MCP server on stdio for AI coding assistants")
+    sub.add_parser("mcp", help="run the RAT Flea DevSec MCP server on stdio for AI coding assistants")
     adv = sub.add_parser("advisories", help="download OSV advisory exports for air-gapped scanning")
     adv.add_argument("action", choices=["download"]); adv.add_argument("dest")
     adv.add_argument("--ecosystems", default="PyPI,npm,Maven,Go,crates.io,NuGet,RubyGems,Packagist")
     cl = sub.add_parser("cloud", help="cloud and Kubernetes posture (CSPM / KSPM / CIEM): collect read-only or load an inventory")
     cl.add_argument("action", choices=["scan", "collect"])
     cl.add_argument("--provider", choices=["azure", "aws", "gcp", "kubernetes"])
-    cl.add_argument("--inventory", help="NERvvE inventory, Azure Resource Graph JSON, Cloud Asset export or kubectl -o json List")
+    cl.add_argument("--inventory", help="RAT Flea inventory, Azure Resource Graph JSON, Cloud Asset export or kubectl -o json List")
     cl.add_argument("--account", help="account / subscription / project / cluster label")
     cl.add_argument("--subscriptions", help="Azure: comma-separated subscription IDs")
     cl.add_argument("--regions", help="AWS: comma-separated regions (default us-east-1)")

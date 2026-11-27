@@ -1,13 +1,13 @@
 {
-  "_comment": "NERvvE DevSecOps console configuration. Copyright (c) 2026 Sudheer Kumar. AGPL-3.0. Baked into console/index.html by scripts/build_console.py.",
-  "product": "NERvvE DevSecOps",
-  "tagline": "DevSecOps",
-  "company": "NERvvE DevSecOps",
+  "_comment": "RAT Flea DevSec console configuration. Copyright (c) 2026 Sudheer Kumar. AGPL-3.0. Baked into console/index.html by scripts/build_console.py.",
+  "product": "RAT Flea DevSec",
+  "tagline": "DevSec",
+  "company": "RAT Flea Cyber",
   "author": "Sudheer Kumar",
   "contact": {
     "web": "https://github.com/sudheerkumard/nervve-devsecops"
   },
-  "confidentialityNotice": "NERvvE DevSecOps Community edition — open source under AGPL-3.0, designed and developed by Sudheer Kumar.",
+  "confidentialityNotice": "RAT Flea DevSec Community edition — open source under AGPL-3.0, designed and developed by Sudheer Kumar.",
   "defaultTheme": "corporate",
   "defaultCustomer": {
     "customer": "Orion Financial Group",

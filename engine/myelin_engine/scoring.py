@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Sudheer Kumar.
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
-"""NERvvE Risk Score (MRS): 0-100 exploitability-weighted priority.
+"""RAT Flea Risk Score (MRS): 0-100 exploitability-weighted priority.
 
 Severity alone over-alerts. MRS blends:
   * CVSS base (impact)                     up to 40

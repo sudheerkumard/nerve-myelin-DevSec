@@ -94,8 +94,8 @@ def _stack(parts, total):
     return f'<div class="stack">{segs}</div>'
 
 
-PRODUCT = "NERvvE DevSecOps"
-VENDOR = "NERvvE DevSecOps"                       # "Prepared by"
+PRODUCT = "RAT Flea DevSec"
+VENDOR = "RAT Flea DevSec"                       # "Prepared by"
 REPO_URL = "https://github.com/sudheerkumard/nervve-devsecops"
 SITE = REPO_URL.split("://", 1)[1]
 
@@ -416,7 +416,7 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
             fwt = "".join(f'<span class="fw">{_e(t)}</span>' for t in FW.short(f))
             ev = "" if external or not f.get("evidence") else f'<div class="ev"><b>Evidence</b><code>{_e(str(f["evidence"])[:500])}</code></div>'
             fix = f.get("remediation") or (f'Upgrade to {f["fixed_version"]} or later.' if f.get("fixed_version") else "")
-            fix = fix.replace("NERvvE DevSecOps AutoFix can open a PR with the upgrade and lockfile refresh.", "").strip()
+            fix = fix.replace("RAT Flea DevSec AutoFix can open a PR with the upgrade and lockfile refresh.", "").strip()
             endpoints = f.get("affected_endpoints") or []
             if k == "dast" and f.get("instances"):
                 meta.append(f'<span><i>Instances</i> {_e(f["instances"])}</span>')
@@ -508,7 +508,7 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
     sbom_section = "" if not has_sbom else (
         f'<section id="sbom" class="pb"><h2><span class="no">{no_sbom}</span>Software bill of materials</h2>'
         f'<p class="lede">{len(comps)} third-party components were inventoried, including transitive dependencies. '
-        f'The machine-readable CycloneDX 1.5 SBOM is available from the NERvvE DevSecOps console.</p>{sbom_body}</section>')
+        f'The machine-readable CycloneDX 1.5 SBOM is available from the RAT Flea DevSec console.</p>{sbom_body}</section>')
     if dast:
         stats = result.get("stats") or {}
         idents = result.get("identities") or []
@@ -537,7 +537,7 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
         elif "zap" in tools_run:
             method_rows.append(("OWASP ZAP", "ZAP results were collected. Completion details are unavailable."))
         method_rows += [
-            ("Prioritisation", "NERvvE DevSecOps Risk Score (0–100) combines severity, exploitability, exposure and asset criticality; it sets the priority (P0–P3)."),
+            ("Prioritisation", "RAT Flea DevSec Risk Score (0–100) combines severity, exploitability, exposure and asset criticality; it sets the priority (P0–P3)."),
             ("Limitations", "Automated testing does not replace manual penetration testing of business logic, chained attacks or write operations. "
                             "Results reflect the state of the service at the time of testing."),
         ]
@@ -571,7 +571,7 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
             method_rows.append(("Tool errors", "These tools did not complete: " + ", ".join(failed_tools)
                                 + ". Any findings they returned are included."))
         method_rows += [
-            ("Prioritisation", "NERvvE DevSecOps Risk Score (0–100) combines severity, exploit likelihood, known exploitation, reachability from "
+            ("Prioritisation", "RAT Flea DevSec Risk Score (0–100) combines severity, exploit likelihood, known exploitation, reachability from "
                                "first-party code, exposure and asset criticality. The score sets the priority (P0–P3) and the remediation target."),
             ("Noise control", "Duplicate results from different engines are merged; findings in tests, fixtures and vendored code are "
                               "de-prioritised or excluded; suppressions require a recorded reason and are audited."),
@@ -722,7 +722,7 @@ a{{color:#1c5cab}}
 .bar-print button{{font:inherit;border:1px solid var(--base);background:#fff;border-radius:7px;padding:7px 14px;cursor:pointer;color:var(--ink)}}
 @page{{size:A4;margin:16mm 14mm 18mm;
   @bottom-center{{content:"{SITE}";font-size:8pt;color:#898781;font-family:system-ui,sans-serif}}
-  @bottom-left{{content:"NERvvE DevSecOps · {_css(classification)}";font-size:8pt;color:#898781;font-family:system-ui,sans-serif}}
+  @bottom-left{{content:"RAT Flea DevSec · {_css(classification)}";font-size:8pt;color:#898781;font-family:system-ui,sans-serif}}
   @bottom-right{{content:"Page " counter(page) " of " counter(pages);font-size:8pt;color:#898781;font-family:system-ui,sans-serif}}}}
 @page :first{{margin:0;@bottom-left{{content:none}}@bottom-center{{content:none}}@bottom-right{{content:none}}}}
 @media print{{
@@ -737,7 +737,7 @@ a{{color:#1c5cab}}
 <div class="bar-print"><span>{_e(aud)}</span><button onclick="window.print()">Download PDF / print</button></div>
 
 <div class="cover">
-  <div class="brand"><span class="mark">Nv</span><div><div>{_e(PRODUCT)}</div><div class="by">{SITE}</div></div></div>
+  <div class="brand"><span class="mark">RF</span><div><div>{_e(PRODUCT)}</div><div class="by">{SITE}</div></div></div>
   <div class="rating"><i>Overall risk rating</i><span style="background:{rcol};color:{rink}">{risk}</span></div>
   <div class="kind">{_e(title)}</div>
   <h1>{f'<span class="cust">{_e(customer)}</span>' if customer else ""}{_e(repo)}</h1>
@@ -798,7 +798,7 @@ a{{color:#1c5cab}}
 </section>
 
 <section id="top"><h2><span class="no">4</span>Top risks</h2>
-<p class="lede">The ten findings with the highest NERvvE DevSecOps Risk Score — fix these first.</p>
+<p class="lede">The ten findings with the highest RAT Flea DevSec Risk Score — fix these first.</p>
 {f'<table><thead><tr><th class="num">#</th><th>Finding</th><th>Severity</th><th class="num">Priority</th><th style="text-align:right">Risk score</th><th>Reference</th></tr></thead><tbody>{top_rows}</tbody></table>' if top else empty_findings}
 </section>
 
@@ -863,7 +863,7 @@ bears on a control; they do not constitute a certification or an auditor's opini
 <div class="review"><h4>Review and use of findings</h4>
 <p style="margin:0">The findings in this report are produced by automated analysis and are released for review by the responsible DevOps and engineering
 team as part of the standard delivery process. That team validates each finding in the context of its environment, prioritises remediation
-according to the targets in section 7 and records accepted risks or false positives in NERvvE DevSecOps, where every decision is audited.
+according to the targets in section 7 and records accepted risks or false positives in RAT Flea DevSec, where every decision is audited.
 Product information: <a class="ext" href="{REPO_URL}" target="_blank" rel="noopener">{SITE}</a>.</p></div>
 <div class="endmark"><div><b>{_e(PRODUCT)}</b> · product designed and developed by Sudheer Kumar</div><div><a class="ext" href="{REPO_URL}" target="_blank" rel="noopener">{SITE}</a></div>
 <div class="muted">{footer_class} · {rid}</div></div>

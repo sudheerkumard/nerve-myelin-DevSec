@@ -1,6 +1,6 @@
 # Code of conduct
 
-NERvvE DevSecOps is a professional community. Everyone who takes part (in issues, pull requests, discussions and any
+RAT Flea DevSec is a professional community. Everyone who takes part (in issues, pull requests, discussions and any
 other project space) is expected to:
 
 - **Be respectful.** Disagree with ideas, not people. No harassment, insults, or discriminatory language or behaviour.

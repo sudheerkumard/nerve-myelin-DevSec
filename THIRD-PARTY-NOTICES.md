@@ -1,11 +1,11 @@
-# NERvvE DevSecOps — Third-Party Notices and Attributions
+# RAT Flea DevSec — Third-Party Notices and Attributions
 
-NERvvE DevSecOps Community edition is free and open-source software, Copyright © 2026 Sudheer Kumar, licensed under the
+RAT Flea DevSec Community edition is free and open-source software, Copyright © 2026 Sudheer Kumar, licensed under the
 GNU Affero General Public License v3.0 (`LICENSE`). Commercial licences are available from the author.
 
-NERvvE DevSecOps uses the third-party software, data and specifications listed below. Each is the property of its respective
-owners and is used under its own licence. Nothing in the NERvvE DevSecOps licence restricts the rights granted by those
-licences. Third-party components are used **unmodified**; NERvvE DevSecOps's own code does not copy third-party source code.
+RAT Flea DevSec uses the third-party software, data and specifications listed below. Each is the property of its respective
+owners and is used under its own licence. Nothing in the RAT Flea DevSec licence restricts the rights granted by those
+licences. Third-party components are used **unmodified**; RAT Flea DevSec's own code does not copy third-party source code.
 
 Full texts of the licence families referenced here are in `docs/legal/licenses/` (Apache-2.0, MIT, BSD-3-Clause,
 MPL-2.0, LGPL-3.0, GPL-2.0, GPL-3.0).
@@ -15,7 +15,7 @@ MPL-2.0, LGPL-3.0, GPL-2.0, GPL-3.0).
 The complete, generated list of Python components (name, version, licence, project) is in
 [`docs/legal/python-dependencies.md`](docs/legal/python-dependencies.md). Summary of licence families:
 
-| Licence family | Examples | Obligations met by NERvvE DevSecOps |
+| Licence family | Examples | Obligations met by RAT Flea DevSec |
 |---|---|---|
 | MIT, BSD, ISC, PSF | FastAPI, Starlette, Pydantic, SQLAlchemy, PyJWT, PyYAML, httpx, uvicorn, Alembic, Mako, boto3 dependencies, Azure SDK | Copyright and licence notices retained in each package's `dist-info` and listed here |
 | Apache-2.0 | cryptography (Apache-2.0 / BSD), Bandit, Checkov, boto3, botocore, prometheus_client | Licence text in `docs/legal/licenses/Apache-2.0.txt`; NOTICE files retained in packages; no modification |
@@ -35,11 +35,11 @@ The complete, generated list of Python components (name, version, licence, proje
 
 These programs are copied unmodified from their official releases (Opengrep: release binary verified by SHA-256; Gitleaks:
 built from its release tag with updated `golang.org/x` dependencies and a current Go toolchain) and run
-as separate processes; NERvvE DevSecOps does not link to them. Opengrep is distributed under the GNU Lesser General Public
+as separate processes; RAT Flea DevSec does not link to them. Opengrep is distributed under the GNU Lesser General Public
 License v2.1: its complete corresponding source code is available from the project page above for the bundled version
 (see `OPENGREP_VERSION` in the Dockerfiles), and you may replace the binary with your own build.
 
-The SAST rules Opengrep runs are NERvvE DevSecOps's own rule pack (`engine/myelin_engine/rules/sast`, AGPL-3.0). No rules
+The SAST rules Opengrep runs are RAT Flea DevSec's own rule pack (`engine/myelin_engine/rules/sast`, AGPL-3.0). No rules
 from the Semgrep Registry or the semgrep-rules repository are bundled or downloaded (they are under the Semgrep Rules
 License v1.0). Trivy downloads its vulnerability database from the Trivy project at run time (Apache-2.0 tooling; the
 database aggregates public advisories under their own terms).
@@ -53,10 +53,10 @@ https://sources.debian.org/) for the package versions listed in each image (`dpk
 Licensor within three years of an image release, the Licensor will provide the corresponding source for any
 GPL-licensed package in that image, for no more than the cost of distribution.
 
-## 4. Services used by the reference deployment (not distributed by NERvvE DevSecOps)
+## 4. Services used by the reference deployment (not distributed by RAT Flea DevSec)
 
 The Compose stack and Helm chart pull these images directly from their publishers; they are not modified or
-redistributed by NERvvE DevSecOps.
+redistributed by RAT Flea DevSec.
 
 | Component | Licence |
 |---|---|
@@ -66,8 +66,8 @@ redistributed by NERvvE DevSecOps.
 | Caddy | Apache-2.0 |
 | Alpine Linux base image | various (per package) |
 | Kyverno (customer cluster) | Apache-2.0 |
-| Falco and Falcosidekick (customer cluster, runtime sensor) | Apache-2.0 (Falco), MIT (Falcosidekick) — installed by the customer from the upstream charts; NERvvE DevSecOps ships only its own configuration and rule files |
-| Tetragon (customer cluster, runtime sensor) | Apache-2.0 — installed by the customer; NERvvE DevSecOps ships only its own tracing policies |
+| Falco and Falcosidekick (customer cluster, runtime sensor) | Apache-2.0 (Falco), MIT (Falcosidekick) — installed by the customer from the upstream charts; RAT Flea DevSec ships only its own configuration and rule files |
+| Tetragon (customer cluster, runtime sensor) | Apache-2.0 — installed by the customer; RAT Flea DevSec ships only its own tracing policies |
 
 ## 5. Console and documents
 
@@ -90,11 +90,11 @@ redistributed by NERvvE DevSecOps.
 | EPSS — Exploit Prediction Scoring System | FIRST.org usage agreement; see EPSS at https://www.first.org/epss |
 | PyPI and npm registry metadata | Public registry APIs, used within their terms of use |
 
-Advisory text is shown to users with a link to the original record; NERvvE DevSecOps does not claim ownership of it.
+Advisory text is shown to users with a link to the original record; RAT Flea DevSec does not claim ownership of it.
 
 ## 7. Standards and frameworks referenced
 
-NERvvE DevSecOps maps findings to the frameworks below by **identifier** and shows **short summarised titles** written for
+RAT Flea DevSec maps findings to the frameworks below by **identifier** and shows **short summarised titles** written for
 this product; it does not reproduce the standards' text. All names are trademarks or publications of their owners, and
 no endorsement or certification is implied.
 
@@ -112,7 +112,7 @@ no endorsement or certification is implied.
 | ISO/IEC 27001:2022 | ISO / IEC (control titles summarised) |
 | NIST SSDF (SP 800-218), NIST SP 800-53 | NIST (U.S. Government works) |
 | SOC 2 Trust Services Criteria | AICPA |
-| CIS Benchmarks (Docker, Kubernetes, Microsoft Azure Foundations, AWS Foundations, Google Cloud Platform Foundation) | Center for Internet Security — referenced by benchmark and section name only; check titles and remediation text are NERvvE DevSecOps's own wording; not endorsed by CIS |
+| CIS Benchmarks (Docker, Kubernetes, Microsoft Azure Foundations, AWS Foundations, Google Cloud Platform Foundation) | Center for Internet Security — referenced by benchmark and section name only; check titles and remediation text are RAT Flea DevSec's own wording; not endorsed by CIS |
 | Kubernetes Pod Security Standards | The Kubernetes Authors (CC BY 4.0 documentation) |
 | MITRE ATT&CK® | The MITRE Corporation — tactic names and technique IDs are referenced; © The MITRE Corporation. This work is reproduced and distributed with the permission of The MITRE Corporation |
 | EU Cyber Resilience Act (Regulation (EU) 2024/2847) | European Union (requirements summarised; not legal advice) |
@@ -121,7 +121,7 @@ no endorsement or certification is implied.
 
 GitHub, GitLab, Azure DevOps, Bitbucket, AWS, Google Cloud, Microsoft Entra ID, Okta, Jira, ServiceNow, Slack, Microsoft
 Teams, Microsoft Azure, Amazon Web Services, Kubernetes, Kyverno, Falco, Tetragon, Cilium, Argo CD, Flux, Helm, Terraform, Docker, Anthropic, OpenAI, Hugging Face and other product
-names are trademarks of their respective owners and are used only to identify compatible products. NERvvE DevSecOps is not
+names are trademarks of their respective owners and are used only to identify compatible products. RAT Flea DevSec is not
 affiliated with or endorsed by them.
 
 ## 9. Your own content

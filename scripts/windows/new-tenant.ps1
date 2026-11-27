@@ -4,8 +4,8 @@
 # Add an organisation (tenant) to the local stack started by start-enterprise.ps1, and optionally link a Keycloak user
 # to it with a role.
 #
-#   powershell -ExecutionPolicy Bypass -File scripts\windows\new-tenant.ps1 -Slug nervve -Name "NERvvE Labs"
-#   powershell -ExecutionPolicy Bypass -File scripts\windows\new-tenant.ps1 -Slug nervve -Name "NERvvE Labs" -User "sudheer kumar"
+#   powershell -ExecutionPolicy Bypass -File scripts\windows\new-tenant.ps1 -Slug rat-flea -Name "RAT Flea Labs"
+#   powershell -ExecutionPolicy Bypass -File scripts\windows\new-tenant.ps1 -Slug rat-flea -Name "RAT Flea Labs" -User "sudheer kumar"
 #   ... -Role myelin-security-lead      (default myelin-tenant-admin)
 param(
   [Parameter(Mandatory = $true)][ValidatePattern("^[a-z0-9-]{2,40}$")][string]$Slug,
@@ -39,7 +39,7 @@ $ErrorActionPreference = "Stop"
 
 if (-not $User) {
   Write-Host "`nNext: in Keycloak ($KcBase/admin, realm 'myelin') open Users, pick or create a user, set the field"
-  Write-Host "'NERvvE DevSecOps tenant' to '$Slug', assign a role such as myelin-tenant-admin, then sign in again."
+  Write-Host "'RAT Flea DevSec tenant' to '$Slug', assign a role such as myelin-tenant-admin, then sign in again."
   Write-Host "Or re-run this script with -User <username> to do that for you."
   exit 0
 }

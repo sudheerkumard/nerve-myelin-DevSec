@@ -11,7 +11,7 @@ services:
     env_file:
       - ${MYELIN_ENV_FILE:-config/backend/myelin.env.demo}
     environment:
-      MYELIN_CONSOLE_PATH: /opt/myelin/demo/offline/NERvvE-DevSecOps-Demo-Console.html
+      MYELIN_CONSOLE_PATH: /opt/myelin/demo/offline/RAT-Flea-DevSec-Demo-Console.html
       MYELIN_LIVE_SCAN_ROOT: /opt/myelin
     read_only: true
     tmpfs: [/tmp]

@@ -1,11 +1,11 @@
 # Quick start
 
-Three ways to see NERvvE DevSecOps, from a minute to a production-like stack.
+Three ways to see RAT Flea DevSec, from a minute to a production-like stack.
 
 !!! note "Before you start"
     Clone the open-source Community edition first:
     `git clone https://github.com/sudheerkumard/nervve-devsecops && cd nervve-devsecops`.
-    See [Get NERvvE DevSecOps](evaluate.md) for the options.
+    See [Get RAT Flea DevSec](evaluate.md) for the options.
 
 === "Demo in 60 seconds"
 
@@ -18,7 +18,7 @@ Three ways to see NERvvE DevSecOps, from a minute to a production-like stack.
 
 === "No server at all"
 
-    Open `demo/offline/NERvvE-DevSecOps-Demo-Console.html` in a browser. Every view works on a recorded snapshot; actions
+    Open `demo/offline/RAT-Flea-DevSec-Demo-Console.html` in a browser. Every view works on a recorded snapshot; actions
     that change data are available once an API is connected.
 
 === "Enterprise stack on one host"

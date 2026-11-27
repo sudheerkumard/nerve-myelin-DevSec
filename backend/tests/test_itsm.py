@@ -30,7 +30,7 @@ class Fake:
         u, host = req.url, req.url.host
         if host == "acme.atlassian.net":
             if u.path == "/rest/api/2/myself":
-                return httpx.Response(200, json={"displayName": "NERvvE Bot"})
+                return httpx.Response(200, json={"displayName": "RAT Flea Bot"})
             if u.path.startswith("/rest/api/2/project/"):
                 return httpx.Response(200, json={"key": "SEC"})
             if u.path == "/rest/api/2/issue" and req.method == "POST":
@@ -97,7 +97,7 @@ def test_jira_auto_tickets_routing_no_duplicates_and_resolution(fake, repo):
     assert r.status_code == 201, r.text
     iid = r.json()["id"]
     assert "atl-token" not in r.text and r.json()["has_credential"]
-    assert c.post(f"/api/v1/ticketing/integrations/{iid}/test", headers=H).json() == {"ok": True, "message": "connected as NERvvE Bot; project SEC found"}
+    assert c.post(f"/api/v1/ticketing/integrations/{iid}/test", headers=H).json() == {"ok": True, "message": "connected as RAT Flea Bot; project SEC found"}
     s = c.post("/api/v1/repos/sources?wait=true", headers=H, json={"url": "https://github.com/acme/ledger"}).json()
     creates = [x for x in fake.calls if x[0] == "POST" and x[1].endswith("/rest/api/2/issue")]
     assert creates, "auto mode should raise tickets"

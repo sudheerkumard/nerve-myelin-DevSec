@@ -1,7 +1,7 @@
 # Copyright (c) 2026 Sudheer Kumar.
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
-# NERvvE DevSecOps secure pipeline — Azure DevOps
-# MYELIN_CLI_PACKAGE: the NERvvE DevSecOps CLI to install, e.g.
+# RAT Flea DevSec secure pipeline — Azure DevOps
+# MYELIN_CLI_PACKAGE: the RAT Flea DevSec CLI to install, e.g.
 # git+https://github.com/sudheerkumard/nervve-devsecops@v1.5.0 or a wheel on your internal package index
 trigger: { branches: { include: [main, release/*] } }
 pr: { branches: { include: ["*"] } }
@@ -19,9 +19,9 @@ stages:
           - task: UsePythonVersion@0
             inputs: { versionSpec: "3.12" }
           - script: pip install "$(MYELIN_CLI_PACKAGE)"
-            displayName: Install NERvvE DevSecOps CLI
+            displayName: Install RAT Flea DevSec CLI
           - script: myelin scan . --policy .myelin/policy.yaml --sarif $(Build.ArtifactStagingDirectory)/CodeAnalysisLogs/myelin.sarif --sbom $(Build.ArtifactStagingDirectory)/sbom.cdx.json --fail-on block
-            displayName: NERvvE DevSecOps scan & policy gate
+            displayName: RAT Flea DevSec scan & policy gate
             env: { MYELIN_SERVER: $(MYELIN_SERVER), MYELIN_API_KEY: $(MYELIN_API_KEY) }
           - task: PublishBuildArtifacts@1
             condition: always()

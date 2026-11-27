@@ -1,7 +1,7 @@
 # Copyright (c) 2026 Sudheer Kumar.
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
-# NERvvE DevSecOps Platform API + console — hardened multi-stage image, with the deep-scanning toolchain
-# (Opengrep + NERvvE rule pack, Trivy, Gitleaks, Checkov, Bandit) so repository scans run every engine.
+# RAT Flea DevSec Platform API + console — hardened multi-stage image, with the deep-scanning toolchain
+# (Opengrep + RAT Flea rule pack, Trivy, Gitleaks, Checkov, Bandit) so repository scans run every engine.
 #
 #   docker build -t ghcr.io/sudheerkumard/nerve-myelin:1.5.0 .
 #   docker run ... ghcr.io/sudheerkumard/nerve-myelin:1.5.0            # API (default)
@@ -75,8 +75,8 @@ RUN /venv/bin/pip install -r /tmp/requirements.txt \
 
 # ---------- runtime stage: no package manager, no shell tools beyond the base, non-root ----------
 FROM ${PY_BASE} AS runtime
-LABEL org.opencontainers.image.title="NERvvE DevSecOps" \
-      org.opencontainers.image.vendor="Sudheer Kumar (NERvvE DevSecOps)" \
+LABEL org.opencontainers.image.title="RAT Flea DevSec" \
+      org.opencontainers.image.vendor="Sudheer Kumar (RAT Flea DevSec)" \
       org.opencontainers.image.licenses="AGPL-3.0-only" \
       org.opencontainers.image.source="https://github.com/sudheerkumard/nervve-devsecops"
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PATH=/venv/bin:$PATH \

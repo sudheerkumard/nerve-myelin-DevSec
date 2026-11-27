@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
 """Multi-user authorisation testing for APIs (OWASP API Security Top 10 2023: API1, API3, API5, API2).
 
-Given an OpenAPI spec and two or more test identities, NERvvE:
+Given an OpenAPI spec and two or more test identities, RAT Flea:
   1. calls each parameter-free GET operation as every identity and harvests object ids each user can see;
   2. for every GET operation with path parameters, fills them with ids owned by user A, confirms A can read the
      object, then requests the same object as every other user and anonymously

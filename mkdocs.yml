@@ -1,15 +1,15 @@
-# NERvvE DevSecOps documentation site. Copyright (c) 2026 Sudheer Kumar. SPDX-License-Identifier: AGPL-3.0-only.
+# RAT Flea DevSec documentation site. Copyright (c) 2026 Sudheer Kumar. SPDX-License-Identifier: AGPL-3.0-only.
 # Build:  pip install -r docs/requirements.txt && python scripts/build_docs.py   (output: site/, fully offline)
 site_url: https://sudheerkumard.github.io/nervve-devsecops/
-site_name: NERvvE DevSecOps Documentation
+site_name: RAT Flea DevSec Documentation
 site_description: DevSecOps and cloud-native application protection — code, pipeline, cloud and runtime.
 site_author: Sudheer Kumar
-copyright: Copyright &copy; 2026 Sudheer Kumar · NERvvE DevSecOps Community edition, licensed under the GNU AGPL-3.0.
+copyright: Copyright &copy; 2026 Sudheer Kumar · RAT Flea DevSec Community edition, licensed under the GNU AGPL-3.0.
 docs_dir: docs
 site_dir: site
 exclude_docs: |
   releases/TEMPLATE.md
-  whitepaper/NERvvE-DevSecOps-Whitepaper.html
+  whitepaper/RAT-Flea-DevSec-Whitepaper.html
   enterprise/diagrams/*.mmd
   assets/screenshots-public/
 not_in_nav: |
@@ -52,7 +52,7 @@ extra:
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/sudheerkumard/nervve-devsecops
-      name: NERvvE DevSecOps on GitHub
+      name: RAT Flea DevSec on GitHub
 
 extra_css:
   - assets/stylesheets/myelin.css
@@ -83,7 +83,7 @@ validation:
 nav:
   - Home: index.md
   - Getting started:
-      - Evaluate NERvvE DevSecOps: getting-started/evaluate.md
+      - Evaluate RAT Flea DevSec: getting-started/evaluate.md
       - Quick start: getting-started/quick-start.md
       - First-time setup and common issues: getting-started/first-time-setup.md
       - Features: getting-started/features.md
@@ -147,7 +147,7 @@ nav:
           - ADR 0006 Attack-path criteria: adr/0006.md
           - ADR 0007 Runtime sensors: adr/0007.md
           - Template: adr/template.md
-      - Whitepaper: whitepaper/NERvvE-DevSecOps-Whitepaper.md
+      - Whitepaper: whitepaper/RAT-Flea-DevSec-Whitepaper.md
   - Legal:
       - Commercial licence: legal/COMMERCIAL-LICENCE.md
       - Subscription agreement: legal/SUBSCRIPTION-AGREEMENT.md

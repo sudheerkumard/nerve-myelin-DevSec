@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Sudheer Kumar.
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
-"""NERvvE DevSecOps Platform API.
+"""RAT Flea DevSec Platform API.
 
 MYELIN_MODE=demo        in-memory sample tenant; demo API key / open read access (customer demos only)
 MYELIN_MODE=enterprise  PostgreSQL with row-level security; OIDC (Keycloak or any OIDC IdP), MFA, RBAC,
@@ -40,7 +40,7 @@ from .ops import observability  # noqa: E402
 from .store import DemoStore, PgStore  # noqa: E402
 
 ENTERPRISE = settings.mode == "enterprise"
-app = FastAPI(title="NERvvE DevSecOps Platform API", version=__version__,
+app = FastAPI(title="RAT Flea DevSec Platform API", version=__version__,
               description="Unified CI/CD security: SCA, SAST, secrets, IaC, container, pipeline posture, provenance, DAST, AI-BOM.",
               docs_url=None if ENTERPRISE and not settings.demo_open else "/docs", redoc_url=None)
 app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins, allow_credentials=ENTERPRISE,
@@ -116,7 +116,7 @@ def _principal_for(request: Request, perm: str) -> Principal:
         lic = LICENSE.status()
         if not lic.usable:
             raise HTTPException(402, f"Licence restricted ({lic.reason}). Existing data remains available; "
-                                     "contact the NERvvE DevSecOps product owner to renew or install a licence.")
+                                     "contact the RAT Flea DevSec product owner to renew or install a licence.")
     request.state.principal = p
     return p
 
@@ -775,7 +775,7 @@ class AdmissionReportsIn(BaseModel):
 @app.post("/api/v1/admission/reports")
 def admission_reports(body: AdmissionReportsIn, c: Ctx = Depends(ctx("scans:write"))):
     """Ingest Kubernetes policy reports (wgpolicyk8s.io PolicyReport / ClusterPolicyReport, as written by Kyverno) for the
-    NERvvE DevSecOps admission policies, so deployment decisions are visible next to build and scan evidence."""
+    RAT Flea DevSec admission policies, so deployment decisions are visible next to build and scan evidence."""
     n = 0
     for rep in body.reports:
         if rep.get("kind") not in ("PolicyReport", "ClusterPolicyReport"):
@@ -978,7 +978,7 @@ CI_HARDENING = {"NM-CICD-001", "NM-CICD-013", "NM-CICD-014", "NM-CICD-015", "NM-
 
 
 def _public_sbom(doc):
-    """The stored SBOM without NERvvE DevSecOps's internal extension properties (posture, cryptography inventory)."""
+    """The stored SBOM without RAT Flea DevSec's internal extension properties (posture, cryptography inventory)."""
     if not isinstance(doc, dict):
         return doc
     out = dict(doc)
@@ -1117,7 +1117,7 @@ def _parse_ts(v):
 @app.get("/api/v1/cra")
 def cra_tracker(c: Ctx = Depends(ctx("findings:read"))):
     """EU Cyber Resilience Act readiness: Article 14 reporting clocks for actively exploited vulnerabilities, and the
-    Annex I evidence NERvvE DevSecOps holds per product (repository). A planning aid, not legal advice."""
+    Annex I evidence RAT Flea DevSec holds per product (repository). A planning aid, not legal advice."""
     from myelin_engine import frameworks as FW
     now = datetime.now(timezone.utc)
     fs = c.store.findings()
@@ -1165,7 +1165,7 @@ def cra_tracker(c: Ctx = Depends(ctx("findings:read"))):
             "summary": {"reportable": len(reportable), "overdue": sum(1 for x in reportable if x["overdue"]),
                         "products": len(products), "products_ready": sum(1 for p in products if p["met"] == p["total"])},
             "products": products, "legal_advice": False,
-            "note": "Clocks start when the manufacturer becomes aware of active exploitation; NERvvE DevSecOps uses the time the "
+            "note": "Clocks start when the manufacturer becomes aware of active exploitation; RAT Flea DevSec uses the time the "
                     "finding was first seen (or the awareness time you record) and CISA KEV / malicious-release evidence. "
                     "Submit notifications through the ENISA Single Reporting Platform."}
 
@@ -1554,7 +1554,7 @@ class ScanImportIn(BaseModel):
 @app.post("/api/v1/scans/import")
 def import_scan(body: ScanImportIn, c: Ctx = Depends(ctx("scans:write"))):
     """Bring your own scanner: SARIF, CycloneDX, Trivy, Grype, Semgrep, Gitleaks, Checkov, Bandit or ZAP results become
-    NERvvE DevSecOps findings (de-duplicated, risk-scored, gated, ticketed, reported). Imports never auto-close other findings."""
+    RAT Flea DevSec findings (de-duplicated, risk-scored, gated, ticketed, reported). Imports never auto-close other findings."""
     from myelin_engine import importers
     try:
         raw = base64.b64decode(body.content_base64, validate=False)
@@ -1579,7 +1579,7 @@ def vex_export(repo: str = Query(min_length=1, max_length=300), format: str = Qu
     if not fs:
         raise HTTPException(404, f"no findings for {repo}")
     product = f"pkg:generic/{repo}"
-    doc = vex.openvex(fs, product, author=c.store.tenant().get("name") or "NERvvE DevSecOps") if format == "openvex" else vex.cyclonedx_vex(fs, product)
+    doc = vex.openvex(fs, product, author=c.store.tenant().get("name") or "RAT Flea DevSec") if format == "openvex" else vex.cyclonedx_vex(fs, product)
     c.store.audit_event("vex.exported", c.p.actor, {"text": f"{format} VEX for {repo}", "statements": len(doc.get("statements") or doc.get("vulnerabilities") or [])})
     name = f"{repo}.{'openvex' if format == 'openvex' else 'vex.cdx'}.json"
     return JSONResponse(doc, headers={"Content-Disposition": f'attachment; filename="{name}"'})
@@ -1631,7 +1631,7 @@ def live_scan(body: LiveScan, c: Ctx = Depends(ctx("scans:run"))):
     base = os.path.abspath(settings.live_scan_root)
     p = os.path.abspath(os.path.join(ROOT, body.path))
     if os.path.commonpath([p, base]) != base or not os.path.isdir(p):
-        raise HTTPException(400, "path must be a directory inside the NERvvE DevSecOps workspace")
+        raise HTTPException(400, "path must be a directory inside the RAT Flea DevSec workspace")
     res = orchestrator.scan(p, repo=body.repo, criticality=1.4, advisory_lookup=c.store.advisories_for)
     decision = pol.evaluate(res["findings"], _effective_policy(c.store, repo=body.repo))
     c.store.audit_event("scan.completed", c.p.actor, f"live scan {body.repo}: {len(res['findings'])} findings, gate={decision['decision']}")
@@ -2326,7 +2326,7 @@ def _run_advisory_feed_sync(job_id, source, tenant_id, purls, cves, actor, *, sc
                 time.sleep(delay)
         last.raise_for_status()
     try:
-        with httpx.Client(timeout=timeout, follow_redirects=False, headers={"User-Agent": "NERVVE-DEVSECOPS/2.1 advisory-sync"}) as client:
+        with httpx.Client(timeout=timeout, follow_redirects=False, headers={"User-Agent": "RAT-FLEA-DEVSEC/2.1 advisory-sync"}) as client:
             if source in advisory_feeds.NORMALIZED:
                 records = advisory_feeds.collect(source, lambda method, url, **kw: request(client, method, url, **kw),
                                                 purls=purls, cves=cves, scope=scope)
@@ -2621,7 +2621,7 @@ def remediation_campaigns(c: Ctx = Depends(ctx("findings:read"))):
                         "overdue": sum(1 for x in items if x["overdue"]), "verified": by_state.get("verified", 0)},
             "items": items,
             "limitations": ["Campaign state is stored on each member finding; new findings that join a campaign start as proposed.",
-                            "NERvvE DevSecOps never changes code by itself: fixes are proposed, applied by your team and verified by a re-scan."]}
+                            "RAT Flea DevSec never changes code by itself: fixes are proposed, applied by your team and verified by a re-scan."]}
 
 
 class CampaignActionIn(BaseModel):
@@ -2989,7 +2989,7 @@ def import_scanner_report(body: ScannerImportIn, c: Ctx = Depends(ctx("scans:wri
         f.setdefault("age_days", 0)
         f["repo"] = body.repo
     decision = pol.evaluate(fs, _effective_policy(c.store, repo=body.repo))
-    # an external report never closes findings from NERvvE DevSecOps's own engines (or other tools) that it did not cover
+    # an external report never closes findings from RAT Flea DevSec's own engines (or other tools) that it did not cover
     sid, new = c.store.add_scan(body.repo, body.branch, body.commit, fs, sbom, decision,
                                 c.p.actor, scanned_engines=())
     tickets = after_scan(c.store, getattr(c.store, "last_delta", None), c.p.tenant_id)
@@ -3179,7 +3179,7 @@ def cloud_rules(c: Ctx = Depends(ctx("findings:read"))):
 
 @app.post("/api/v1/cloud/inventory")
 def cloud_inventory_upload(body: CloudInventoryIn, request: Request, c: Ctx = Depends(ctx("scans:write"))):
-    """Analyse an inventory: a NERvvE inventory (`myelin cloud collect`), Azure Resource Graph rows, a Google Cloud Asset
+    """Analyse an inventory: a RAT Flea inventory (`myelin cloud collect`), Azure Resource Graph rows, a Google Cloud Asset
     Inventory export or `kubectl get ... -o json`. Re-uploading the same account closes what was fixed."""
     try:
         raw = base64.b64decode(body.content_base64, validate=False)

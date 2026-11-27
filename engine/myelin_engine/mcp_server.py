@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Sudheer Kumar.
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
-"""NERvvE DevSecOps MCP server: security scanning tools for AI coding assistants (Model Context Protocol, stdio).
+"""RAT Flea DevSec MCP server: security scanning tools for AI coding assistants (Model Context Protocol, stdio).
 
     myelin mcp                       # register in Claude Code, Cursor, VS Code / Copilot, Windsurf, Cline …
 
@@ -8,7 +8,7 @@ Tools
   scan_path      scan a folder with the built-in engines and return prioritised findings
   scan_snippet   check a code or configuration snippet before the assistant writes it to disk
   check_package  is a dependency name a known malicious release, a look-alike of a popular package, or unpublished?
-  explain_rule   what a NERvvE DevSecOps rule detects and how to fix it
+  explain_rule   what a RAT Flea DevSec rule detects and how to fix it
   gate           pass / warn / block decision for a folder under the default (or a given) policy
 
 The server only reads files under the folders it is asked to scan, never sends source code anywhere, and works offline.
@@ -34,7 +34,7 @@ TOOLS = [
      "of a popular package.", "inputSchema": {"type": "object", "properties": {
          "ecosystem": {"type": "string", "enum": ["npm", "pypi"]}, "name": {"type": "string"}, "version": {"type": "string"}},
          "required": ["ecosystem", "name"]}},
-    {"name": "explain_rule", "description": "Explain a NERvvE DevSecOps rule id (e.g. NM-CICD-013) and how to fix it.",
+    {"name": "explain_rule", "description": "Explain a RAT Flea DevSec rule id (e.g. NM-CICD-013) and how to fix it.",
      "inputSchema": {"type": "object", "properties": {"rule_id": {"type": "string"}}, "required": ["rule_id"]}},
     {"name": "gate", "description": "Policy decision (pass / warn / block) for a folder.",
      "inputSchema": {"type": "object", "properties": {"path": {"type": "string"}, "policy": {"type": "string"}}, "required": ["path"]}},

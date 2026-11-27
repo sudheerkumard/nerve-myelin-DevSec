@@ -1,6 +1,6 @@
-# Third-party notices — NERvvE DevSecOps 1.1
+# Third-party notices — RAT Flea DevSec 1.1
 
-NERvvE DevSecOps Community edition is open-source software under the GNU AGPL-3.0 (see `LICENSE`). It uses or interoperates with the open-source
+RAT Flea DevSec Community edition is open-source software under the GNU AGPL-3.0 (see `LICENSE`). It uses or interoperates with the open-source
 components below, each under its own licence. Keep this file in every distribution, container image
 and customer delivery. Re-check versions and licences at every release; licence terms can change.
 
@@ -25,7 +25,7 @@ and customer delivery. Re-check versions and licences at every release; licence 
 | packaging | Dependency version/specifier/marker evaluation | Apache-2.0 OR BSD-2-Clause | Keep licence and notice |
 | Bandit (PyCQA) | Python static analysis engine (run unmodified) | Apache-2.0 | Keep licence and NOTICE |
 | stevedore, rich (Bandit dependencies) | Plugin loading, console output | Apache-2.0, MIT | Keep licence and notice |
-| Git (Debian package in the platform image) | Fetching CodeCommit / Google Cloud / Git-server repositories, run as a separate program | GPL-2.0 | Unmodified; source available from the Debian archive; not linked with NERvvE DevSecOps code |
+| Git (Debian package in the platform image) | Fetching CodeCommit / Google Cloud / Git-server repositories, run as a separate program | GPL-2.0 | Unmodified; source available from the Debian archive; not linked with RAT Flea DevSec code |
 
 ## Scanners bundled in `Dockerfile.cli` (run as separate, unmodified executables)
 
@@ -40,10 +40,10 @@ and customer delivery. Re-check versions and licences at every release; licence 
 
 | Component | Reason |
 |---|---|
-| Semgrep Registry / `semgrep-rules` | Semgrep Rules License v1.0 restricts use to internal, non-competing, non-SaaS contexts. NERvvE never calls `--config auto` or the registry. |
-| Semgrep CE / Opengrep engine | Optional, customer-supplied. Runs only when `MYELIN_SAST_RULES` points to rules NERvvE or the customer owns or has licensed. Engine is LGPL-2.1; if NERvvE ever bundles it, ship it unmodified, with its licence and a source offer. |
+| Semgrep Registry / `semgrep-rules` | Semgrep Rules License v1.0 restricts use to internal, non-competing, non-SaaS contexts. RAT Flea never calls `--config auto` or the registry. |
+| Semgrep CE / Opengrep engine | Optional, customer-supplied. Runs only when `MYELIN_SAST_RULES` points to rules RAT Flea or the customer owns or has licensed. Engine is LGPL-2.1; if RAT Flea ever bundles it, ship it unmodified, with its licence and a source offer. |
 
-## Deployment components pulled by customers (not redistributed in the NERvvE image)
+## Deployment components pulled by customers (not redistributed in the RAT Flea image)
 
 | Component | Licence | Use |
 |---|---|---|
@@ -52,7 +52,7 @@ and customer delivery. Re-check versions and licences at every release; licence 
 | Caddy 2 | Apache-2.0 | TLS proxy in the evaluation stack |
 | cert-manager, External Secrets Operator, Prometheus Operator, Kyverno | Apache-2.0 | Kubernetes add-ons referenced by the chart |
 
-## Customer-installed integrations (not distributed by NERvvE)
+## Customer-installed integrations (not distributed by RAT Flea)
 
 Kyverno (Apache-2.0), OPA / Gatekeeper / Conftest (Apache-2.0), Sigstore Rekor/Fulcio services (Apache-2.0).
 

@@ -1,10 +1,10 @@
-# NERvvE DevSecOps — licensing notice
+# RAT Flea DevSec — licensing notice
 
-**NERvvE DevSecOps Product designed and developed by Sudheer Kumar.** Copyright © 2026 Sudheer Kumar.
+**RAT Flea DevSec Product designed and developed by Sudheer Kumar.** Copyright © 2026 Sudheer Kumar.
 
 ## Community edition
 
-The NERvvE DevSecOps Community edition is free and open-source software, licensed under the
+The RAT Flea DevSec Community edition is free and open-source software, licensed under the
 **GNU Affero General Public License v3.0 only** (`LICENSE`, SPDX: `AGPL-3.0-only`).
 
 - You may use, study, modify and share it under the AGPL.
@@ -28,5 +28,5 @@ Third-party software, data and specifications keep their own licences; see `THIR
 
 ## Names
 
-"NERvvE DevSecOps" is the name of this product. The AGPL does not grant rights to use the name or logo for other products
-or services; you may say that your work is based on NERvvE DevSecOps.
+"RAT Flea DevSec" is the name of this product. The AGPL does not grant rights to use the name or logo for other products
+or services; you may say that your work is based on RAT Flea DevSec.

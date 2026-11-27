@@ -4,7 +4,7 @@
 
 Rules read the normalised inventory (inventory.py) and never call a cloud API, so the same checks run on a live
 collection, on an inventory carried into an air-gapped site and in tests. The CIS reference names the benchmark
-section a check belongs to; titles and remediation are NERvvE DevSecOps's own wording."""
+section a check belongs to; titles and remediation are RAT Flea DevSec's own wording."""
 from .inventory import exposed_ports, is_internet
 from .rules import Rule, run
 

@@ -1,4 +1,4 @@
-# NERvvE DevSecOps — Argo CD PreSync hook (Helm chart template). The sync stops if the commit being deployed is blocked by
+# RAT Flea DevSec — Argo CD PreSync hook (Helm chart template). The sync stops if the commit being deployed is blocked by
 # policy or was never scanned. Copy to your chart's templates/ and pass the revision from the Argo CD Application:
 #
 #   spec:

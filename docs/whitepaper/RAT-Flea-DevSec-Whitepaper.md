@@ -1,9 +1,9 @@
-# NERvvE DevSecOps
+# RAT Flea DevSec
 
 ## Securing the whole software delivery chain: code, dependencies, pipelines, cloud, Kubernetes, runtime and AI
 
 **Whitepaper · Version 1.4 · November 2026**
-NERvvE DevSecOps Product designed and developed by Sudheer Kumar · <https://github.com/sudheerkumard/nervve-devsecops>
+RAT Flea DevSec Product designed and developed by Sudheer Kumar · <https://github.com/sudheerkumard/nervve-devsecops>
 Documentation: <https://sudheerkumard.github.io/nervve-devsecops/> · Designed edition: [open the laid-out whitepaper](designed/index.html)
 
 ---
@@ -14,7 +14,7 @@ Documentation: <https://sudheerkumard.github.io/nervve-devsecops/> · Designed e
 > 2. **The cost is rising, and so is the personal accountability.** The average breach now costs USD 4.99 million [2], and EU rules make management bodies answerable for cyber risk [4][5].
 > 3. **Regulators now have a 24-hour clock.** Since 11 September 2026, actively exploited vulnerabilities in products sold in the EU must be reported within 24 hours [3].
 > 4. **Point tools cannot answer the board's question.** Separate scanners give separate numbers; leadership needs one risk score, one policy and one auditable answer to *"are we safer, and can we prove it?"*
-> 5. **NERvvE DevSecOps gives that answer.** One platform covers code, pipelines, cloud and runtime. It shows leadership the few risks that matter, blocks unsafe releases automatically, and produces the evidence auditors and regulators ask for.
+> 5. **RAT Flea DevSec gives that answer.** One platform covers code, pipelines, cloud and runtime. It shows leadership the few risks that matter, blocks unsafe releases automatically, and produces the evidence auditors and regulators ask for.
 
 ---
 
@@ -41,7 +41,7 @@ The attack surface spans:
 
 Most organisations answer with one tool per stage. Each tool brings its own findings, severity scale, dashboard and exceptions list. That leaves security teams triaging thousands of alerts and DevOps teams receiving tickets they cannot prioritise. Leadership still cannot answer a simple question: *are we getting safer, and can we prove it?*
 
-**NERvvE DevSecOps** is a single DevSecOps platform that covers the whole delivery chain:
+**RAT Flea DevSec** is a single DevSecOps platform that covers the whole delivery chain:
 - one finding model
 - one risk score
 - one policy
@@ -59,7 +59,7 @@ reported as one finding that traces back to the repository and the file to fix.
 
 It runs as multi-tenant SaaS, as a dedicated single-tenant deployment, on-premises, or fully air-gapped.
 
-| Outcome | How NERvvE DevSecOps delivers it |
+| Outcome | How RAT Flea DevSec delivers it |
 |---|---|
 | Fewer, better alerts | De-duplication across engines, governed suppressions, and a risk score that combines severity, exploit probability (EPSS), known exploitation (CISA KEV), reachability, exposure and asset criticality |
 | Faster remediation | Upgrade plans, AutoFix pull requests computed from your own files (GitHub, GitLab, Azure DevOps), routed ITSM tickets, SLAs per priority, automatic closure when a re-scan confirms the fix |
@@ -99,7 +99,7 @@ USD 2 million on average [2]. Automation is now a financial lever, not just a te
 
 **What the board needs is not another dashboard.** It needs a single, defensible answer to three questions: where are we
 exposed, are we getting better, and can we prove it to an auditor or a regulator tomorrow morning? The rest of this paper
-shows how NERvvE DevSecOps answers each one.
+shows how RAT Flea DevSec answers each one.
 
 ---
 
@@ -121,11 +121,11 @@ shows how NERvvE DevSecOps answers each one.
 | Cloud accounts | Public buckets and databases, open management ports, over-privileged or unprotected identities | Read the data or take over the account |
 | Running workloads | Privileged containers, shells and miners in production, credential theft from metadata services | Move from one compromised pod to the cloud account |
 
-Point tools see one row of this table each. NERvvE DevSecOps sees all of them, against one policy.
+Point tools see one row of this table each. RAT Flea DevSec sees all of them, against one policy.
 
 ---
 
-## 4. NERvvE DevSecOps at a glance
+## 4. RAT Flea DevSec at a glance
 
 
 **280 built-in detection rules across fifteen engines:**
@@ -171,7 +171,7 @@ Everything below ships in the product today and is covered by the documentation 
 - Multi-user authorisation testing of running APIs, a crawler, and authorised active checks on verified targets.
 
 **Prioritise**
-- NERvvE Risk Score (0–100) from severity, EPSS, CISA KEV, reachability, exposure and asset criticality; P0–P3 priorities with SLAs.
+- RAT Flea Risk Score (0–100) from severity, EPSS, CISA KEV, reachability, exposure and asset criticality; P0–P3 priorities with SLAs.
 - CISA SSVC decision on every finding, with the decision points shown.
 - Attack paths that join exposure, an exploitable weakness and privileged access or data on one workload, linked back to the repository and file to fix.
 - De-duplication across engines, governed suppressions and expiring risk acceptance.
@@ -204,7 +204,7 @@ Everything below ships in the product today and is covered by the documentation 
 *Figure 2 — Executive overview: posture score, SLA compliance, mean time to remediate, release-gate pass rate and open-risk trend, computed from stored scans.*
 
 ![Finding detail](../assets/screenshots/finding-drawer.webp)
-*Figure 3 — A finding: NERvvE Risk Score breakdown, blast radius, location, framework mapping and the CISA SSVC decision.*
+*Figure 3 — A finding: RAT Flea Risk Score breakdown, blast radius, location, framework mapping and the CISA SSVC decision.*
 
 ![Pipelines and posture](../assets/screenshots/pipelines.webp)
 *Figure 4 — Pipelines: every run gated by policy, with the OWASP Top 10 CI/CD risks across all pipelines.*
@@ -225,7 +225,7 @@ Everything below ships in the product today and is covered by the documentation 
 Every value lever below is measured by the platform from stored scans, so the business case can be built from your own
 data with the free Community edition rather than from estimates.
 
-| Lever | What changes | How it is measured in NERvvE DevSecOps | How to put a number on it |
+| Lever | What changes | How it is measured in RAT Flea DevSec | How to put a number on it |
 |---|---|---|---|
 | Analyst time | Duplicate and low-value findings are merged, de-prioritised or excluded before anyone triages them | Alert-to-action funnel on the security engineering dashboard | Findings removed × minutes per triage × loaded hourly cost |
 | Faster remediation | Teams fix the few findings that matter first, with an upgrade plan or an AutoFix pull request | Mean time to remediate by severity; SLA compliance by priority | Days of exposure removed for P0 and P1 findings |
@@ -249,7 +249,7 @@ figure comes from the platform's own dashboards, so finance and audit can check 
  Developers · CI/CD · GitOps                 Security · DevOps · Leadership
         │  myelin CLI / templates                        │  Web console (no external assets)
         ▼                                                ▼
- ┌──────────────────────────── NERvvE DevSecOps API (FastAPI) ───────────────────────────┐
+ ┌──────────────────────────── RAT Flea DevSec API (FastAPI) ───────────────────────────┐
  │  Scan ingest · Repository sources · Import · Gate · Reports · VEX · ITSM · Audit  │
  │  Engines: SAST · SCA · Secrets · IaC · CI posture · CD posture · Licence · AI-BOM │
  │           · Supply-chain defence · Live API testing · Posture · Cryptography (CBOM)  │
@@ -271,12 +271,12 @@ figure comes from the platform's own dashboards, so finance and audit can check 
 
 ---
 
-## 8. Prioritisation: the NERvvE Risk Score
+## 8. Prioritisation: the RAT Flea Risk Score
 
 
 Severity alone does not tell a team what to fix first: a "critical" in a test fixture matters less than a "high" that is exploited in the wild and reachable from an internet-facing service.
 
-The NERvvE Risk Score (0–100) combines:
+The RAT Flea Risk Score (0–100) combines:
 - base severity / CVSS
 - EPSS (probability of exploitation in the next 30 days)
 - CISA KEV (known exploited)
@@ -358,7 +358,7 @@ Overdue campaigns are flagged.
 ## 11. Supply-chain defence, posture and cryptography
 
 
-**Supply-chain attacks.** In 2025 and 2026 the largest software supply-chain incidents did not come through known CVEs. Self-replicating npm and PyPI worms stole NPM_TOKEN, GITHUB_TOKEN and cloud credentials from CI runners and republished backdoored versions; phished maintainers shipped crypto-wallet hijackers in packages with billions of downloads; and AI coding assistants recommended package names that did not exist, which attackers then registered. NERvvE DevSecOps answers the questions these attacks raise:
+**Supply-chain attacks.** In 2025 and 2026 the largest software supply-chain incidents did not come through known CVEs. Self-replicating npm and PyPI worms stole NPM_TOKEN, GITHUB_TOKEN and cloud credentials from CI runners and republished backdoored versions; phished maintainers shipped crypto-wallet hijackers in packages with billions of downloads; and AI coding assistants recommended package names that did not exist, which attackers then registered. RAT Flea DevSec answers the questions these attacks raise:
 
 | Question | How it is answered |
 |---|---|
@@ -372,9 +372,9 @@ Overdue campaigns are flagged.
 
 **Repository posture and the OSPS Baseline.** Nineteen automated checks score how each repository is run: security policy and private disclosure channel, licence, pinned dependencies, least-privilege tokens, dangerous workflows, committed secrets, tests and security scanning in CI, dependency update automation, signed releases and provenance, binary artifacts, code review, contribution guide, change log, SBOM and VEX, threat model, dependency cooldown and AI coding-agent guardrails. Each check scores 0–10, weighted by risk, and maps to the OpenSSF Open Source Project Security Baseline (version 2026.08.28). Controls that cannot be verified from repository content, such as MFA, are shown as needing attestation and never as met.
 
-**Cryptography inventory and post-quantum readiness.** NERvvE DevSecOps finds where first-party code uses cryptographic algorithms and protocols and classifies each use as broken (MD5, SHA-1, DES/3DES, RC4, ECB, TLS 1.0/1.1), quantum-vulnerable (RSA, ECDSA/ECDH, DH, DSA, Ed25519/X25519), quantum-safe (AES-GCM, ChaCha20-Poly1305, SHA-2/SHA-3, ML-KEM, ML-DSA, SLH-DSA) or needing review. The inventory is exported as a CycloneDX 1.6 Cryptography Bill of Materials and summarised as a readiness score per repository, so migration to ML-KEM (FIPS 203) and ML-DSA (FIPS 204) can be planned where data must stay confidential for years.
+**Cryptography inventory and post-quantum readiness.** RAT Flea DevSec finds where first-party code uses cryptographic algorithms and protocols and classifies each use as broken (MD5, SHA-1, DES/3DES, RC4, ECB, TLS 1.0/1.1), quantum-vulnerable (RSA, ECDSA/ECDH, DH, DSA, Ed25519/X25519), quantum-safe (AES-GCM, ChaCha20-Poly1305, SHA-2/SHA-3, ML-KEM, ML-DSA, SLH-DSA) or needing review. The inventory is exported as a CycloneDX 1.6 Cryptography Bill of Materials and summarised as a readiness score per repository, so migration to ML-KEM (FIPS 203) and ML-DSA (FIPS 204) can be planned where data must stay confidential for years.
 
-**EU Cyber Resilience Act readiness.** The CRA's vulnerability and incident reporting obligations have applied since 11 September 2026. For every actively exploited vulnerability (CISA KEV or a malicious release) in a product, NERvvE DevSecOps shows the Article 14 clocks (early warning within 24 hours, notification within 72 hours, final report within 14 days of a corrective measure) and records each submission with its reference. A product view shows the Annex I evidence the platform holds: SBOM, no known exploited vulnerabilities, critical and high fixed within SLA, a coordinated disclosure policy, signed updates and no committed secrets. This is a planning aid, not legal advice; notifications are submitted through the ENISA Single Reporting Platform.
+**EU Cyber Resilience Act readiness.** The CRA's vulnerability and incident reporting obligations have applied since 11 September 2026. For every actively exploited vulnerability (CISA KEV or a malicious release) in a product, RAT Flea DevSec shows the Article 14 clocks (early warning within 24 hours, notification within 72 hours, final report within 14 days of a corrective measure) and records each submission with its reference. A product view shows the Annex I evidence the platform holds: SBOM, no known exploited vulnerabilities, critical and high fixed within SLA, a coordinated disclosure policy, signed updates and no committed secrets. This is a planning aid, not legal advice; notifications are submitted through the ENISA Single Reporting Platform.
 
 ---
 
@@ -404,7 +404,7 @@ password policy.
 **Runtime protection.** Falco (through Falcosidekick) and Tetragon send detections to the platform. Events of the same
 rule on the same workload and image become one finding with a count; tokens and passwords in command lines are redacted
 before storage; tactics and techniques are mapped to MITRE ATT&CK. A critical or high detection raises the risk score and
-counts as active exploitation in the SSVC decision. NERvvE DevSecOps uses the customer's sensors; it does not ship a kernel
+counts as active exploitation in the SSVC decision. RAT Flea DevSec uses the customer's sensors; it does not ship a kernel
 agent of its own.
 
 **Attack paths and code to cloud.** An attack path is reported only when one workload combines internet exposure, an
@@ -479,7 +479,7 @@ Framework mappings are evidence aids. They show where automated testing bears on
 **AI assistant.** Four AI features help every role:
 - **Explain & fix:** what the finding is, its impact, why it matters here, step-by-step fix and references.
 - **Triage suggestion:** evidence for and against, with a suggested verdict.
-- **Ask NERvvE DevSecOps:** plain-language questions over all findings, for example "critical secrets in payments older than 7 days" or "supply-chain attacks in mobile-bff".
+- **Ask RAT Flea DevSec:** plain-language questions over all findings, for example "critical secrets in payments older than 7 days" or "supply-chain attacks in mobile-bff".
 - **AI executive briefing:** a short narrative for leadership, written only from the dashboard figures.
 
 All four AI features work with a built-in security knowledge base (also air-gapped), or with the tenant's own model: Anthropic, OpenAI, Azure OpenAI or a private OpenAI-compatible endpoint. Secret values are never sent to a model, tokens are redacted, code is shared only when explicitly enabled, and model answers never change a finding without a person.
@@ -544,16 +544,16 @@ every figure links to the findings behind it.
 
 - **Labelled benchmark.** A labelled corpus of vulnerable and safe code runs on every change. Precision and recall must not regress, and every safe line must stay silent. Labelled sample cloud accounts and a cluster do the same for the cloud, Kubernetes and identity checks.
 - **Self-scan.** The platform scans itself before release.
-- **Honest limits.** Like every automated tool, NERvvE DevSecOps can miss business-logic flaws and can report findings that do not apply in a given context. Every finding therefore carries its evidence and location, and every triage decision is recorded and reversible. Reports state that automated testing supports, but does not establish, compliance.
+- **Honest limits.** Like every automated tool, RAT Flea DevSec can miss business-logic flaws and can report findings that do not apply in a given context. Every finding therefore carries its evidence and location, and every triage decision is recorded and reversible. Reports state that automated testing supports, but does not establish, compliance.
 
 ---
 
 ## 18. Licensing and attribution
 
 
-The NERvvE DevSecOps Community edition is free and open-source software, licensed under the GNU Affero General Public License v3.0, with every feature included and no licence key required.
+The RAT Flea DevSec Community edition is free and open-source software, licensed under the GNU Affero General Public License v3.0, with every feature included and no licence key required.
 - **Your data.** You own your source code, scan results and reports, and may share reports with your customers and auditors.
-- **Modifications.** If you modify NERvvE DevSecOps and let others use it over a network, the AGPL requires you to offer them your modified source.
+- **Modifications.** If you modify RAT Flea DevSec and let others use it over a network, the AGPL requires you to offer them your modified source.
 - **Commercial options.** Commercial licences (without the AGPL's obligations), support and enterprise editions are available from the author.
 
 Full terms are in `LICENSE` and `NOTICE.md`; commercial terms are in `docs/legal/`. Third-party components are listed in `THIRD-PARTY-NOTICES.md`.
@@ -561,7 +561,7 @@ Full terms are in `LICENSE` and `NOTICE.md`; commercial terms are in `docs/legal
 **Next steps.** Explore the documentation and the interactive architecture explorer at <https://sudheerkumard.github.io/nervve-devsecops/>, and get the
 open-source Community edition from <https://github.com/sudheerkumard/nervve-devsecops>.
 
-**NERvvE DevSecOps Product designed and developed by Sudheer Kumar.**
+**RAT Flea DevSec Product designed and developed by Sudheer Kumar.**
 Copyright © 2026 Sudheer Kumar. All rights reserved.
 <https://github.com/sudheerkumard/nervve-devsecops> · Documentation: <https://sudheerkumard.github.io/nervve-devsecops/>
 
@@ -575,7 +575,7 @@ Sudheer designs, assesses and transforms security across enterprise IT, OT/ICS, 
 ecosystems. He helps organisations turn cybersecurity from a set of technical controls into a business capability: lower
 risk, stronger resilience and secure transformation. His recent work centres on securing LLM applications and agentic AI
 platforms, from threat modelling and red teaming to Responsible AI governance. He is the author of *Navigating the Digital
-Frontier: Cyber Security Manager's Handbook* (2024) and designed and developed NERvvE DevSecOps.
+Frontier: Cyber Security Manager's Handbook* (2024) and designed and developed RAT Flea DevSec.
 
 **Expertise:** security strategy and architecture · CISO advisory · cloud security (Azure, AWS, CNAPP, CSPM) · Zero Trust,
 IAM and PAM · AI and agentic AI security, AI red teaming · OT/ICS security (IEC 62443) · DevSecOps and application security ·
@@ -598,4 +598,4 @@ SOC, SIEM and SOAR · exposure management · incident response and resilience ·
 7. FIRST, *Exploit Prediction Scoring System (EPSS)*. <https://www.first.org/epss/>
 8. OpenSSF, *Open Source Project Security Baseline*. <https://baseline.openssf.org/>
 
-Figures from third-party research are quoted as published by their authors and are not NERvvE DevSecOps measurements.
+Figures from third-party research are quoted as published by their authors and are not RAT Flea DevSec measurements.

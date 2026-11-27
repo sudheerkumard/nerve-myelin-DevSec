@@ -1,7 +1,7 @@
 # Copyright (c) 2026 Sudheer Kumar.
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
 #
-# NERvvE DevSecOps — first-time setup on a Windows laptop (PowerShell 5.1 or 7+). Run from the repository folder:
+# RAT Flea DevSec — first-time setup on a Windows laptop (PowerShell 5.1 or 7+). Run from the repository folder:
 #   powershell -ExecutionPolicy Bypass -File scripts\windows\setup-myelin.ps1                # CLI only
 #   powershell -ExecutionPolicy Bypass -File scripts\windows\setup-myelin.ps1 -WithConsole   # + local console
 # Creates .venv, installs the myelin CLI (and the console backend with -WithConsole), checks optional tools,

@@ -1,4 +1,4 @@
-# NERvvE DevSecOps development environment.
+# RAT Flea DevSec development environment.
 # Replace .invalid hostnames, secret-store references and network ranges before deployment.
 image:
   repository: ghcr.io/sudheerkumard/nerve-myelin

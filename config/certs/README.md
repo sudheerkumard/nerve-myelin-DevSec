@@ -6,7 +6,7 @@ Some corporate networks inspect HTTPS traffic and re-sign it with the company's 
 trusts that certificate, but a container build does not, so `pip` fails with
 `CERTIFICATE_VERIFY_FAILED: self-signed certificate in certificate chain`.
 
-Put the company root certificate (PEM format, file extension `.crt`) in this folder. Every NERvvE DevSecOps image
+Put the company root certificate (PEM format, file extension `.crt`) in this folder. Every RAT Flea DevSec image
 build (`Dockerfile`, `Dockerfile.demo`, `Dockerfile.cli`) adds the `.crt` files here to the image's trusted
 certificates, for the build and for the API's own outbound HTTPS calls.
 

@@ -1,7 +1,7 @@
-# NERvvE DevSecOps Support and Service Levels
+# RAT Flea DevSec Support and Service Levels
 
-**Version 1.0 · Effective 21 November 2026** · Part of the NERvvE DevSecOps Subscription Agreement
-NERvvE DevSecOps Product designed and developed by Sudheer Kumar · Copyright © 2026 Sudheer Kumar
+**Version 1.0 · Effective 21 November 2026** · Part of the RAT Flea DevSec Subscription Agreement
+RAT Flea DevSec Product designed and developed by Sudheer Kumar · Copyright © 2026 Sudheer Kumar
 
 The support level for each subscription is the one named in its Order Form. Where the Order Form states different
 targets, the Order Form prevails.

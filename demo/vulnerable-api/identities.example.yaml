@@ -1,4 +1,4 @@
-# Test identities for NERvvE DevSecOps authorisation testing against the demo API.
+# Test identities for RAT Flea DevSec authorisation testing against the demo API.
 # Values may be literals (demo only), env:VAR_NAME (offline/CLI) or a vault reference (online platform).
 identities:
   - name: alice

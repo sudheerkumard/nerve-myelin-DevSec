@@ -21,7 +21,7 @@ identityProviders:
       client_id: 11111111-1111-1111-1111-111111111111
       client_secret_ref: env://MYELIN_OIDC_CLIENT_SECRET
       audiences: ["11111111-1111-1111-1111-111111111111", "api://nerve-myelin"]
-      require_mfa: true      # enforced by a Conditional Access policy; NERvvE verifies the `amr` claim
+      require_mfa: true      # enforced by a Conditional Access policy; RAT Flea verifies the `amr` claim
       role_mapping:
         NERvvE.TenantAdmin: tenant_admin
         NERvvE.SecurityLead: security_lead

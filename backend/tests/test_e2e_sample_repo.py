@@ -106,7 +106,7 @@ def test_04_report_editions_with_cves_and_frameworks(world):
     internal = c.get(f"/api/v1/repos/sources/{sid}/report", headers=H).text
     external = c.get(f"/api/v1/repos/sources/{sid}/report", headers=H, params={"audience": "external", "prepared_for": "Initech"}).text
     for t in ("Vulnerability register (CVE)", "https://nvd.nist.gov/vuln/detail/CVE-2021-44228", "OWASP Top 10 for LLM Applications",
-              "Software bill of materials (SBOM)", "NERvvE DevSecOps", "github.com/sudheerkumard/nervve-devsecops"):
+              "Software bill of materials (SBOM)", "RAT Flea DevSec", "github.com/sudheerkumard/nervve-devsecops"):
         assert t in internal, t
     assert "<b>Evidence</b>" in internal and "<b>Evidence</b>" not in external and "Initech" in external
     assert "sk-proj-AbCdEf" not in internal and "ghp_Zx9Yw8" not in internal       # secret values never appear

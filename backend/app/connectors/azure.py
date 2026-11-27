@@ -19,7 +19,7 @@ class AzureConnector(Connector):
     kind = "azure"
     title = "Microsoft Azure (Resource Manager, read-only)"
     config_fields = {"subscription_ids": "Comma-separated subscription IDs"}
-    least_privilege = {"summary": "Custom role 'NERvvE DevSecOps Reader' (read-only: Defender assessments, ACR, AKS, Key Vault metadata) at subscription scope",
+    least_privilege = {"summary": "Custom role 'RAT Flea DevSec Reader' (read-only: Defender assessments, ACR, AKS, Key Vault metadata) at subscription scope",
                        "policy_file": "config/connectors/azure-role-definition.json"}
 
     def _token(self) -> str:
@@ -90,5 +90,5 @@ class AzureConnector(Connector):
                 if not (kp.get("addonProfiles", {}).get("azurepolicy", {}).get("enabled")):
                     out.findings.append({"engine": "cloud", "rule_id": "NM-AZ-AKS-002", "title": f"AKS {aks['name']}: Azure Policy add-on disabled",
                                          "severity": "medium", "repo": f"azure:{sub}", "file": aks["id"], "exposure": "internal",
-                                         "remediation": "Enable the Azure Policy add-on; NERvvE DevSecOps admission policies can run alongside."})
+                                         "remediation": "Enable the Azure Policy add-on; RAT Flea DevSec admission policies can run alongside."})
         return out

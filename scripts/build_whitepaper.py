@@ -1,8 +1,8 @@
 # Copyright (c) 2026 Sudheer Kumar.
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
-"""Render docs/whitepaper/NERvvE-DevSecOps-Whitepaper.md into a designed, print-ready HTML file (open in a browser → PDF).
+"""Render docs/whitepaper/RAT-Flea-DevSec-Whitepaper.md into a designed, print-ready HTML file (open in a browser → PDF).
 
-    python scripts/build_whitepaper.py            # writes docs/whitepaper/NERvvE-DevSecOps-Whitepaper.html
+    python scripts/build_whitepaper.py            # writes docs/whitepaper/RAT-Flea-DevSec-Whitepaper.html
 """
 import os
 import re
@@ -10,12 +10,12 @@ import re
 import markdown
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SRC = os.environ.get("MYELIN_WP_SRC") or os.path.join(ROOT, "docs", "whitepaper", "NERvvE-DevSecOps-Whitepaper.md")
-OUT = os.environ.get("MYELIN_WP_OUT") or os.path.join(ROOT, "docs", "whitepaper", "NERvvE-DevSecOps-Whitepaper.html")  # env: public edition builds
+SRC = os.environ.get("MYELIN_WP_SRC") or os.path.join(ROOT, "docs", "whitepaper", "RAT-Flea-DevSec-Whitepaper.md")
+OUT = os.environ.get("MYELIN_WP_OUT") or os.path.join(ROOT, "docs", "whitepaper", "RAT-Flea-DevSec-Whitepaper.html")  # env: public edition builds
 REPO = "https://github.com/sudheerkumard/nervve-devsecops"
 DOCS = "https://sudheerkumard.github.io/nervve-devsecops/"
 
-ARCH = """<figure class="arch"><svg viewBox="0 0 860 430" role="img" aria-label="NERvvE DevSecOps architecture">
+ARCH = """<figure class="arch"><svg viewBox="0 0 860 430" role="img" aria-label="RAT Flea DevSec architecture">
 <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#5a6b85"/></marker></defs>
 <g font-family="system-ui,Segoe UI,Arial" font-size="12">
 <rect x="20" y="14" width="390" height="58" rx="10" fill="#eef4ff" stroke="#b8cdf5"/><text x="215" y="38" text-anchor="middle" font-weight="700" fill="#0b2a4a">Developers · CI / CD · GitOps</text>
@@ -24,7 +24,7 @@ ARCH = """<figure class="arch"><svg viewBox="0 0 860 430" role="img" aria-label=
 <text x="645" y="57" text-anchor="middle" fill="#46566e">web console · dashboards · reports · VEX</text>
 <line x1="215" y1="72" x2="215" y2="104" stroke="#5a6b85" stroke-width="1.6" marker-end="url(#ar)"/><line x1="645" y1="72" x2="645" y2="104" stroke="#5a6b85" stroke-width="1.6" marker-end="url(#ar)"/>
 <rect x="20" y="106" width="820" height="150" rx="12" fill="#0b2a4a"/>
-<text x="430" y="132" text-anchor="middle" font-weight="700" font-size="14" fill="#fff">NERvvE DevSecOps API</text>
+<text x="430" y="132" text-anchor="middle" font-weight="700" font-size="14" fill="#fff">RAT Flea DevSec API</text>
 <text x="430" y="152" text-anchor="middle" fill="#9ec5f4">Scan ingest · Repository sources · Import · Release gate · Reports · VEX · ITSM · Audit</text>
 <g fill="#13406f" stroke="#2a78d6">
 <rect x="40" y="170" width="92" height="30" rx="6"/><rect x="140" y="170" width="92" height="30" rx="6"/><rect x="240" y="170" width="92" height="30" rx="6"/><rect x="340" y="170" width="92" height="30" rx="6"/>
@@ -43,7 +43,7 @@ ARCH = """<figure class="arch"><svg viewBox="0 0 860 430" role="img" aria-label=
 <text x="430" y="348">Keycloak · Entra ID</text><text x="430" y="364">Okta · OIDC + MFA</text><text x="430" y="380">roles per tenant</text>
 <text x="595" y="348">GitHub · GitLab · Azure</text><text x="595" y="364">Bitbucket · CodeCommit</text><text x="595" y="380">Google Cloud · Git</text>
 <text x="760" y="348">Jira · ServiceNow</text><text x="760" y="364">Azure Boards</text><text x="760" y="380">Teams / Slack webhook</text></g></g></svg>
-<figcaption>Figure 1 — NERvvE DevSecOps architecture</figcaption></figure>"""
+<figcaption>Figure 1 — RAT Flea DevSec architecture</figcaption></figure>"""
 
 CSS = """
 :root{--brand:#0b2a4a;--acc:#2a78d6;--ink:#0b0b0b;--ink2:#46566e;--line:#e1e0d9}
@@ -85,7 +85,7 @@ ol.refs{font-size:8.8pt;color:var(--ink2)} ol.refs li{margin:5px 0;word-break:br
 .tochead{color:var(--brand);font-size:20pt;font-weight:700;margin:0 0 8px;padding-top:8px;border-top:3px solid var(--acc);display:inline-block}
 .end{margin-top:30px;padding:16px 18px;border-left:4px solid var(--acc);background:#f6f9fe;border-radius:6px}
 .bar-print{max-width:820px;margin:14px auto 0;text-align:right} .bar-print button{font:inherit;border:1px solid #c3c2b7;background:#fff;border-radius:7px;padding:7px 14px;cursor:pointer}
-@page{size:A4;margin:16mm 15mm 18mm;@bottom-left{content:"NERvvE DevSecOps · Whitepaper";font:8pt system-ui;color:#898781}
+@page{size:A4;margin:16mm 15mm 18mm;@bottom-left{content:"RAT Flea DevSec · Whitepaper";font:8pt system-ui;color:#898781}
   @bottom-center{content:"sudheerkumard.github.io/nervve-devsecops";font:8pt system-ui;color:#898781}
   @bottom-right{content:"Page " counter(page) " of " counter(pages);font:8pt system-ui;color:#898781}}
 @page :first{margin:0;@bottom-left{content:none}@bottom-center{content:none}@bottom-right{content:none}}
@@ -135,16 +135,16 @@ def build():
     first_hr = html.find("<hr")
     contents = f'<div class="contents"><div class="tochead">Contents</div><div class="toc">{toc}</div></div>'
     html = html[:first_hr] + contents + html[first_hr:] if first_hr > 0 else contents + html
-    html = re.sub(r"<p><strong>NERvvE DevSecOps Product designed and developed by Sudheer Kumar\.</strong>(.*?)</p>",
-                  r'<div class="end"><p><strong>NERvvE DevSecOps Product designed and developed by Sudheer Kumar.</strong>\1</p></div>', html, flags=re.S)
+    html = re.sub(r"<p><strong>RAT Flea DevSec Product designed and developed by Sudheer Kumar\.</strong>(.*?)</p>",
+                  r'<div class="end"><p><strong>RAT Flea DevSec Product designed and developed by Sudheer Kumar.</strong>\1</p></div>', html, flags=re.S)
     doc = f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NERvvE DevSecOps · Whitepaper</title><style>{CSS}</style></head><body>
+<title>RAT Flea DevSec · Whitepaper</title><style>{CSS}</style></head><body>
 <div class="bar-print"><button onclick="window.print()">Download PDF / print</button></div>
-<div class="cover"><div class="brand"><span class="mark">Nv</span><div>NERvvE DevSecOps<div style="font-weight:500;letter-spacing:.06em;font-size:11px;color:#9ec5f4;margin-top:2px">github.com/sudheerkumard/nervve-devsecops</div></div></div>
+<div class="cover"><div class="brand"><span class="mark">RF</span><div>RAT Flea DevSec<div style="font-weight:500;letter-spacing:.06em;font-size:11px;color:#9ec5f4;margin-top:2px">github.com/sudheerkumard/nervve-devsecops</div></div></div>
 <div class="kind">Whitepaper · November 2026</div>
 <h1>Securing the whole software delivery chain</h1>
 <p class="sub">From code to cloud to runtime: one risk score, one policy, one release gate and one evidence trail that leadership, auditors and regulators can trust.</p>
-<div class="foot"><span>NERvvE DevSecOps Product designed and developed by <b>Sudheer Kumar</b></span><span><a href="{DOCS}" style="color:#fff">{DOCS.split('://')[1].rstrip('/')}</a> · <a href="{REPO}" style="color:#fff">{REPO.split('://')[1]}</a></span></div></div>
+<div class="foot"><span>RAT Flea DevSec Product designed and developed by <b>Sudheer Kumar</b></span><span><a href="{DOCS}" style="color:#fff">{DOCS.split('://')[1].rstrip('/')}</a> · <a href="{REPO}" style="color:#fff">{REPO.split('://')[1]}</a></span></div></div>
 <div class="page">{html}</div></body></html>"""
     open(OUT, "w", encoding="utf-8").write(doc)
     return OUT

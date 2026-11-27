@@ -42,7 +42,7 @@ RULES = {
     "NM-CICD-010": ("Security gate allowed to fail (insufficient flow control)", "medium", "CICD-SEC-1",
                     "Remove `allow_failure` / `continue-on-error` from security jobs; enforce via required status checks."),
     "NM-CICD-012": ("Default branch not protected (no required reviews or status checks)", "high", "CICD-SEC-1",
-                    "Protect the default branch: require pull-request review, required status checks (including NERvvE DevSecOps) and block force pushes."),
+                    "Protect the default branch: require pull-request review, required status checks (including RAT Flea DevSec) and block force pushes."),
     "NM-CICD-011": ("Long-lived cloud credentials instead of OIDC federation", "medium", "CICD-SEC-2",
                     "Replace static cloud keys with OIDC workload identity (azure/login with federated credentials, aws-actions/configure-aws-credentials role-to-assume)."),
     "NM-CICD-013": ("Workflow serialises every repository secret", "critical", "CICD-SEC-6",

@@ -1,1 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="12" fill="#0B1220"/><path d="M24 7l14 5.5V23c0 9-6.2 15.4-14 18-7.8-2.6-14-9-14-18V12.5z" fill="none" stroke="#14B8A6" stroke-width="3" stroke-linejoin="round"/><path d="M15 25h5l2.5-6 4 11 2.5-5H33" fill="none" stroke="#EAF0FA" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-labelledby="logo-title logo-description">
+<title id="logo-title">RAT Flea icon</title>
+<desc id="logo-description">A flea shell and spring leg around an observation eye.</desc>
+<!-- Artwork created by CodeRabbit for RAT Flea. Space Grotesk lettering converted to outlines. -->
+<g>
+  <path d="M56 77 74 98H95" fill="none" stroke="#F3FAF8" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path fill="#F3FAF8" fill-rule="evenodd" d="M8 59C23 41 44 29 68 29c22 0 41 10 55 28-15 16-33 28-56 28C44 85 23 76 8 59Z
+    M35 43c4-2 7-4 11-5 5 12 3 25-5 38-4-1-7-3-10-5 8-11 9-20 4-28Z
+    M51 35c4-1 7-1 11-1 6 14 4 33-5 46-4 0-7-1-10-2 8-14 10-28 4-43Z
+    M101 56a16 16 0 1 0-32 0 16 16 0 0 0 32 0Z"/>
+  <circle cx="85" cy="56" r="8" fill="#59E3C2"/>
+</g>
+</svg>

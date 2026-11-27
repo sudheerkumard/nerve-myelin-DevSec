@@ -1,10 +1,10 @@
-# NERvvE DevSecOps — Connectors
+# RAT Flea DevSec — Connectors
 
 *NM-ARC-001 · Enterprise Architecture & Deployment Pack · Version 1.1 · 13 November 2026 · Customer confidential*
 
 ## 6. Connector framework and least privilege
 
-Connectors pull posture data from the customer's platforms into tenant findings and evidence. Every connector is read-only, uses short-lived credentials, and holds no secret in the NERvvE database.
+Connectors pull posture data from the customer's platforms into tenant findings and evidence. Every connector is read-only, uses short-lived credentials, and holds no secret in the RAT Flea database.
 
 **Connector sync** ([PNG](diagrams/08-connector-sync.png))
 
@@ -12,7 +12,7 @@ Connectors pull posture data from the customer's platforms into tenant findings 
 sequenceDiagram
   autonumber
   actor A as Tenant admin
-  participant M as NERvvE API
+  participant M as RAT Flea API
   participant V as Customer vault
   participant X as Provider API
   participant DB as PostgreSQL (RLS)
@@ -30,7 +30,7 @@ sequenceDiagram
 | Connector | Identity | Permissions granted | Collected |
 |---|---|---|---|
 | GitHub | GitHub App installed on selected repositories; installation token (1 h) requested with explicit read permissions | Metadata, Contents, Actions, Administration, Code scanning alerts: read. Template: config/connectors/github-app-manifest.json | Workflow posture (CI/CD rules incl. unprotected default branch), pipeline definitions as evidence |
-| Azure | Workload identity federation (preferred) or service principal | Custom role 'NERvvE DevSecOps Reader' with read actions only. Template: config/connectors/azure-role-definition.json | Defender for Cloud assessments, ACR (admin user, public access), AKS (local accounts, Azure Policy) |
+| Azure | Workload identity federation (preferred) or service principal | Custom role 'RAT Flea DevSec Reader' with read actions only. Template: config/connectors/azure-role-definition.json | Defender for Cloud assessments, ACR (admin user, public access), AKS (local accounts, Azure Policy) |
 | AWS | IAM role assumed with sts:AssumeRole and a mandatory ExternalId; 15-minute session | ecr Describe/List and securityhub:GetFindings only. Templates: config/connectors/aws-iam-policy.json, aws-trust-policy.json | ECR scan-on-push and tag mutability, Security Hub findings |
 
 ### 6.1 Credential references

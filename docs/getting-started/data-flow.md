@@ -13,7 +13,7 @@ Follow one change through the platform. The numbers match the diagram.
 3.  **Ingest.** Findings and the SBOM are uploaded as JSON over TLS with an integration API key. Every result becomes
     one finding record; a fingerprint (engine, rule, location, package, repository) removes duplicates across engines.
 4.  **Enrich and score.** Exploit probability (EPSS), known exploitation (CISA KEV), reachability, exposure, runtime
-    evidence and attack paths are combined into the [NERvvE Risk Score](../concepts/risk-score.md) and a CISA SSVC
+    evidence and attack paths are combined into the [RAT Flea Risk Score](../concepts/risk-score.md) and a CISA SSVC
     decision. Cloud and runtime findings join here.
 5.  **Decide.** The policy bound to the repository returns pass, warn or block. The decision is recorded
     against the exact commit, so a deployment can be stopped before it reaches production.

@@ -34,7 +34,7 @@ const VIEWS = ["overview", "findings", "pipelines", "defence", "posture", "cnapp
   const b = await puppeteer.launch({ headless: "new", executablePath: process.env.CHROME, args: ["--no-sandbox"] });
   const p = await b.newPage();
   await p.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1.5 });
-  await p.goto("file://" + path.join(ROOT, "demo", "offline", "NERvvE-DevSecOps-Demo-Console.html") + "#overview", { waitUntil: "networkidle0" });
+  await p.goto("file://" + path.join(ROOT, "demo", "offline", "RAT-Flea-DevSec-Demo-Console.html") + "#overview", { waitUntil: "networkidle0" });
   await sleep(1200);
   for (const v of VIEWS) {
     await p.evaluate(h => { location.hash = h; }, v); await sleep(1400);

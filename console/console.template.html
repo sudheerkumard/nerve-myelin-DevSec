@@ -2,13 +2,13 @@
 <!-- Copyright (c) 2026 Sudheer Kumar. SPDX-License-Identifier: AGPL-3.0-only. See LICENSE. -->
 <html lang="en" data-theme="corporate">
 <head>
-<!-- NERvvE DevSecOps console. Copyright (c) 2026 Sudheer Kumar. Licensed under the GNU AGPL-3.0; see LICENSE.
+<!-- RAT Flea DevSec console. Copyright (c) 2026 Sudheer Kumar. Licensed under the GNU AGPL-3.0; see LICENSE.
      Navigation icons adapted from Feather (https://feathericons.com), MIT License, Copyright (c) 2013-2023 Cole Bemis.
      See THIRD-PARTY-NOTICES.md. -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NERvvE DevSecOps Command Console</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2l11 5v8c0 7.5-4.8 12.6-11 15-6.2-2.4-11-7.5-11-15V7z' fill='%23f5a524'/%3E%3Cpath d='M17.5 7l-6 10h4.5l-1.5 8 6-10h-4.5z' fill='%231a1205'/%3E%3C/svg%3E">
+<title>RAT Flea DevSec Command Console</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22128%22%20height%3D%22128%22%20viewBox%3D%220%200%20128%20128%22%20role%3D%22img%22%20aria-labelledby%3D%22logo-title%20logo-description%22%3E%0A%3Ctitle%20id%3D%22logo-title%22%3ERAT%20Flea%20icon%3C%2Ftitle%3E%0A%3Cdesc%20id%3D%22logo-description%22%3EA%20flea%20shell%20and%20spring%20leg%20around%20an%20observation%20eye.%3C%2Fdesc%3E%0A%3C%21--%20Artwork%20created%20by%20CodeRabbit%20for%20RAT%20Flea.%20Space%20Grotesk%20lettering%20converted%20to%20outlines.%20--%3E%0A%3Cg%3E%0A%20%20%3Cpath%20d%3D%22M56%2077%2074%2098H95%22%20fill%3D%22none%22%20stroke%3D%22%23F3FAF8%22%20stroke-width%3D%2210%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%0A%20%20%3Cpath%20fill%3D%22%23F3FAF8%22%20fill-rule%3D%22evenodd%22%20d%3D%22M8%2059C23%2041%2044%2029%2068%2029c22%200%2041%2010%2055%2028-15%2016-33%2028-56%2028C44%2085%2023%2076%208%2059Z%0A%20%20%20%20M35%2043c4-2%207-4%2011-5%205%2012%203%2025-5%2038-4-1-7-3-10-5%208-11%209-20%204-28Z%0A%20%20%20%20M51%2035c4-1%207-1%2011-1%206%2014%204%2033-5%2046-4%200-7-1-10-2%208-14%2010-28%204-43Z%0A%20%20%20%20M101%2056a16%2016%200%201%200-32%200%2016%2016%200%200%200%2032%200Z%22%2F%3E%0A%20%20%3Ccircle%20cx%3D%2285%22%20cy%3D%2256%22%20r%3D%228%22%20fill%3D%22%2359E3C2%22%2F%3E%0A%3C%2Fg%3E%0A%3C%2Fsvg%3E%0A">
 <!-- No external fonts or scripts: the console works air-gapped and sends no visitor data to third parties. -->
 <style>
 :root{
@@ -245,6 +245,23 @@ body.signed-out .app{display:none}
 }
 @media print{aside,header.top,.banner,.tour,.toast{display:none!important}.app{display:block}main{overflow:visible}body{background:#fff}}
 svg text{fill:var(--tx3);font-size:10.5px;font-family:inherit}
+
+.product-mark{flex:none;transform-origin:50% 65%;animation:brand-land .8s cubic-bezier(.17,.68,.33,1.14) both}
+.product-mark circle{transform-box:fill-box;transform-origin:center;animation:brand-signal .85s ease-out .22s both}
+@keyframes brand-land{0%{opacity:0;transform:translateY(8px) scale(.8)}65%{opacity:1;transform:translateY(-3px) scale(1.04)}100%{transform:translateY(0) scale(1)}}
+@keyframes brand-signal{0%{transform:scale(.55)}60%{transform:scale(1.22)}100%{transform:scale(1)}}
+@media(prefers-reduced-motion:reduce){.product-mark,.product-mark circle{animation:none}}
+.brand b,.si-logo b{letter-spacing:0}
+.si-logo .product-mark{width:60px;height:48px}
+#productDemo{width:min(600px,calc(100% - 32px));max-height:calc(100dvh - 32px);padding:24px;border:1px solid #304356;border-radius:16px;background:#101e2b;color:#f3faf8;box-shadow:0 24px 70px #0008}
+#productDemo::backdrop{background:#07121dd9}
+#productDemo h2{margin:0 0 10px}
+#productDemo p{line-height:1.55}
+#productDemo .demo-meta{color:#59e3c2;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+#productDemo .demo-result{padding:16px;background:#182b3b;border-radius:10px;border-left:3px solid #59e3c2}
+#productDemo footer{display:flex;justify-content:space-between;gap:8px;margin-top:20px;flex-wrap:wrap}
+#productDemo .btn{color:#f3faf8;background:#223b4d;border-color:#38566a}
+#productDemo .btn.pri{color:#101e2b;background:#59e3c2;border-color:#59e3c2}
 </style>
 </head>
 <body>
@@ -252,8 +269,14 @@ svg text{fill:var(--tx3);font-size:10.5px;font-family:inherit}
 <div class="scrim" onclick="document.body.classList.remove('nav-open')"></div>
 <aside>
   <div class="brand">
-    <svg width="32" height="32" viewBox="0 0 32 32"><defs><linearGradient id="lg" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#2dd4bf"/><stop offset="1" stop-color="#3b82f6"/></linearGradient></defs><rect x="1" y="1" width="30" height="30" rx="8" fill="#0c1218" stroke="url(#lg)" stroke-width="1.5"/><path d="M6 16h4.5l2.2-6 3.6 12 2.6-8 1.6 2H26" fill="none" stroke="url(#lg)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    <div><b>NERvvE</b><small>DevSecOps</small></div>
+    <svg class="product-mark" viewBox="0 16 128 100" aria-hidden="true" width="44" height="36"><g>
+  <path d="M56 77 74 98H95" fill="none" stroke="#F3FAF8" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path fill="#F3FAF8" fill-rule="evenodd" d="M8 59C23 41 44 29 68 29c22 0 41 10 55 28-15 16-33 28-56 28C44 85 23 76 8 59Z
+    M35 43c4-2 7-4 11-5 5 12 3 25-5 38-4-1-7-3-10-5 8-11 9-20 4-28Z
+    M51 35c4-1 7-1 11-1 6 14 4 33-5 46-4 0-7-1-10-2 8-14 10-28 4-43Z
+    M101 56a16 16 0 1 0-32 0 16 16 0 0 0 32 0Z"/>
+  <circle cx="85" cy="56" r="8" fill="#59E3C2"/>
+</g></svg><div><b>RAT Flea DevSec</b><small>RAT Flea Cyber</small></div>
   </div>
   <nav id="nav"></nav>
   <div class="tenant" id="tenantBox"></div>
@@ -269,7 +292,7 @@ svg text{fill:var(--tx3);font-size:10.5px;font-family:inherit}
     <span class="pill"><span class="dot"></span><span id="modePill">Live</span></span>
     <button class="btn" onclick="customise()" title="Personalise for this customer">⚙ Customise</button>
     <button class="btn" onclick="toggleTheme()" title="Switch light / dark theme">☾ Theme</button>
-    <button class="btn pri" onclick="startTour()">▶ Guided demo</button>
+    <button class="btn pri" onclick="openProductDemo()">▶ Product demo</button>
   </header>
   <div class="wrap" id="view"></div>
 </main>
@@ -279,10 +302,32 @@ svg text{fill:var(--tx3);font-size:10.5px;font-family:inherit}
 <div class="modal" id="modal"></div>
 <div class="toast" id="toast"></div>
 <div class="tour" id="tour"></div>
+<dialog id="productDemo" aria-labelledby="demoTitle">
+  <div class="si-logo"><svg class="product-mark" viewBox="0 16 128 100" aria-hidden="true" width="44" height="36"><g>
+  <path d="M56 77 74 98H95" fill="none" stroke="#F3FAF8" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path fill="#F3FAF8" fill-rule="evenodd" d="M8 59C23 41 44 29 68 29c22 0 41 10 55 28-15 16-33 28-56 28C44 85 23 76 8 59Z
+    M35 43c4-2 7-4 11-5 5 12 3 25-5 38-4-1-7-3-10-5 8-11 9-20 4-28Z
+    M51 35c4-1 7-1 11-1 6 14 4 33-5 46-4 0-7-1-10-2 8-14 10-28 4-43Z
+    M101 56a16 16 0 1 0-32 0 16 16 0 0 0 32 0Z"/>
+  <circle cx="85" cy="56" r="8" fill="#59E3C2"/>
+</g></svg><div><b>RAT Flea DevSec</b><span>Product demo · Sample data</span></div></div>
+  <div id="demoStep" aria-live="polite">
+    <p class="demo-meta" id="demoProgress"></p>
+    <h2 id="demoTitle">Product demo</h2>
+    <p id="demoDescription"></p>
+    <p class="demo-result" id="demoResult"></p>
+  </div>
+  <footer>
+    <form method="dialog"><button class="btn" type="submit">Close demo</button></form>
+    <div><button class="btn" id="demoBack" type="button">Back</button>
+    <button class="btn pri" id="demoNext" type="button">Next →</button></div>
+  </footer>
+</dialog>
+
 
 <script>
 const SNAPSHOT = /*__SNAPSHOT__*/null;
-const CFG = /*__CONFIG__*/null || {product: "NERvvE DevSecOps", company: "NERvvE DevSecOps", contact: {web: "https://github.com/sudheerkumard/nervve-devsecops", author: "Sudheer Kumar"}, confidentialityNotice: "Proprietary and confidential — NERvvE DevSecOps, designed and developed by Sudheer Kumar; shown under NDA.", defaultTheme: "corporate", defaultCustomer: {customer: "Your Organisation", industry: "Technology", devs: 0, presenter: ""}, api: {baseUrl: "", demoApiKey: ""}};
+const CFG = /*__CONFIG__*/null || {product: "RAT Flea DevSec", company: "RAT Flea Cyber", contact: {web: "https://github.com/sudheerkumard/nervve-devsecops", author: "Sudheer Kumar"}, confidentialityNotice: "Proprietary and confidential — RAT Flea DevSec, designed and developed by Sudheer Kumar; shown under NDA.", defaultTheme: "corporate", defaultCustomer: {customer: "Your Organisation", industry: "Technology", devs: 0, presenter: ""}, api: {baseUrl: "", demoApiKey: ""}};
 const API_KEY = CFG.api.demoApiKey, API_BASE = (CFG.api.baseUrl || "").replace(/\/$/, "");
 document.documentElement.dataset.theme = CFG.defaultTheme || "corporate";
 let MODE = "snapshot", S = {}, AUTHMODE = "apikey", USER = null;   // AUTHMODE: apikey (demo) | session (enterprise SSO)
@@ -428,9 +473,9 @@ const NAV = [
   ["Cloud & runtime", [["cnapp", "Cloud overview"], ["cloud", "Cloud posture"], ["kubernetes", "Kubernetes posture"], ["identities", "Identities & entitlements"], ["runtime", "Runtime protection"]]],
   ["Demo", [["live", "Live scan"]]],
   ["Governance", [["compliance", "Compliance"], ["cra", "EU CRA readiness"], ["policies", "Policy as code"], ["policyLifecycle", "Policy lifecycle"], ["exceptions", "Exception register"], ["audit", "Audit log"], ["integrations", "Integrations"]]],
-  ["About", [["why", "Why NERvvE DevSecOps"]]]
+  ["About", [["why", "Why RAT Flea DevSec"]]]
 ];
-const TITLES = {cnapp:["Cloud overview","Attack paths, cloud and cluster posture, identities and runtime in one place"],cloud:["Cloud posture","Azure, AWS and Google Cloud configuration against the CIS foundations benchmarks"],kubernetes:["Kubernetes posture","Pod Security Standards, RBAC, exposure and isolation"],identities:["Identities & entitlements","Who can do what across cloud accounts and clusters"],runtime:["Runtime protection","Falco and Tetragon detections mapped to MITRE ATT&CK"],defence:["Supply-chain defence","Malicious packages, typosquats, worms and CI token theft"],posture:["Repository posture","19 practice checks mapped to the OSPS Baseline"],crypto:["Cryptography & PQC","CBOM inventory and post-quantum migration"],cra:["EU CRA readiness","Article 14 reporting clocks and Annex I evidence"],welcome:["Welcome","Customer briefing"],overview:["Executive overview","Risk posture across every repository, pipeline and artifact"],findings:["Findings","One prioritized queue across 15 engines, from code to cloud to runtime, ranked by exploitability"],pipelines:["Pipelines & posture","Every run gated by policy, every pipeline hardened against OWASP CI/CD Top 10"],supply:["Artifact integrity","SBOM, build metadata and verified deployment evidence"],graph:["Supply-chain risk graph","Evidence-backed relationships across repositories, builds, components and findings"],intel:["Vulnerability intelligence","Advisory-oriented view across stored CVEs and exploit signals"],licenses:["Licence governance","SPDX expression policy evaluation against tenant SBOM evidence"],campaigns:["Remediation campaigns","Grouped, accountable and verifiable remediation work"],vex:["VEX / CSAF intelligence","Preview and validate vulnerability exploitability statements"],scanners:["Scanner intake","Normalize external scanner reports into MYELIN findings"],baseline:["Baseline gate","Evaluate introduced findings against a recorded scan baseline"],repos:["Repositories","Coverage and risk by repository"],apptest:["Live app testing","Running APIs tested as real users — offline or online"],live:["Live scan","Run the NERvvE DevSecOps engine against a real repository"],compliance:["Compliance","Continuous control evidence mapped from findings"],policies:["Policy as code","One policy drives PR checks, pipeline gates and admission"],policyLifecycle:["Policy lifecycle","Immutable versions, independent approvals, inheritance and controlled rollback"],exceptions:["Exception register","Time-boxed, scoped exceptions with independent approval"],audit:["Audit log","Immutable record of security decisions"],integrations:["Integrations","Source control, CI, clouds, clusters, runtime sensors, ticketing, SIEM and developer tools"],why:["Why NERvvE DevSecOps","Where NERvvE DevSecOps is different"]};
+const TITLES = {cnapp:["Cloud overview","Attack paths, cloud and cluster posture, identities and runtime in one place"],cloud:["Cloud posture","Azure, AWS and Google Cloud configuration against the CIS foundations benchmarks"],kubernetes:["Kubernetes posture","Pod Security Standards, RBAC, exposure and isolation"],identities:["Identities & entitlements","Who can do what across cloud accounts and clusters"],runtime:["Runtime protection","Falco and Tetragon detections mapped to MITRE ATT&CK"],defence:["Supply-chain defence","Malicious packages, typosquats, worms and CI token theft"],posture:["Repository posture","19 practice checks mapped to the OSPS Baseline"],crypto:["Cryptography & PQC","CBOM inventory and post-quantum migration"],cra:["EU CRA readiness","Article 14 reporting clocks and Annex I evidence"],welcome:["Welcome","Customer briefing"],overview:["Executive overview","Risk posture across every repository, pipeline and artifact"],findings:["Findings","One prioritized queue across 15 engines, from code to cloud to runtime, ranked by exploitability"],pipelines:["Pipelines & posture","Every run gated by policy, every pipeline hardened against OWASP CI/CD Top 10"],supply:["Artifact integrity","SBOM, build metadata and verified deployment evidence"],graph:["Supply-chain risk graph","Evidence-backed relationships across repositories, builds, components and findings"],intel:["Vulnerability intelligence","Advisory-oriented view across stored CVEs and exploit signals"],licenses:["Licence governance","SPDX expression policy evaluation against tenant SBOM evidence"],campaigns:["Remediation campaigns","Grouped, accountable and verifiable remediation work"],vex:["VEX / CSAF intelligence","Preview and validate vulnerability exploitability statements"],scanners:["Scanner intake","Normalize external scanner reports into MYELIN findings"],baseline:["Baseline gate","Evaluate introduced findings against a recorded scan baseline"],repos:["Repositories","Coverage and risk by repository"],apptest:["Live app testing","Running APIs tested as real users — offline or online"],live:["Live scan","Run the RAT Flea DevSec engine against a real repository"],compliance:["Compliance","Continuous control evidence mapped from findings"],policies:["Policy as code","One policy drives PR checks, pipeline gates and admission"],policyLifecycle:["Policy lifecycle","Immutable versions, independent approvals, inheritance and controlled rollback"],exceptions:["Exception register","Time-boxed, scoped exceptions with independent approval"],audit:["Audit log","Immutable record of security decisions"],integrations:["Integrations","Source control, CI, clouds, clusters, runtime sensors, ticketing, SIEM and developer tools"],why:["Why RAT Flea DevSec","Where RAT Flea DevSec is different"]};
 function renderNav(cur) {
   const ct = {findings: S.api["/api/summary"].kpis.open_findings, pipelines: S.api["/api/summary"].kpis.blocked_24h};
   $("#nav").innerHTML = NAV.map(([g, items]) => `<div class="grp">${g}</div>` + items.map(([id, l]) =>
@@ -670,7 +715,7 @@ async function runAsk(q) {
 }
 VIEWS.findings = async () => {
   const repos = (S.api["/api/repos"] || []).map(r => r.name).sort();
-  $("#view").innerHTML = `<div class="card ai-card" style="margin-bottom:12px"><div class="ai-h">✦ Ask NERvvE DevSecOps</div>
+  $("#view").innerHTML = `<div class="card ai-card" style="margin-bottom:12px"><div class="ai-h">✦ Ask RAT Flea DevSec</div>
     <div class="ask"><input id="askQ" placeholder="e.g. critical secrets older than 7 days · known exploited dependency CVEs · AI findings in ${esc(repos[0] || "my repo")}"><button class="btn pri" id="askGo">Ask</button></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">${ASK_SUGGEST.map(q => `<button class="btn sm" data-ask="${esc(q)}">${esc(q)}</button>`).join("")}</div><div id="askOut"></div></div><div class="filters">
     <input type="text" id="fq" placeholder="Search CVE, package, file, rule…">
@@ -718,7 +763,7 @@ async function openFinding(id) {
   const d = $("#drawer");
   d.innerHTML = `<div class="hd"><div style="display:flex;gap:8px;align-items:center"><span class="prio ${f.priority}">${f.priority}</span><span class="sev ${f.severity}">${f.severity}</span><span class="eng">${f.engine}</span><span class="sp"></span><button class="btn sm" onclick="closeAll()">✕</button></div><h2>${esc(f.title)}</h2><div class="muted small mono">${esc(f.id)} · ${vulnLink(f.cve || f.advisory || f.rule_id)}</div></div>
   <div class="bd">
-   <div class="grid g2"><div class="card"><h3>NERvvE Risk Score</h3><div style="font-size:34px;font-weight:700">${f.mrs}<span class="muted" style="font-size:14px"> / 100</span></div>
+   <div class="grid g2"><div class="card"><h3>RAT Flea Risk Score</h3><div style="font-size:34px;font-weight:700">${f.mrs}<span class="muted" style="font-size:14px"> / 100</span></div>
      ${parts.map(([l, v]) => `<div style="display:flex;justify-content:space-between;font-size:12px;margin-top:5px"><span class="muted">${l}</span><span class="mono">+${v.toFixed(1)}</span></div>`).join("")}
      ${f.reachable === false ? '<div class="small" style="margin-top:6px;color:var(--ok)">× 0.45 — proven unreachable</div>' : ""}<div class="small muted" style="margin-top:6px">× business-criticality weighting for ${esc(f.repo)}</div></div>
     <div class="card"><h3>Blast radius</h3><div style="font-size:34px;font-weight:700">${f.blast_radius.count}</div><div class="muted small">open instances across ${f.blast_radius.repos.length} repos</div><div style="margin-top:8px">${f.blast_radius.repos.slice(0, 8).map(r => `<span class="chip">${esc(r)}</span>`).join("")}</div></div></div>
@@ -777,7 +822,7 @@ function secretSteps() {
     <li><b>Update every consumer</b> (pipelines, deployments) to read it from the secret manager.</li>
     <li><b>Remove it from history</b> with <span class="mono">git filter-repo</span> and force-push; ask forks to re-clone.</li>
     <li><b>Check the provider's audit log</b> for use of the old credential since it was committed.</li>
-    <li>Re-scan: NERvvE DevSecOps closes the finding (and its ticket) when the secret is gone.</li></ol>`);
+    <li>Re-scan: RAT Flea DevSec closes the finding (and its ticket) when the secret is gone.</li></ol>`);
 }
 async function doTicket(id) {
   try {
@@ -807,7 +852,7 @@ const diffHtml = d => esc(d || "").split("\n").map(l => l.startsWith("+") && !l.
 async function doFix(id) {
   try {
     const r = await api(`/api/findings/${id}/autofix`, {method: "POST"});
-    if (!r.proposed) return modal("⚡ AutoFix", `<p>No safe automatic change exists for this finding, so NERvvE DevSecOps does not invent one.</p><div class="card" style="margin-top:8px">${esc(r.guidance || "")}</div><p class="muted small">Use ✦ Explain &amp; fix for step-by-step guidance.</p>`);
+    if (!r.proposed) return modal("⚡ AutoFix", `<p>No safe automatic change exists for this finding, so RAT Flea DevSec does not invent one.</p><div class="card" style="margin-top:8px">${esc(r.guidance || "")}</div><p class="muted small">Use ✦ Explain &amp; fix for step-by-step guidance.</p>`);
     modal("⚡ AutoFix", `<div class="kv" style="margin-bottom:12px"><div>Repository</div><div>${esc(r.repo)}</div><div>Branch</div><div class="mono">${esc(r.branch)}</div><div>Commit message</div><div>${esc(r.title)}</div><div>Change</div><div>${esc(r.explanation || "")}${r.review ? ' <span class="chip warn">review: can change behaviour</span>' : ""}</div></div>
       <pre>${diffHtml(r.diff)}</pre><div class="muted small" style="margin:8px 0">Computed from the file at the scanned commit. When a re-scan no longer reports the issue, the finding and its ticket close.</div>
       <div style="display:flex;gap:8px">${r.can_open_pr && MODE === "live" ? `<button class="btn pri" id="fixPr">Open pull request</button>` : `<span class="muted small">${MODE === "live" ? "Connect this repository with a token that can write contents and pull requests to open it automatically." : "Pull requests are opened in the live console."}</span>`}
@@ -823,7 +868,7 @@ async function doExplain(id) {
   try {
     const r = await api(`/api/findings/${id}/explain`, {method: "POST"});
     const steps = r.steps || (r.fix ? [r.fix] : []);
-    $("#aiOut").innerHTML = `<div class="card ai-card"><div class="ai-h">✦ NERvvE DevSecOps AI assistant <span class="chip">${esc(r.source === "llm" ? r.model : "built-in knowledge")}</span></div>
+    $("#aiOut").innerHTML = `<div class="card ai-card"><div class="ai-h">✦ RAT Flea DevSec AI assistant <span class="chip">${esc(r.source === "llm" ? r.model : "built-in knowledge")}</span></div>
       <div><b>${esc(r.summary)}</b></div>${r.what ? `<p class="small" style="margin:8px 0 4px"><b>What it is.</b> ${esc(r.what)}</p>` : ""}${r.impact ? `<p class="small" style="margin:4px 0"><b>Impact.</b> ${esc(r.impact)}</p>` : ""}
       <div class="small" style="margin-top:6px"><b>Why it matters here</b></div><ul class="small" style="margin:4px 0;padding-left:18px;color:var(--tx2)">${(r.why_it_matters || []).map(w => `<li>${esc(w)}</li>`).join("")}</ul>
       <div class="small"><b>How to fix</b></div><ol class="small" style="margin:4px 0;padding-left:18px">${steps.map(x => `<li>${esc(x)}</li>`).join("")}</ol>
@@ -1028,7 +1073,7 @@ VIEWS.supply = async () => {
     <table><tr><th>Component</th><th>Version</th><th>Licence</th><th>Scope</th></tr>${sb.components.map(c => `<tr><td class="mono small">${esc(c.name)}</td><td class="mono small">${esc(c.version)}</td><td class="small">${esc((c.licenses[0] || {license: {id: "unknown"}}).license.id)}</td><td class="small muted">${c.scope}</td></tr>`).join("")}</table></div>`}</div>
   <div style="margin-top:14px"></div><div class="card" id="scVerify"><h3>How deploy-time verification works</h3><pre><span class="c"># Every build: sign + attest (one step, keyless)</span>
 myelin attest --image acr.orion.example/payments-gateway@sha256:… --provenance slsa.json --sbom sbom.cdx.json
-<span class="c"># Every deploy: NERvvE DevSecOps admission policy (Kyverno/Gatekeeper) on AKS/EKS/GKE/OpenShift</span>
+<span class="c"># Every deploy: RAT Flea DevSec admission policy (Kyverno/Gatekeeper) on AKS/EKS/GKE/OpenShift</span>
 <span class="y">! evidence boundary</span>  Build, SBOM and policy evidence is shown when supplied by connected pipelines.
 <span class="c">  Admission decisions appear only after a Kubernetes admission-event connector is configured.
   Signature verification requires a verified cosign result for an immutable image digest.</span></pre></div>`;
@@ -1056,7 +1101,7 @@ VIEWS.defence = async () => {
   </div>
   <div class="card" style="margin-top:14px"><h3>CI/CD hardening against token theft</h3><div class="muted small" style="margin:-4px 0 8px">The 2026 npm and PyPI worms stole NPM_TOKEN, GITHUB_TOKEN and cloud credentials from CI runners. These findings close those paths.</div>${table(d.hardening, "No open CI hardening findings.")}</div>
   <div class="card" style="margin-top:14px"><h3>Dependency hygiene</h3>${table(d.other, "Lockfiles, cooldowns and dependency sources look healthy.")}</div>
-  <div class="card" style="margin-top:14px"><h3>How NERvvE DevSecOps detects supply-chain attacks</h3><div class="grid g3 small">
+  <div class="card" style="margin-top:14px"><h3>How RAT Flea DevSec detects supply-chain attacks</h3><div class="grid g3 small">
     <div><b>Known-bad releases</b><div class="muted">Bundled indicator pack plus OSV's malicious-package feed (MAL- advisories) when online. A match is treated as an incident: rotate every secret the install could read.</div></div>
     <div><b>Look-alike and unpublished names</b><div class="muted">One-edit and separator variants of popular npm and PyPI packages are flagged for review; online scans also check that each direct dependency exists, catching AI-hallucinated names before an attacker registers them.</div></div>
     <div><b>Pipeline exposure</b><div class="muted">Secret dumps, install scripts in jobs that hold tokens, cache poisoning, artifact poisoning, OIDC on untrusted triggers, token-based publishing without provenance, and AI agents acting on issue text.</div></div></div></div>`;
@@ -1189,7 +1234,7 @@ VIEWS.cnapp = async () => {
       <label class="small">Scope <input id="caScope" placeholder="subscription IDs · regions · projects/&lt;id&gt; · https://api-server"></label>
       <label class="small">Read-only credential (JSON, stored in the vault)<textarea id="caCred" rows="3" placeholder='{"tenant_id":"…","client_id":"…","client_secret":"…"}'></textarea></label>
       <button class="btn pri" id="caAdd">Add and collect</button>
-      <div style="margin-top:12px"><b class="small">Or upload an inventory</b><div class="muted small">NERvvE inventory, Azure Resource Graph JSON, Google Cloud Asset export or kubectl -o json.</div>
+      <div style="margin-top:12px"><b class="small">Or upload an inventory</b><div class="muted small">RAT Flea inventory, Azure Resource Graph JSON, Google Cloud Asset export or kubectl -o json.</div>
       <input type="file" id="invFile"> <button class="btn" id="invUp">Upload and analyse</button></div>` : `<div class="muted small">Read-only collectors for Azure (Resource Graph), AWS (SecurityAudit-level APIs), Google Cloud (Cloud Asset Inventory) and Kubernetes (read-only ClusterRole, no Secrets). Air-gapped sites collect with <span class="mono">myelin cloud collect --out</span> and upload the inventory.</div>`}
       ${d.accounts.length ? `<table style="margin-top:10px"><tr><th>Account</th><th>Scope</th><th>Last collected</th><th></th></tr>${d.accounts.map(a => `<tr><td><b>${esc(a.name)}</b> <span class="chip">${esc(a.provider)}</span>${a.last_error ? `<div class="dn small">${esc(a.last_error)}</div>` : ""}</td><td class="mono small">${esc(Object.values(a.config).flat().join(", ").slice(0, 60))}</td><td class="small">${a.last_collected_at ? ago(a.last_collected_at) : "never"}</td><td>${live && can("scans:run") ? `<button class="btn sm" data-collect="${esc(a.id)}">Collect now</button>` : ""}</td></tr>`).join("")}</table>` : ""}</div>
   </div>`;
@@ -1252,7 +1297,7 @@ VIEWS.runtime = async () => {
     <div class="card"><h3>MITRE ATT&CK tactics (7 days)</h3>${hstack(Object.entries(tac).sort((a, b) => b[1] - a[1]).map(([k, v]) => ({label: k, v})), ["v"], ["var(--violet)"])}</div></div>
   <div class="card" style="margin-top:14px"><h3>Latest events</h3>${ev.length ? `<table><tr><th>Time</th><th>Severity</th><th>Rule</th><th>Workload</th><th>Process</th><th>Sensor</th></tr>${ev.slice(0, 60).map(e => `<tr><td class="small">${ago(e.ts)}</td><td><span class="sev ${e.severity}">${e.severity}</span></td><td><b>${esc(e.rule)}</b><div class="small mono muted" style="max-width:520px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(e.message)}</div></td><td class="small">${esc(e.cluster)} · ${esc(e.namespace)}/${esc(e.workload || e.pod)}<div class="mono muted">${esc(e.image)}</div></td><td class="mono small">${esc(e.command || e.process)}</td><td class="small">${esc(e.sensor)}</td></tr>`).join("")}</table>` : '<p class="muted small">No events yet.</p>'}</div>
   <div class="card" style="margin-top:14px"><h3>Connect a runtime sensor</h3><div class="grid g2 small">
-    <div><b>Falco</b><div class="muted">Install Falco with the modern eBPF probe and Falcosidekick using <span class="mono">deploy/runtime/falco-values.yaml</span> and the NERvvE DevSecOps rules in <span class="mono">deploy/runtime/myelin-falco-rules.yaml</span>. Falcosidekick posts each detection to <span class="mono">/api/v1/runtime/events?cluster=&lt;name&gt;</span> with an integration API key.</div></div>
+    <div><b>Falco</b><div class="muted">Install Falco with the modern eBPF probe and Falcosidekick using <span class="mono">deploy/runtime/falco-values.yaml</span> and the RAT Flea DevSec rules in <span class="mono">deploy/runtime/myelin-falco-rules.yaml</span>. Falcosidekick posts each detection to <span class="mono">/api/v1/runtime/events?cluster=&lt;name&gt;</span> with an integration API key.</div></div>
     <div><b>Tetragon</b><div class="muted">Apply <span class="mono">deploy/runtime/tetragon-tracingpolicy.yaml</span> and stream the JSON export with <span class="mono">myelin runtime forward - --cluster &lt;name&gt;</span>. Secrets in command lines are redacted before anything is stored.</div></div></div></div>`;
   bindRows();
 };
@@ -1268,7 +1313,7 @@ VIEWS.repos = async () => {
   const engs = s => s && s.by_engine ? Object.entries(s.by_engine).map(([k, v]) => `${ENGN[k] || k} ${v}`).join(" · ") : "";
   const scanCard = live ? `<div class="card" style="margin-bottom:14px">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><h3 style="margin:0">Scan a repository</h3>
-      <div class="muted small">Paste the address of a repository on GitHub, GitLab, Bitbucket, Azure DevOps, AWS CodeCommit, Google Cloud or any Git server. NERvvE DevSecOps downloads a read-only snapshot and runs every engine — code (SAST), open-source dependencies (SCA), secrets, Infrastructure as Code, pipeline posture, licences, AI components — and builds the SBOM. One full report per repository.</div></div>
+      <div class="muted small">Paste the address of a repository on GitHub, GitLab, Bitbucket, Azure DevOps, AWS CodeCommit, Google Cloud or any Git server. RAT Flea DevSec downloads a read-only snapshot and runs every engine — code (SAST), open-source dependencies (SCA), secrets, Infrastructure as Code, pipeline posture, licences, AI components — and builds the SBOM. One full report per repository.</div></div>
       ${canScan ? '<div style="display:flex;gap:8px"><button class="btn" id="rsImp">⇪ Import many</button><button class="btn pri" id="rsAdd">＋ Add repository</button></div>' : ""}</div>
     <div id="rsForm"></div>
     ${srcs.length ? `<table style="margin-top:12px"><tr><th>Repository</th><th>Status</th><th>Gate</th><th>Findings</th><th></th></tr>${srcs.map(x => `<tr>
@@ -1318,7 +1363,7 @@ function importForm(tab) {
       <label></label><label style="display:inline-flex;gap:6px;align-items:center"><input type="checkbox" id="imA"> include archived repositories</label></div>
       <button class="btn pri" id="imGo" style="margin-top:10px">Find repositories</button>
       <p class="muted small">AWS CodeCommit and Google Cloud have no organisation listing here: put the addresses in a file and use <b>From a file</b>.</p>`
-    : `<p class="muted small" style="margin-top:0">Upload the file you received — Excel (.xlsx), CSV, Word (.docx), PowerPoint (.pptx), text, e-mail export, Markdown, HTML, JSON or YAML. NERvvE DevSecOps finds every repository address in it (https and git@ SSH, including links behind cell labels). A table with columns such as <i>Repository URL</i>, <i>Branch</i>, <i>Name</i> and <i>Criticality</i> keeps those values.</p>
+    : `<p class="muted small" style="margin-top:0">Upload the file you received — Excel (.xlsx), CSV, Word (.docx), PowerPoint (.pptx), text, e-mail export, Markdown, HTML, JSON or YAML. RAT Flea DevSec finds every repository address in it (https and git@ SSH, including links behind cell labels). A table with columns such as <i>Repository URL</i>, <i>Branch</i>, <i>Name</i> and <i>Criticality</i> keeps those values.</p>
       <input type="file" id="imF" accept=".xlsx,.xlsm,.csv,.tsv,.txt,.md,.docx,.pptx,.json,.yaml,.yml,.html,.htm,.xml,.eml,.log">`}
     <div id="imRes"></div></div>`;
   $("#imOrg").onclick = () => importForm("org"); $("#imFile").onclick = () => importForm("file"); $("#imX").onclick = () => { $("#rsForm").innerHTML = ""; };
@@ -1689,13 +1734,13 @@ myelin dast --target https://api.example.com --report a.html   # running API (re
      <td style="white-space:nowrap">${can("connectors:manage") ? `<button class="btn sm" data-tktest="${t.id}">Test</button> <button class="btn sm" data-tktog="${t.id}" data-on="${t.enabled}">${t.enabled ? "Disable" : "Enable"}</button> <button class="btn sm" data-tkdel="${t.id}" data-n="${esc(t.name)}">Remove</button>` : ""}</td></tr>`).join("")}</table>`
      : '<p class="muted small" style="margin-top:10px">No ticketing system yet.</p>'}</div>` : "";
   const byo = MODE === "live" ? `<div class="card" style="margin-bottom:14px"><h3 style="margin:0 0 4px">Import results from other scanners · VEX</h3>
-   <div class="muted small">Bring results from any SARIF 2.1 tool (for example CodeQL or Semgrep), CycloneDX, Trivy, Grype, Gitleaks, Checkov, Bandit or OWASP ZAP. They are de-duplicated, risk-scored, gated, ticketed and reported like NERvvE DevSecOps's own findings. Apply a supplier's VEX to close vulnerabilities that do not affect you.</div>
+   <div class="muted small">Bring results from any SARIF 2.1 tool (for example CodeQL or Semgrep), CycloneDX, Trivy, Grype, Gitleaks, Checkov, Bandit or OWASP ZAP. They are de-duplicated, risk-scored, gated, ticketed and reported like RAT Flea DevSec's own findings. Apply a supplier's VEX to close vulnerabilities that do not affect you.</div>
    <div class="form" style="max-width:720px;margin-top:10px"><label>Repository / product</label><input id="byR" placeholder="e.g. payments-api"><label>Commit (optional)</label><input id="byC" placeholder="git SHA">
    <label>Scanner results</label><input type="file" id="byF" accept=".json,.sarif,.cdx,.txt"><label>VEX document</label><input type="file" id="byV" accept=".json"></div>
    <div id="byOut" class="small" style="margin-top:8px"></div></div>` : "";
   const ais = MODE === "live" ? await api("/api/v1/ai/status").catch(() => null) : null;
   const aicard = ais ? `<div class="card ai-card" style="margin-bottom:14px"><div class="ai-h">✦ AI assistant<span class="sp"></span><span class="chip ${ais.configured ? "ok" : ""}">${ais.configured ? esc(ais.provider + " · " + ais.model) : "built-in knowledge (no model configured)"}</span></div>
-    <div class="small">Explain &amp; fix, triage suggestions, Ask NERvvE DevSecOps and executive briefings work with the built-in knowledge base; connect Anthropic, OpenAI, Azure OpenAI or a private OpenAI-compatible model with <code>MYELIN_AI_PROVIDER</code>, <code>MYELIN_AI_MODEL</code>, <code>MYELIN_AI_ENDPOINT</code> and <code>MYELIN_AI_KEY_REF</code>.</div>
+    <div class="small">Explain &amp; fix, triage suggestions, Ask RAT Flea DevSec and executive briefings work with the built-in knowledge base; connect Anthropic, OpenAI, Azure OpenAI or a private OpenAI-compatible model with <code>MYELIN_AI_PROVIDER</code>, <code>MYELIN_AI_MODEL</code>, <code>MYELIN_AI_ENDPOINT</code> and <code>MYELIN_AI_KEY_REF</code>.</div>
     <ul class="small muted" style="margin:6px 0 0;padding-left:18px">${ais.data_handling.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>` : "";
   $("#view").innerHTML = ticketing + aicard + byo + send + `<div class="grid g4">${xs.map(x => `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><b>${esc(x.name)}</b><span class="chip ${x.connected ? "ok" : ""}" style="${(x.status || "") === "roadmap" ? "opacity:.6" : ""}">${esc(x.status || (x.connected ? "connected" : "available"))}</span></div><div class="muted small" style="margin-top:4px">${esc(x.category)}</div></div>`).join("")}</div>`;
   const readB64 = f => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(",")[1] || ""); r.onerror = no; r.readAsDataURL(f); });
@@ -1789,7 +1834,7 @@ function ticketForm() {
 VIEWS.why = async () => {
   const D = [["Pipeline Posture Management", "Scans the CI/CD system itself — GitHub Actions, GitLab, Azure Pipelines, Jenkins — for poisoned-pipeline execution, script injection, unpinned actions, over-privileged tokens and unsigned artifacts, mapped to the OWASP Top 10 CI/CD risks."],
     ["Build-to-deploy integrity", "Keyless signing, SLSA L3 provenance and SBOM attestation in one step, then verified at Kubernetes admission. Unsigned or non-compliant artifacts never reach production."],
-    ["NERvvE Risk Score", "Severity × EPSS × CISA KEV × reachability × internet exposure × asset criticality. Turns hundreds of critical/high alerts into a short P0/P1 list with SLAs."],
+    ["RAT Flea Risk Score", "Severity × EPSS × CISA KEV × reachability × internet exposure × asset criticality. Turns hundreds of critical/high alerts into a short P0/P1 list with SLAs."],
     ["Ten engines, one policy", "SCA, SAST, secrets, IaC, containers, pipeline posture, licences, DAST/API, AI-BOM and provenance — one finding schema, one queue, one YAML or Rego policy from IDE to admission."],
     ["AI & agent security", "AI-BOM for models, prompts, agents and MCP tools: unpinned models, trust_remote_code, unsafe deserialisation, prompt injection and excessive agency (OWASP LLM Top 10)."],
     ["Sovereign & air-gapped", "SaaS, single-tenant, on-prem or fully offline with bundled advisory packs. Customer-managed keys, in-country hosting (e.g. Azure Central India), RBI/SEBI CSCRF, DORA and EU CRA packs."],
@@ -1799,24 +1844,24 @@ VIEWS.why = async () => {
   const M = [["Open-source dependencies (SCA) + reachability", [1, 1, 1, 1, 1]], ["Code analysis (SAST)", [1, 1, 1, 0, 0]], ["Secrets in code, history and pipelines", [1, 1, 1, 1, 0]],
     ["Infrastructure as Code", [1, 1, 1, 0, 1]], ["Container images", [0, 0, 1, 1, 1]], ["Pipeline posture (OWASP CI/CD Top 10)", [0, 1, 1, 0, 1]], ["Licence compliance", [0, 1, 1, 0, 0]],
     ["AI-BOM: models, prompts, agents, MCP", [1, 1, 1, 0, 0]], ["Signing, SLSA provenance, SBOM attestation", [0, 0, 1, 1, 1]], ["Deploy-time policy gate", [0, 0, 1, 0, 1]], ["Policy as code (YAML / OPA)", [1, 1, 1, 1, 1]]];
-  $("#view").innerHTML = `<div class="hero"><h2>Secure the code, the pipeline that builds it, and the artifact that ships.</h2><div class="muted">Software supply-chain attacks increasingly target the build system as well as dependencies. NERvvE DevSecOps treats the pipeline as a first-class attack surface and enforces one policy at every stage from commit to cluster.</div></div>
+  $("#view").innerHTML = `<div class="hero"><h2>Secure the code, the pipeline that builds it, and the artifact that ships.</h2><div class="muted">Software supply-chain attacks increasingly target the build system as well as dependencies. RAT Flea DevSec treats the pipeline as a first-class attack surface and enforces one policy at every stage from commit to cluster.</div></div>
   <div class="grid g4 diff" style="margin-top:14px">${D.map(([h, p]) => `<div class="t"><h5>${h}</h5><p>${p}</p></div>`).join("")}</div>
   <div class="card" style="margin-top:14px;padding:0"><div style="padding:16px 16px 0"><h3>Coverage across the delivery chain</h3></div><table><tr><th>Capability</th>${ST.map(x => `<th style="text-align:center">${x}</th>`).join("")}</tr>${M.map(([a, v]) => `<tr><td>${a}</td>${v.map(x => `<td style="text-align:center">${x ? '<span class="yes">✓</span>' : '<span class="no">—</span>'}</td>`).join("")}</tr>`).join("")}</table>
-  <div class="small muted" style="padding:12px 16px">One finding schema, one NERvvE Risk Score and one policy at every stage. Cluster enforcement uses signed attestations verified at Kubernetes admission.</div></div>`;
+  <div class="small muted" style="padding:12px 16px">One finding schema, one RAT Flea Risk Score and one policy at every stage. Cluster enforcement uses signed attestations verified at Kubernetes admission.</div></div>`;
 };
 
 VIEWS.welcome = async () => {
   const s = await api("/api/summary"), k = s.kpis, C = CUST;
   const today = new Date().toLocaleDateString("en-GB", {day: "numeric", month: "long", year: "numeric"});
   $("#view").innerHTML = `<div class="cover">
-    <div class="eyebrow">Customer briefing · NERvvE DevSecOps — “Shields”</div>
+    <div class="eyebrow">Customer briefing · RAT Flea DevSec — “Shields”</div>
     <h2>Secure every commit, every pipeline and every release, from code to cluster.</h2>
     <p>One platform that finds what matters across your code, open source, infrastructure, CI/CD pipelines and AI components, fixes it automatically, and proves it to your auditors.</p>
     <div class="meta"><span>Prepared for <b>${esc(C.customer)}</b></span><span>Industry <b>${esc(C.industry)}</b></span><span>Date <b>${today}</b></span>${C.presenter ? `<span>Presented by <b>${esc(C.presenter)}</b></span>` : ""}</div>
-    <div class="cta"><button class="btn pri" onclick="startTour()">▶ Start guided demo</button><button class="btn" onclick="go('overview')">Explore the console</button><button class="btn" onclick="go('live')">Run a live scan</button></div>
-    <div class="stats"><div><b>${k.noise_reduction_pct}%</b><span>fewer alerts to triage</span></div><div><b>${k.mttr_days_90d_ago || k.mttr_days ? `${k.mttr_days_90d_ago}d → ${k.mttr_days}d` : "—"}</b><span>${k.mttr_days_90d_ago || k.mttr_days ? "mean time to remediate" : "mean time to remediate (after the first fixes)"}</span></div><div><b>10</b><span>security engines, one policy</span></div><div><b>1 step</b><span>to add NERvvE DevSecOps to CI and CD pipelines</span></div></div>
+    <div class="cta"><button class="btn pri" onclick="openProductDemo()">▶ Product demo</button>${MODE === "snapshot" ? '<button class="btn" onclick="startTour()">Guided tour</button>' : ""}<button class="btn" onclick="go('overview')">Explore the console</button><button class="btn" onclick="go('live')">Run a live scan</button></div>
+    <div class="stats"><div><b>${k.noise_reduction_pct}%</b><span>fewer alerts to triage</span></div><div><b>${k.mttr_days_90d_ago || k.mttr_days ? `${k.mttr_days_90d_ago}d → ${k.mttr_days}d` : "—"}</b><span>${k.mttr_days_90d_ago || k.mttr_days ? "mean time to remediate" : "mean time to remediate (after the first fixes)"}</span></div><div><b>10</b><span>security engines, one policy</span></div><div><b>1 step</b><span>to add RAT Flea DevSec to CI and CD pipelines</span></div></div>
   </div>
-  <div class="card" style="margin-top:16px"><h3>How NERvvE DevSecOps protects the delivery chain</h3><div class="flow">
+  <div class="card" style="margin-top:16px"><h3>How RAT Flea DevSec protects the delivery chain</h3><div class="flow">
     ${[["01", "Code & AI assistants", "Pre-commit hook on staged files; MCP server so AI assistants check code and packages before writing them."], ["02", "Pull request", "SARIF annotations, AutoFix pull requests and one status check per policy."], ["03", "CI pipeline", "Ten engines in one CLI step; the gate blocks only what is exploitable."], ["04", "Registry & signing", "SBOM, SLSA provenance and keyless signatures on every artifact."], ["05", "CD & GitOps", "Argo CD, Flux, Helm, Kustomize and deploy jobs checked; `myelin gate` stops blocked commits before they deploy."], ["06", "Cluster admission", "Only signed, attested, policy-passing workloads reach production."]].map(([n, t, d]) => `<div><span class="n">${n}</span><b>${t}</b><small>${d}</small></div>`).join("")}</div></div>
   <div class="grid g2" style="margin-top:16px">
     <div class="card"><h3>Agenda</h3><div class="agenda">${[["overview", "Executive overview", "3 min"], ["live", "Live scan of a real repository", "4 min"], ["findings", "Explainable prioritisation & AutoFix", "3 min"], ["pipelines", "Pipeline posture (OWASP CI/CD Top 10)", "3 min"], ["supply", "Supply-chain integrity & admission", "2 min"], ["compliance", "Compliance evidence & policy as code", "2 min"]].map(([h, t, m], i) => `<a href="#${h}"><span class="n">${String(i + 1).padStart(2, "0")}</span>${t}<span class="t">${m}</span></a>`).join("")}</div></div>
@@ -1838,27 +1883,27 @@ function applyCustomer() {
     const org = t.name || "Your organisation", oi = org.split(/\s+/).filter(Boolean).map(w => w[0]).join("").slice(0, 2).toUpperCase();
     $("#cobrand").innerHTML = `<span class="lg">${esc(oi)}</span><div>Organisation<br><b>${esc(org)}</b></div>`;
     $("#tenantBox").innerHTML = `<b>${esc(org)}</b>${esc(t.plan_detail.name)} plan${t.region ? " · " + esc(t.region) : ""}<br>Single sign-on · MFA enforced`;
-    $("#modeBanner").textContent = `NERvvE DevSecOps · ${org} · signed in as ${USER.email || USER.subject}`;
+    $("#modeBanner").textContent = `RAT Flea DevSec · ${org} · signed in as ${USER.email || USER.subject}`;
   } else {
     $("#cobrand").innerHTML = `<span class="lg">${esc(ini)}</span><div>Prepared for<br><b>${esc(CUST.customer)}</b></div>`;
     $("#tenantBox").innerHTML = `<b>${esc(CUST.customer)}</b>${esc(t.plan_detail.name)} plan · demo tenant<br>${esc(CUST.industry)}<br>${esc(t.region)} · SSO ${esc(t.sso)}`;
-    $("#modeBanner").textContent = (MODE === "live" ? "Connected to NERvvE DevSecOps API — all actions are live." : "Interactive demo environment with representative sample data.") + ` Prepared for ${CUST.customer}. ${CFG.confidentialityNotice}`;
+    $("#modeBanner").textContent = (MODE === "live" ? "Connected to RAT Flea DevSec API — all actions are live." : "Interactive demo environment with representative sample data.") + ` Prepared for ${CUST.customer}. ${CFG.confidentialityNotice}`;
   }
   const lic = (t && t.license) || {state: "demo"};
   if (!["demo", "valid", "community"].includes(lic.state)) {        // licence warnings for live enterprise installs
     const el = document.createElement("div"); el.className = "banner lic-" + (lic.state === "restricted" ? "bad" : "warn");
     el.textContent = lic.state === "restricted"
       ? `Licence restricted: ${lic.reason}. Your data stays available; new scans and syncs are paused until a valid licence is installed.`
-      : `Licence ${lic.state}: ${lic.reason || ""} Contact the NERvvE DevSecOps product owner to renew.`;
+      : `Licence ${lic.state}: ${lic.reason || ""} Contact the RAT Flea DevSec product owner to renew.`;
     $("#modeBanner").after(el);
   }
   const repo = (CFG.contact && CFG.contact.web) || "https://github.com/sudheerkumard/nervve-devsecops";
-  $("#sideFoot").innerHTML = `<b>NERvvE DevSecOps</b><br>Product designed and developed by ${esc(CFG.author || "Sudheer Kumar")}<br>`
+  $("#sideFoot").innerHTML = `<b>RAT Flea DevSec</b><br>Product designed and developed by ${esc(CFG.author || "Sudheer Kumar")}<br>`
     + `<a href="${esc(repo)}" target="_blank" rel="noopener">${esc(repo.replace(/^https?:\/\//, ""))}</a><br>© ${new Date().getFullYear()} ${esc(CFG.author || "Sudheer Kumar")} · Open source (AGPL-3.0) · <a href="#" id="legalLnk">Licence</a>`;
-  $("#legalLnk").onclick = e => { e.preventDefault(); modal("Licence and copyright", `<p><b>NERvvE DevSecOps Product designed and developed by ${esc(CFG.author || "Sudheer Kumar")}.</b><br>Copyright © 2026 ${esc(CFG.author || "Sudheer Kumar")}.</p>
-    <p class="small">The NERvvE DevSecOps Community edition is free and open-source software, licensed under the GNU Affero General Public License v3.0 (AGPL-3.0). You may use, study, modify and share it under that licence.</p>
+  $("#legalLnk").onclick = e => { e.preventDefault(); modal("Licence and copyright", `<p><b>RAT Flea DevSec Product designed and developed by ${esc(CFG.author || "Sudheer Kumar")}.</b><br>Copyright © 2026 ${esc(CFG.author || "Sudheer Kumar")}.</p>
+    <p class="small">The RAT Flea DevSec Community edition is free and open-source software, licensed under the GNU Affero General Public License v3.0 (AGPL-3.0). You may use, study, modify and share it under that licence.</p>
     <ul class="small"><li>Your source code, scan results and reports remain yours.</li>
-    <li>If you modify NERvvE DevSecOps and offer it to others over a network, the AGPL requires you to make your modified source available to them.</li>
+    <li>If you modify RAT Flea DevSec and offer it to others over a network, the AGPL requires you to make your modified source available to them.</li>
     <li>Keep the copyright notices and the attribution. Commercial licences, support and enterprise options are available from the author.</li></ul>
     <p class="small">Full terms: <code>LICENSE</code>, <code>docs/legal/SUBSCRIPTION-AGREEMENT.md</code>, <code>ACCEPTABLE-USE-POLICY.md</code>, <code>DATA-PROCESSING-ADDENDUM.md</code>, <code>SUPPORT-AND-SERVICE-LEVELS.md</code> · <a href="${esc(repo)}" target="_blank" rel="noopener">${esc(repo.replace(/^https?:\/\//, ""))}</a></p>`); };
 }
@@ -1883,18 +1928,47 @@ function toggleTheme() {
 }
 try { const th = localStorage.getItem("myelin.theme"); if (th) document.documentElement.dataset.theme = th; } catch (e) {}
 
+
+/* Public walkthrough. These examples are local to this page. */
+const PRODUCT_DEMO = [
+  ["Scan a repository", "Start with a repository scan to inventory dependencies and group results by the areas assessed.", "Sample scan: Acme Checkout · 128 dependencies · Dependency analysis complete · Live application testing not run"],
+  ["Prioritize a finding", "Review the affected version, advisory evidence and available fix before assigning the work.", "Sample finding: checkout-parser 1.4.0 · High severity · Update to 1.4.2"],
+  ["Verify the fix", "Review the policy decision and compare the next completed scan to confirm whether the finding was resolved.", "Sample rescan: checkout-parser 1.4.2 · No longer affected · Release policy passed"]
+];
+let productDemoStep = 0;
+function renderProductDemo() {
+  const [title, description, result] = PRODUCT_DEMO[productDemoStep];
+  $("#demoProgress").textContent = "Step " + (productDemoStep + 1) + " of " + PRODUCT_DEMO.length;
+  $("#demoTitle").textContent = title;
+  $("#demoDescription").textContent = description;
+  $("#demoResult").textContent = result;
+  $("#demoBack").disabled = productDemoStep === 0;
+  $("#demoNext").textContent = productDemoStep === PRODUCT_DEMO.length - 1 ? "Finish" : "Next →";
+}
+function openProductDemo() {
+  productDemoStep = 0;
+  renderProductDemo();
+  $("#productDemo").showModal();
+  $("#demoNext").focus();
+}
+$("#demoBack").onclick = () => { if (productDemoStep > 0) { productDemoStep--; renderProductDemo(); } };
+$("#demoNext").onclick = () => {
+  if (productDemoStep === PRODUCT_DEMO.length - 1) $("#productDemo").close();
+  else { productDemoStep++; renderProductDemo(); }
+};
+
 /* ───────── guided demo ───────── */
 const STEPS = [
   {view: "welcome", sel: ".cover", t: "Set the scene", d: "Frame the conversation around outcomes: less noise, faster fixes, a hardened pipeline, provable compliance.", say: "Your scanners already find thousands of issues. The problem is knowing which ten will actually hurt you, and proving that to an auditor."},
-  {view: "overview", sel: "#ovKpis", t: "The answer in four numbers", d: "P0 items to fix today, noise removed by the NERvvE Risk Score, mean time to remediate, and fixes merged automatically.", say: "Out of every critical and high alert, only these P0 and P1 items are reachable, exposed or known-exploited."},
+  {view: "overview", sel: "#ovKpis", t: "The answer in four numbers", d: "P0 items to fix today, noise removed by the RAT Flea Risk Score, mean time to remediate, and fixes merged automatically.", say: "Out of every critical and high alert, only these P0 and P1 items are reachable, exposed or known-exploited."},
   {view: "overview", sel: "#ovFunnel", t: "From alerts to action", d: "Raw scanner output is de-duplicated, filtered by reachability and exposure, then ranked into a short actionable queue.", say: "This funnel is why developers stop ignoring security tickets."},
-  {view: "live", sel: ".hero", t: "Scan a real repository, live", d: "NERvvE DevSecOps runs seven engines against a real multi-language repository: the same single command that runs in any CI system.", say: "Nothing here is pre-recorded. Watch the gate decide.", act: () => runLive()},
+  {view: "live", sel: ".hero", t: "Scan a real repository, live", d: "RAT Flea DevSec runs seven engines against a real multi-language repository: the same single command that runs in any CI system.", say: "Nothing here is pre-recorded. Watch the gate decide.", act: () => runLive()},
   {view: "live", sel: "#liveRes", t: "The gate blocks only real risk", d: "Live cloud keys, Log4Shell and Spring4Shell (both CISA KEV) and a poisoned-pipeline path in the GitHub workflow block the merge; everything else becomes a warning with an owner and an SLA.", say: "Exit code 1: the merge is blocked, SARIF and SBOM are published, and the developer knows exactly why.", wait: 600},
   {view: "findings", sel: "#drawer .bd .grid", wait: 1100, t: "Every score is explainable", d: "Open any finding to see the score breakdown, blast radius across repositories, compliance mapping and one-click remediation.", say: "No black box: CVSS, exploit probability, KEV, reachability and exposure, each with its weight.", act: () => setTimeout(() => { const r = document.querySelector("tr[data-id]"); r && openFinding(r.dataset.id); }, 500)},
-  {view: "pipelines", sel: "#plPosture", t: "Your pipeline is an attack surface", d: "NERvvE DevSecOps analyses GitHub Actions, GitLab CI, Azure Pipelines and Jenkins against the OWASP Top 10 CI/CD risks: injection, unpinned actions, over-privileged tokens, unsigned artifacts.", say: "Your pipeline holds your secrets and signs your releases. It deserves the same scrutiny as the code it ships."},
+  {view: "pipelines", sel: "#plPosture", t: "Your pipeline is an attack surface", d: "RAT Flea DevSec analyses GitHub Actions, GitLab CI, Azure Pipelines and Jenkins against the OWASP Top 10 CI/CD risks: injection, unpinned actions, over-privileged tokens, unsigned artifacts.", say: "Your pipeline holds your secrets and signs your releases. It deserves the same scrutiny as the code it ships."},
   {view: "supply", sel: "#scVerify", t: "Only trusted artifacts reach production", d: "Keyless signing, SLSA provenance and SBOM attestation at build; verified again at Kubernetes admission.", say: "If it wasn't built by your pipeline and passed your policy, it doesn't run."},
   {view: "compliance", sel: "#coKpis", t: "Audit evidence, continuously", d: "Findings map automatically to PCI DSS, ISO 27001, SOC 2, NIST SSDF, DORA, EU CRA and RBI/SEBI controls, and export as evidence packs.", say: "Audit preparation becomes a report, not a project."},
-  {view: "why", sel: ".hero", t: "Why NERvvE DevSecOps", d: "Code, pipeline and artifact in one platform, explainable prioritisation, sovereign deployment options and an open ecosystem.", say: "Proposal: a 30-day proof of value on three to five repositories, measured on P0 count, MTTR and pipeline posture."}];
+  {view: "why", sel: ".hero", t: "Why RAT Flea DevSec", d: "Code, pipeline and artifact in one platform, explainable prioritisation, sovereign deployment options and an open ecosystem.", say: "Proposal: a 30-day proof of value on three to five repositories, measured on P0 count, MTTR and pipeline posture."}];
 const TOUR = {i: -1, view: null};
 function clearHL() { document.querySelectorAll(".tour-hl").forEach(e => e.classList.remove("tour-hl")); }
 function startTour() { TOUR.i = 0; showStep(); }
@@ -1917,7 +1991,7 @@ document.addEventListener("keydown", e => { if (TOUR.i < 0 || ["INPUT", "SELECT"
 function modal(title, body) { $("#modal").innerHTML = `<div class="hd"><b>${title}</b><span class="sp"></span><button class="btn sm" onclick="$('#modal').classList.remove('open');if(!$('#drawer').classList.contains('open'))$('#scrim').classList.remove('open')">✕</button></div><div class="bd">${body}</div>`; $("#modal").classList.add("open"); $("#scrim").classList.add("open"); }
 function closeAll() { $("#drawer").classList.remove("open"); $("#modal").classList.remove("open"); $("#scrim").classList.remove("open"); }
 let tt; function toast(m) { const t = $("#toast"); t.textContent = m; t.classList.add("on"); clearTimeout(tt); tt = setTimeout(() => t.classList.remove("on"), 2800); }
-document.addEventListener("keydown", e => e.key === "Escape" && closeAll());
+document.addEventListener("keydown", e => e.key === "Escape" && !$("#productDemo").open && closeAll());
 
 /* ───────── boot ───────── */
 function snapshotHelpers() {
@@ -1938,13 +2012,20 @@ async function showSignIn(msg) {
   const back = location.pathname + (location.hash || "");
   const ov = document.getElementById("signin") || document.body.appendChild(Object.assign(document.createElement("div"), {id: "signin"}));
   ov.innerHTML = `<div class="si-card">
-    <div class="si-logo"><svg viewBox="0 0 32 32" width="40" height="40"><rect x="1" y="1" width="30" height="30" rx="8" fill="none" stroke="#2dd4bf" stroke-width="2"/><path d="M6 17h5l2.5-6 4 11 3-8 1.5 3H26" fill="none" stroke="#2dd4bf" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <div><b>NERvvE</b><span>DEVSECOPS · COMMUNITY</span></div></div>
+    <div class="si-logo"><svg class="product-mark" viewBox="0 16 128 100" aria-hidden="true" width="44" height="36"><g>
+  <path d="M56 77 74 98H95" fill="none" stroke="#F3FAF8" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path fill="#F3FAF8" fill-rule="evenodd" d="M8 59C23 41 44 29 68 29c22 0 41 10 55 28-15 16-33 28-56 28C44 85 23 76 8 59Z
+    M35 43c4-2 7-4 11-5 5 12 3 25-5 38-4-1-7-3-10-5 8-11 9-20 4-28Z
+    M51 35c4-1 7-1 11-1 6 14 4 33-5 46-4 0-7-1-10-2 8-14 10-28 4-43Z
+    M101 56a16 16 0 1 0-32 0 16 16 0 0 0 32 0Z"/>
+  <circle cx="85" cy="56" r="8" fill="#59E3C2"/>
+</g></svg><div><b>RAT Flea DevSec</b><span>RAT Flea Cyber</span></div></div>
     <h1>Sign in</h1>
     <p class="si-sub">${esc(msg || "Use your organisation's single sign-on. Multi-factor authentication is required.")}</p>
     ${provs.length ? provs.map(p => `<a class="btn pri si-btn" href="${API_BASE}/auth/login?idp=${encodeURIComponent(p.name)}&return_to=${encodeURIComponent(back)}">${esc(p.display_name || "Sign in with " + p.name)}</a>`).join("")
                    : '<div class="si-err">No identity provider is configured. Ask your administrator to check identity-providers.yaml.</div>'}
-    <p class="si-foot">Protected system. Access is logged and monitored.<br>© 2026 Sudheer Kumar · NERvvE DevSecOps</p></div>`;
+    <button class="btn si-btn" onclick="openProductDemo()">▶ Product demo</button>
+    <p class="si-foot">Protected system. Access is logged and monitored.<br>© 2026 Sudheer Kumar · RAT Flea DevSec</p></div>`;
   document.body.classList.add("signed-out");
 }
 async function signOut() {
@@ -1976,9 +2057,9 @@ function renderUser() {
     }
     USER = await r.json();
     if (!USER.roles || !USER.roles.length) {
-      showSignIn(`Signed in as ${USER.email || USER.subject}, but your account has no NERvvE DevSecOps role yet. Ask your administrator to assign one (for example myelin-security-lead).`);
+      await showSignIn(`Signed in as ${USER.email || USER.subject}, but your account has no RAT Flea DevSec role yet. Ask your administrator to assign one (for example myelin-security-lead).`);
       const ov = document.querySelector("#signin .si-card");
-      ov.querySelectorAll(".si-btn").forEach(a => a.remove());
+      ov.querySelectorAll("a.si-btn").forEach(a => a.remove());
       ov.insertAdjacentHTML("beforeend", '<button class="btn si-btn" onclick="signOut()">Sign out</button>');
       return;
     }

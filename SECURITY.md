@@ -1,10 +1,10 @@
-# Security policy — NERvvE DevSecOps
+# Security policy — RAT Flea DevSec
 
-NERvvE DevSecOps Product designed and developed by Sudheer Kumar.
+RAT Flea DevSec Product designed and developed by Sudheer Kumar.
 
 ## Reporting a vulnerability
 
-Please report suspected vulnerabilities in NERvvE DevSecOps privately:
+Please report suspected vulnerabilities in RAT Flea DevSec privately:
 
 - **Customers:** through the support channel named in your Order Form, marked "Security".
 - **Researchers:** through GitHub's private vulnerability reporting ("Report a vulnerability" under the repository's

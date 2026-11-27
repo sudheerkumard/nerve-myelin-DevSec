@@ -1,12 +1,12 @@
 // Copyright (c) 2026 Sudheer Kumar.
 // SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
-// NERvvE DevSecOps secure pipeline — Jenkins (declarative)
+// RAT Flea DevSec secure pipeline — Jenkins (declarative)
 pipeline {
   agent { kubernetes { yamlFile 'ci/myelin-pod.yaml' } }   // ephemeral pod agents, not 'agent any' on the controller (CICD-SEC-7)
   options { timestamps(); disableConcurrentBuilds() }
   environment { MYELIN_SERVER = 'https://myelin.orion.example' }
   stages {
-    stage('NERvvE DevSecOps scan') {
+    stage('RAT Flea DevSec scan') {
       steps {
         withCredentials([string(credentialsId: 'myelin-api-key', variable: 'MYELIN_API_KEY')]) {
           sh 'myelin scan . --policy .myelin/policy.yaml --sarif myelin.sarif --sbom sbom.cdx.json --json myelin.json --fail-on block'

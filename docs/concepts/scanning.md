@@ -8,15 +8,15 @@ assessed.
 
 | Area | Engines | Depth |
 |---|---|---|
-| Source code (SAST) | **Opengrep** with the NERvvE rule pack · NERvvE pattern rules · **Bandit** (Python) | Data-flow (taint) analysis: untrusted input from a web request, the command line or the environment is followed through variables and function calls in the same file to a dangerous operation (SQL, OS command, code evaluation, file path, outbound request, redirect, HTML output, deserialisation, LDAP, XPath, templates). Sanitisers such as `int()`, `parseInt`, `escapeshellarg`, `htmlspecialchars` or `Path.GetFileName` stop the flow. Configuration rules cover TLS verification, JWT verification, weak cryptography and hard-coded framework secrets. |
+| Source code (SAST) | **Opengrep** with the RAT Flea rule pack · RAT Flea pattern rules · **Bandit** (Python) | Data-flow (taint) analysis: untrusted input from a web request, the command line or the environment is followed through variables and function calls in the same file to a dangerous operation (SQL, OS command, code evaluation, file path, outbound request, redirect, HTML output, deserialisation, LDAP, XPath, templates). Sanitisers such as `int()`, `parseInt`, `escapeshellarg`, `htmlspecialchars` or `Path.GetFileName` stop the flow. Configuration rules cover TLS verification, JWT verification, weak cryptography and hard-coded framework secrets. |
 | Open-source dependencies (SCA) | **OSV** · **Trivy** | Every component from manifests and lock files (direct and transitive) against OSV and the Trivy vulnerability database, with CVSS, EPSS, CISA KEV and import reachability |
-| Secrets | NERvvE secret rules · **Gitleaks** · **Trivy** | Provider formats and high-entropy credentials in the files; the git history too when the repository was cloned with git (pipelines, Git and CodeCommit sources) |
-| Infrastructure as Code | NERvvE IaC rules · **Checkov** · **Trivy** | Dockerfile, Compose, Kubernetes, Helm, Terraform, Bicep, CloudFormation |
-| CI/CD pipelines | NERvvE pipeline rules | OWASP Top 10 CI/CD Security Risks for GitHub Actions, GitLab CI, Azure Pipelines, Jenkins, Bitbucket, Argo CD, Flux |
-| Licences, supply chain, AI-BOM | NERvvE rules | Licence policy; malicious, look-alike and unpublished packages; models, agents, prompts and MCP servers |
-| Live applications (DAST) | NERvvE DAST · **OWASP ZAP** (optional service) | Read-only checks, crawler and multi-user authorisation tests; ZAP spider and passive analysis of every response on verified targets; ZAP active scan and NERvvE active checks only where the owner enabled them |
+| Secrets | RAT Flea secret rules · **Gitleaks** · **Trivy** | Provider formats and high-entropy credentials in the files; the git history too when the repository was cloned with git (pipelines, Git and CodeCommit sources) |
+| Infrastructure as Code | RAT Flea IaC rules · **Checkov** · **Trivy** | Dockerfile, Compose, Kubernetes, Helm, Terraform, Bicep, CloudFormation |
+| CI/CD pipelines | RAT Flea pipeline rules | OWASP Top 10 CI/CD Security Risks for GitHub Actions, GitLab CI, Azure Pipelines, Jenkins, Bitbucket, Argo CD, Flux |
+| Licences, supply chain, AI-BOM | RAT Flea rules | Licence policy; malicious, look-alike and unpublished packages; models, agents, prompts and MCP servers |
+| Live applications (DAST) | RAT Flea DAST · **OWASP ZAP** (optional service) | Read-only checks, crawler and multi-user authorisation tests; ZAP spider and passive analysis of every response on verified targets; ZAP active scan and RAT Flea active checks only where the owner enabled them |
 
-The rule pack (`engine/myelin_engine/rules/sast`) is NERvvE's own work under the AGPL-3.0, tested against annotated
+The rule pack (`engine/myelin_engine/rules/sast`) is RAT Flea's own work under the AGPL-3.0, tested against annotated
 fixtures (`engine/tests/sast_rules`). No Semgrep Registry rules are used. Add rules you own or have licensed with
 `MYELIN_SAST_RULES` (a file or folder); they run alongside the bundled pack.
 

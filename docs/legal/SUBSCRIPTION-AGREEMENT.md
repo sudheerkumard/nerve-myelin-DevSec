@@ -1,12 +1,12 @@
-# NERvvE DevSecOps Subscription Agreement
+# RAT Flea DevSec Subscription Agreement
 
 **Version 2.0 · Effective 21 November 2026**
-NERvvE DevSecOps Product designed and developed by Sudheer Kumar · Copyright © 2026 Sudheer Kumar. All rights reserved.
+RAT Flea DevSec Product designed and developed by Sudheer Kumar · Copyright © 2026 Sudheer Kumar. All rights reserved.
 <https://github.com/sudheerkumard/nervve-devsecops>
 
-This NERvvE DevSecOps Subscription Agreement (the **"Agreement"**) is between **Sudheer Kumar**, the owner and developer of
-NERvvE DevSecOps (the **"Licensor"**), and the organisation identified in an Order Form (the **"Customer"**). It applies to
-every subscription, evaluation and partner arrangement for NERvvE DevSecOps unless the parties have signed a separate
+This RAT Flea DevSec Subscription Agreement (the **"Agreement"**) is between **Sudheer Kumar**, the owner and developer of
+RAT Flea DevSec (the **"Licensor"**), and the organisation identified in an Order Form (the **"Customer"**). It applies to
+every subscription, evaluation and partner arrangement for RAT Flea DevSec unless the parties have signed a separate
 agreement that expressly replaces it. By signing an Order Form, activating a licence key, or installing, accessing or
 using the Software, the Customer accepts this Agreement. The individual accepting it on the Customer's behalf confirms
 that they have authority to bind the Customer.
@@ -26,7 +26,7 @@ that they have authority to bind the Customer.
 | **Order Form** | A quotation, order, statement of work or Licence Key, accepted by both parties, that references this Agreement and states the edition, deployment model, quantities, Subscription Term and fees. |
 | **Outputs** | Reports, SBOMs, CBOMs, VEX documents, patches, tickets, dashboards and other artefacts the Software produces from Customer Data. |
 | **Self-Hosted Software** | The Software installed and operated by the Customer in an environment it controls, including air-gapped environments. |
-| **Software** | NERvvE DevSecOps as described in the Documentation — including the platform, console, command-line interface, detection rules, policies, framework mappings, report designs, container images and Updates — but excluding Third-Party Components. |
+| **Software** | RAT Flea DevSec as described in the Documentation — including the platform, console, command-line interface, detection rules, policies, framework mappings, report designs, container images and Updates — but excluding Third-Party Components. |
 | **Subscription Term** | The period stated in the Order Form, including renewals. |
 | **Third-Party Components** | Open-source software, data feeds and services identified in `THIRD-PARTY-NOTICES.md`, and services the Customer chooses to connect (for example source-code platforms, ticketing tools and AI model providers). |
 | **Updates** | Fixes, patches, new rules, mapping updates and new versions the Licensor makes generally available to subscribers of the same edition. |
@@ -66,7 +66,7 @@ The Customer must not, and must not permit anyone to:
     service to third parties, except as section 2.5 permits;
 (d) circumvent, disable or tamper with Licence Keys, usage limits, licence verification or security controls;
 (e) remove, obscure or alter any copyright, trademark or proprietary notice, including the attribution
-    "NERvvE DevSecOps Product designed and developed by Sudheer Kumar" shown in the console, reports and Documentation;
+    "RAT Flea DevSec Product designed and developed by Sudheer Kumar" shown in the console, reports and Documentation;
 (f) use the Software, its rules, mappings, designs, Documentation or benchmark results to develop a competing product,
     or publish benchmark or comparative test results without the Licensor's prior written consent;
 (g) use the Software in breach of the Acceptable Use Policy (`docs/legal/ACCEPTABLE-USE-POLICY.md`), including testing
@@ -194,7 +194,7 @@ right is granted except as expressly stated in this Agreement.
 10.2 **Feedback.** The Customer may provide suggestions. The Licensor may use them without restriction or obligation,
 and the Customer will not be identified as their source without consent.
 
-10.3 **Trademarks.** "NERvvE DevSecOps" and its logos are trademarks of the Licensor. The Customer may refer to the Software by
+10.3 **Trademarks.** "RAT Flea DevSec" and its logos are trademarks of the Licensor. The Customer may refer to the Software by
 name to describe its use but receives no other trademark right.
 
 ## 11. Warranties
@@ -376,6 +376,6 @@ the previous version continues to apply to that Order Form.
 
 ---
 
-**Licensor:** Sudheer Kumar · NERvvE DevSecOps · <https://github.com/sudheerkumard/nervve-devsecops>
+**Licensor:** Sudheer Kumar · RAT Flea DevSec · <https://github.com/sudheerkumard/nervve-devsecops>
 
-*NERvvE DevSecOps Product designed and developed by Sudheer Kumar.*
+*RAT Flea DevSec Product designed and developed by Sudheer Kumar.*

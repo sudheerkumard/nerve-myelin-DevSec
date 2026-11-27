@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Designed edition of the NERvvE DevSecOps whitepaper: fixed A4 page layouts, rendered to PDF by render.js.
+"""Designed edition of the RAT Flea DevSec whitepaper: fixed A4 page layouts, rendered to PDF by render.js.
 
 Copyright (c) 2026 Sudheer Kumar. SPDX-License-Identifier: AGPL-3.0-only.
 
 Output: docs/whitepaper/designed/index.html plus img/ (public screenshots and public-edition diagrams), so the same
 folder is safe to publish and renders identically everywhere.
     python scripts/whitepaper_design/build.py
-    NODE_PATH=<puppeteer> node scripts/whitepaper_design/render.js     # -> docs/whitepaper/NERvvE-DevSecOps-Whitepaper.pdf
+    NODE_PATH=<puppeteer> node scripts/whitepaper_design/render.js     # -> docs/whitepaper/RAT-Flea-DevSec-Whitepaper.pdf
 """
 import os
 import shutil
@@ -22,7 +22,7 @@ IMG = os.path.join(OUT, "img")
 SHOTS = ["overview", "finding-drawer", "pipelines", "defence", "cnapp", "attack-path-drawer"]
 DIAGRAMS = ["architecture", "data-flow", "attack-path", "risk-score"]
 TITLE = "The Front Door Has Moved"
-ATTR = "NERvvE DevSecOps Product designed and developed by Sudheer Kumar"
+ATTR = "RAT Flea DevSec Product designed and developed by Sudheer Kumar"
 
 POLICY = """name: production
 mode: enforce          # audit | warn | enforce
@@ -37,7 +37,7 @@ gates:
     when: { engine: [secrets], severity: [critical, high] }
     action: block
   - id: block-mrs-80
-    when: { mrs_gte: 80 }    # NERvvE Risk Score, P0
+    when: { mrs_gte: 80 }    # RAT Flea Risk Score, P0
     action: block"""
 
 
@@ -60,7 +60,7 @@ AUTHOR_BIO = ("Sudheer designs, assesses and transforms security across enterpri
               "capability: lower risk, stronger resilience and secure transformation. His recent work centres on securing LLM "
               "applications and agentic AI platforms, from threat modelling and red teaming to Responsible AI governance. He is "
               "the author of <i>Navigating the Digital Frontier: Cyber Security Manager's Handbook</i> (2024) and designed and "
-              "developed NERvvE DevSecOps.")
+              "developed RAT Flea DevSec.")
 EXPERTISE = ["Security strategy &amp; architecture", "CISO advisory", "Cloud security · Azure · AWS · CNAPP", "Zero Trust · IAM · PAM",
              "AI &amp; agentic AI security", "AI red teaming", "OT/ICS · IEC 62443", "DevSecOps &amp; AppSec", "SOC · SIEM · SOAR",
              "Exposure management", "Incident response &amp; resilience", "Risk, governance &amp; compliance"]
@@ -74,7 +74,7 @@ def page(body, section="", dark=False, number=True):
 
 
 def head(section, dark=False):
-    return f'<div class="run-head"><span><b>NERvvE DevSecOps</b> &nbsp;·&nbsp; Whitepaper</span><span>{section}</span></div>'
+    return f'<div class="run-head"><span><b>RAT Flea DevSec</b> &nbsp;·&nbsp; Whitepaper</span><span>{section}</span></div>'
 
 
 def chap(num, title, lede=None):
@@ -93,8 +93,8 @@ def stat(value, text, src):
 
 # ---------------------------------------------------------------- 1 cover
 page(f"""{cover_art(side=True)}
-<div style="position:absolute;left:16mm;top:16mm" class="brand"><span class="mark">Nv</span>
-  <div>NERvvE DevSecOps<small>{DOCS.split('://')[1].rstrip('/')}</small></div></div>
+<div style="position:absolute;left:16mm;top:16mm" class="brand"><span class="mark">RF</span>
+  <div>RAT Flea DevSec<small>{DOCS.split('://')[1].rstrip('/')}</small></div></div>
 <div style="position:absolute;left:16mm;right:16mm;top:150mm">
   <div class="kicker">Whitepaper · November 2026</div>
   <h1 style="font-size:46pt;line-height:1.02;font-weight:800;margin:5mm 0 6mm;max-width:150mm">{TITLE}</h1>
@@ -112,7 +112,7 @@ five = [
     ("The cost is rising, and so is accountability.", "The average breach costs a record USD 4.99 million, and EU rules make management bodies answerable for cyber risk."),
     ("Regulators have a 24-hour clock.", "Since 11 September 2026, actively exploited vulnerabilities in products sold in the EU must be reported within 24 hours."),
     ("Point tools cannot answer the board.", "Separate scanners give separate numbers. Leadership needs one auditable answer to: are we safer, and can we prove it?"),
-    ("NERvvE DevSecOps gives that answer.", "One platform for code, pipelines, cloud and runtime that ranks the few risks that matter, stops unsafe releases and produces the evidence."),
+    ("RAT Flea DevSec gives that answer.", "One platform for code, pipelines, cloud and runtime that ranks the few risks that matter, stops unsafe releases and produces the evidence."),
 ]
 toc = [("01", "The front door has moved", 3), ("02", "Why point tools fall short", 5), ("03", "One platform, one answer", 6),
        ("04", "How it works", 7), ("05", "From finding to fix", 10), ("06", "Code to cloud to runtime", 12),
@@ -214,7 +214,7 @@ for a, b in (('Alert fatigue', 'The same weakness reported by several tools, eac
 </div>""", "02 · Why point tools fall short")
 
 # ---------------------------------------------------------------- 6 platform
-LEDE3 = ("NERvvE DevSecOps is a single DevSecOps and cloud security platform that covers the whole delivery chain, "
+LEDE3 = ("RAT Flea DevSec is a single DevSecOps and cloud security platform that covers the whole delivery chain, "
          "from a developer's commit to a running container, against one policy.")
 pillars = [("inbox", "One finding model", "Every engine and every imported scanner produces the same record, de-duplicated."),
            ("gauge", "One risk score", "Severity, exploit probability, known exploitation, reachability, exposure and business criticality."),
@@ -243,7 +243,7 @@ for a, b in (('15', 'security engines in one scan'), ('280', 'built-in detection
 # ---------------------------------------------------------------- 7 architecture
 page(f"""{head('04 · How it works')}<div class="inner">
 {chap('04', 'How it works', 'A stateless API, a single policy engine and tenant-isolated storage, deployable as SaaS, single-tenant, on-premises or fully air-gapped.')}
-<figure class="diag" style="margin:5mm 0 6mm"><img src="img/architecture.svg" alt="NERvvE DevSecOps architecture"></figure>
+<figure class="diag" style="margin:5mm 0 6mm"><img src="img/architecture.svg" alt="RAT Flea DevSec architecture"></figure>
 <div class="cols c4" style="gap:4mm">
 {card('server', 'Scales out', 'Stateless API behind a bounded scan queue; add replicas as load grows.')}
 {card('lock', 'Isolated tenants', 'PostgreSQL forced row-level security: one tenant cannot read another, even through a bug.')}
@@ -257,7 +257,7 @@ page(f"""{head('04 · How it works')}<div class="inner">
 <h2 class="disp" style="font-size:20pt;color:{NAVY};margin:2mm 0 2mm">From a commit to a decision in eight steps</h2>
 <p class="lede" style="font-size:10pt">Every step is recorded, so the path from a developer's change to a release
 decision, a ticket and a closed finding can be shown to an auditor.</p>
-<figure class="diag" style="margin:5mm 0 6mm"><img src="img/data-flow.svg" alt="NERvvE DevSecOps data flow"></figure>
+<figure class="diag" style="margin:5mm 0 6mm"><img src="img/data-flow.svg" alt="RAT Flea DevSec data flow"></figure>
 <div class="cols c2" style="gap:8mm">
 <div style="background:#f4f7fb;border-radius:3mm;padding:5mm 6mm"><h3>What leaves your network</h3>
 <ul class="tick" style="font-size:8.6pt"><li>Findings, the SBOM and the policy decision</li><li>Cloud configuration metadata, read-only, never data or Kubernetes Secrets</li>
@@ -296,7 +296,7 @@ scanned commit, or the package and version.</p>
 sla = [("P0", "Immediate", "2 days", ORANGE), ("P1", "Urgent", "7 days", "#c2551f"), ("P2", "Planned", "30 days", BLUE), ("P3", "Routine", "90 days", "#6b7f99")]
 page(f"""{head('05 · From finding to fix')}<div class="inner">
 {chap('05', 'From finding to fix', 'Severity alone does not say what to fix first. A critical issue in a test fixture matters less than a high one that is exploited in the wild and reachable from the internet.')}
-<figure class="diag" style="margin:4mm 0 5mm"><img src="img/risk-score.svg" alt="NERvvE Risk Score"></figure>
+<figure class="diag" style="margin:4mm 0 5mm"><img src="img/risk-score.svg" alt="RAT Flea Risk Score"></figure>
 <div class="cols c4" style="gap:4mm;margin-bottom:6mm">{''.join(f'''<div style="border-radius:3mm;padding:4mm;background:{c};color:#fff">
 <div class="disp" style="font-weight:800;font-size:20pt">{p}</div><div style="font-size:8.4pt;opacity:.9">{m}</div>
 <div style="font-weight:700;margin-top:1mm">Fix within {d}</div></div>''' for p, m, d, c in sla)}</div>
@@ -452,7 +452,7 @@ controls = [("user", "Identity", "OIDC single sign-on with Keycloak, Microsoft E
 deploy = [("Multi-tenant SaaS", "Fastest start, regional hosting"), ("Dedicated single-tenant", "Isolated infrastructure for regulated organisations"),
           ("On-premises", "Docker Compose or Helm on Kubernetes, inside your network"), ("Air-gapped", "No internet access; offline intelligence packs")]
 page(f"""{head('09 · Trusted by design')}<div class="inner">
-{chap('09', 'Trusted by design', 'A security platform must meet the standard it enforces. NERvvE DevSecOps is built, tested and released to the same policy it applies to your code.')}
+{chap('09', 'Trusted by design', 'A security platform must meet the standard it enforces. RAT Flea DevSec is built, tested and released to the same policy it applies to your code.')}
 <div class="cols c3" style="gap:4mm;margin:6mm 0 7mm">{''.join(card(i, t, d) for i, t, d in controls)}</div>
 <div class="kicker" style="margin-bottom:3mm">Deploy it your way</div>
 <div class="cols c4" style="gap:4mm">{''.join(f'''<div style="border-top:1.2mm solid {BLUE};padding-top:2.6mm"><div class="disp" style="font-weight:700;color:{NAVY};font-size:10.6pt">{t}</div>
@@ -484,16 +484,16 @@ font-family:'Inter Display';font-weight:800;font-size:24pt;color:#fff">SK</div>
 <div style="margin-top:6mm;border-top:1px solid #dfe5ee;padding-top:4.4mm">
 <div class="kicker" style="margin-bottom:2.4mm">References</div>
 <ol style="padding-left:5mm;font-size:7.8pt;color:#4a5a72">{''.join(f'<li style="margin-bottom:1.2mm">{t} <span style="color:{BLUE}">{u}</span></li>' for t, u in refs)}</ol>
-<p class="src" style="margin-top:3mm">Figures from third-party research are quoted as published by their authors and are not NERvvE DevSecOps measurements.</p></div>
+<p class="src" style="margin-top:3mm">Figures from third-party research are quoted as published by their authors and are not RAT Flea DevSec measurements.</p></div>
 <div style="position:absolute;left:0;right:0;bottom:0;border-top:1px solid #dfe5ee;padding-top:4mm;font-size:7.6pt;color:#8a96a8;line-height:1.5">
-The NERvvE DevSecOps Community edition is free and open-source software under the GNU Affero General Public License v3.0, with every feature included
+The RAT Flea DevSec Community edition is free and open-source software under the GNU Affero General Public License v3.0, with every feature included
 and no licence key required. You own your code, scan results and reports. Commercial licences, support and enterprise editions are available from the author.
 Full terms: LICENSE and NOTICE.md in the repository. Copyright © 2026 Sudheer Kumar.</div>
 </div>""", "About the author and references")
 
 # ---------------------------------------------------------------- 23 back cover
 page(f"""{cover_art(seed=21, side=True)}
-<div style="position:absolute;left:16mm;top:16mm" class="brand"><span class="mark">Nv</span><div>NERvvE DevSecOps</div></div>
+<div style="position:absolute;left:16mm;top:16mm" class="brand"><span class="mark">RF</span><div>RAT Flea DevSec</div></div>
 <div style="position:absolute;left:10mm;top:54mm;width:132mm;height:104mm;border-radius:4mm;background:rgba(7,20,39,.72);
  border:1px solid rgba(158,197,244,.18)"></div>
 <div style="position:absolute;left:16mm;right:16mm;top:62mm">
@@ -531,7 +531,7 @@ def build():
         foot = (f'<div class="run-foot"><span>{DOCS.split("://")[1].rstrip("/")}</span><span>{n:02d} / {total:02d}</span></div>'
                 if number else "")
         html.append(f'<section class="page{" dark" if dark else ""}" data-page="{n}">{body}{foot}</section>')
-    doc = (f'<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>NERvvE DevSecOps — {TITLE} · Whitepaper</title>'
+    doc = (f'<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>RAT Flea DevSec — {TITLE} · Whitepaper</title>'
            f'<meta name="viewport" content="width=device-width,initial-scale=1"><style>{CSS}</style></head><body>{"".join(html)}</body></html>')
     with open(os.path.join(OUT, "index.html"), "w", encoding="utf-8") as fh:
         fh.write(doc)

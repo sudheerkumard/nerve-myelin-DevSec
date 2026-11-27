@@ -2,10 +2,10 @@
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
 """OpenID Connect token verification for any standards-compliant identity provider.
 
-Keycloak is the reference IdP shipped with NERvvE DevSecOps. Customers can instead (or additionally) trust
+Keycloak is the reference IdP shipped with RAT Flea DevSec. Customers can instead (or additionally) trust
 Microsoft Entra ID, Okta, Auth0, Ping Identity, Google Workspace or any OIDC-certified provider; SAML-only
 IdPs (ADFS, PingFederate, Shibboleth) are connected by brokering them through Keycloak, which then issues
-OIDC tokens to NERvvE. Several issuers can be trusted at once (one per customer in SaaS).
+OIDC tokens to RAT Flea DevSec. Several issuers can be trusted at once (one per customer in SaaS).
 
 For each trusted issuer, verification enforces:
   * signature with a key from the issuer's JWKS (fetched over HTTPS, cached, refreshed on unknown `kid`);

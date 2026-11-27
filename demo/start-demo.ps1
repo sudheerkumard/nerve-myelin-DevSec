@@ -1,7 +1,7 @@
 # Copyright (c) 2026 Sudheer Kumar.
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
 #
-# NERvvE DevSecOps — start the customer live demo on Windows: http://localhost:8080
+# RAT Flea DevSec — start the customer live demo on Windows: http://localhost:8080
 #   powershell -ExecutionPolicy Bypass -File demo\start-demo.ps1            # Python
 #   powershell -ExecutionPolicy Bypass -File demo\start-demo.ps1 -Docker    # Docker Desktop
 param([switch]$Docker)
@@ -15,7 +15,7 @@ if ($Docker) {
   Save-NetworkCA (Get-Location).Path
   docker compose up --build -d
 } else {
-  $env:MYELIN_CONSOLE_PATH = (Join-Path (Get-Location) "demo\offline\NERvvE-DevSecOps-Demo-Console.html")
+  $env:MYELIN_CONSOLE_PATH = (Join-Path (Get-Location) "demo\offline\RAT-Flea-DevSec-Demo-Console.html")
   if (-not (Get-Command python -ErrorAction SilentlyContinue)) { throw "Python 3.10+ is required (or use -Docker)" }
   if (-not (Test-Path .venv)) { python -m venv .venv }
   & .\.venv\Scripts\python.exe -m pip install -q -r backend\requirements.txt
@@ -28,5 +28,5 @@ if ($Docker) {
 
 for ($i = 0; $i -lt 30; $i++) { try { Invoke-RestMethod "$Url/api/health" | Out-Null; break } catch { Start-Sleep 1 } }
 Invoke-RestMethod "$Url/api/health" | Out-Null
-Write-Host "NERvvE DevSecOps demo running at $Url  (stop: demo\stop-demo.ps1)"
+Write-Host "RAT Flea DevSec demo running at $Url  (stop: demo\stop-demo.ps1)"
 Start-Process $Url

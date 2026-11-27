@@ -2,11 +2,11 @@
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
 """Bring-your-own-scanner import.
 
-Results from other tools are converted to NERvvE DevSecOps findings, then go through the same de-duplication, risk scoring,
-policy gate, ticketing, reporting and VEX as NERvvE DevSecOps's own engines. Supported, detected automatically:
+Results from other tools are converted to RAT Flea DevSec findings, then go through the same de-duplication, risk scoring,
+policy gate, ticketing, reporting and VEX as RAT Flea DevSec's own engines. Supported, detected automatically:
 
   SARIF 2.1.0 (any SARIF producer, e.g. CodeQL or Semgrep)
-  CycloneDX 1.4+ JSON (vulnerabilities section; a plain SBOM is matched against NERvvE DevSecOps's vulnerability intelligence)
+  CycloneDX 1.4+ JSON (vulnerabilities section; a plain SBOM is matched against RAT Flea DevSec's vulnerability intelligence)
   Trivy JSON · Grype JSON · Semgrep JSON · Gitleaks JSON · Checkov JSON · Bandit JSON · OWASP ZAP JSON
 """
 import json
@@ -116,7 +116,7 @@ def cyclonedx(doc: dict, repo: str) -> list[dict]:
                         "severity": sev, "cvss": score, "package": c.get("name"), "version": c.get("version"), "purl": c.get("purl"),
                         "fixed_version": fixed, "cwe": f"CWE-{(v.get('cwes') or [None])[0]}" if v.get("cwes") else None,
                         "repo": repo, "source_tool": "cyclonedx"})
-    if not vulns and comps:                       # a plain SBOM: match it against NERvvE DevSecOps's vulnerability intelligence
+    if not vulns and comps:                       # a plain SBOM: match it against RAT Flea DevSec's vulnerability intelligence
         from . import sbom as _sbom
         inv = []
         for c in comps.values():

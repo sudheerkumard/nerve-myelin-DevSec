@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Sudheer Kumar.
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
-# NERvvE DevSecOps SAST rules for Python (Opengrep/Semgrep rule syntax). Original work: not derived from the
+# RAT Flea DevSec SAST rules for Python (Opengrep/Semgrep rule syntax). Original work: not derived from the
 # semgrep-rules registry. Taint rules follow untrusted input from a web request (Flask, Django, FastAPI/Starlette),
 # the command line or the environment to a dangerous sink, and stop at recognised sanitisers.
 rules:

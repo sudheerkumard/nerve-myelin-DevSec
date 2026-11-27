@@ -45,7 +45,7 @@ def _tenant_id(url: str, slug: str):
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(prog="myelin-admin", description="NERvvE DevSecOps platform administration")
+    ap = argparse.ArgumentParser(prog="myelin-admin", description="RAT Flea DevSec platform administration")
     sub = ap.add_subparsers(dest="cmd", required=True)
     c = sub.add_parser("tenant-create")
     c.add_argument("--slug", required=True)
@@ -75,7 +75,7 @@ def main(argv=None) -> int:
             sys.exit(f"cannot create tenants: licence {lic.state} ({lic.reason})")
         max_t = lic.payload.get("max_tenants")
         if max_t and len(admin.list_tenants(url)) >= int(max_t):
-            sys.exit(f"licence allows {max_t} tenant(s); contact the NERvvE DevSecOps product owner to extend it")
+            sys.exit(f"licence allows {max_t} tenant(s); contact the RAT Flea DevSec product owner to extend it")
         binds = []
         for item in a.bind:
             issuer, sep, value = item.rpartition("=")

@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Sudheer Kumar.
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
-# NERvvE DevSecOps — product CI: tests (incl. real PostgreSQL RLS isolation), self-scan, supply-chain gates,
+# RAT Flea DevSec — product CI: tests (incl. real PostgreSQL RLS isolation), self-scan, supply-chain gates,
 # hardened image build, vulnerability scan, SBOM, keyless signing and provenance.
 name: ci
 on:
@@ -43,7 +43,7 @@ jobs:
           python scripts/build_enterprise_console.py
           ! grep -q 'nm_demo_9f2c41e7b8' console/index.html
           ! grep -q 'Orion Financial Group' console/index.html
-          grep -q 'Orion Financial Group' demo/offline/NERvvE-DevSecOps-Demo-Console.html
+          grep -q 'Orion Financial Group' demo/offline/RAT-Flea-DevSec-Demo-Console.html
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         if: always()
         with: { name: test-results, path: test-results.xml }
@@ -55,7 +55,7 @@ jobs:
         with: { fetch-depth: 0 }
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
         with: { python-version: "3.12" }
-      - name: NERvvE DevSecOps self-scan (secrets, IaC, CI/CD posture) — policy gate
+      - name: RAT Flea DevSec self-scan (secrets, IaC, CI/CD posture) — policy gate
         run: |
           pip install -r backend/requirements.txt
           python cli/myelin.py scan . --builtin-only --policy policies/myelin-policy.yaml --sarif myelin.sarif --json myelin.json --fail-on block

@@ -50,7 +50,7 @@ Settings are read from the process environment, then the file named by `MYELIN_E
 | `MYELIN_POLICY_FILE` |  | Default policy file (empty: built-in policy) |
 | `MYELIN_PUBLIC_URL` | `http://localhost:8080` | Public URL of the console (links in tickets and e-mails) |
 | `MYELIN_PYPI_URL` |  | PyPI registry for existence checks |
-| `MYELIN_SAST_RULES` |  | Extra Opengrep/Semgrep rule file or folder you own or have licensed (added to the bundled NERvvE rule pack) |
+| `MYELIN_SAST_RULES` |  | Extra Opengrep/Semgrep rule file or folder you own or have licensed (added to the bundled RAT Flea rule pack) |
 | `MYELIN_SCAN_CONCURRENCY` |  | Repository scans run in parallel |
 | `MYELIN_SCM_ALLOW_HTTP` |  | Allow plain-HTTP Git servers |
 | `MYELIN_SCM_ALLOW_PRIVATE` |  | Allow Git servers on private networks |

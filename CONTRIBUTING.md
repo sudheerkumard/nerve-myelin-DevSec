@@ -1,4 +1,4 @@
-# Contributing to NERvvE DevSecOps
+# Contributing to RAT Flea DevSec
 
 Thank you for helping make software delivery safer. This guide explains how to propose changes.
 

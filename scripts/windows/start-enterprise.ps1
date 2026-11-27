@@ -1,8 +1,8 @@
 # Copyright (c) 2026 Sudheer Kumar.
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
 #
-# NERvvE DevSecOps — production-style stack on one Windows machine (Docker Desktop):
-#   PostgreSQL 16 (row-level security) · Keycloak 26 (SSO + MFA) · OpenBao secret vault · NERvvE DevSecOps API + console · HTTPS proxy
+# RAT Flea DevSec — production-style stack on one Windows machine (Docker Desktop):
+#   PostgreSQL 16 (row-level security) · Keycloak 26 (SSO + MFA) · OpenBao secret vault · RAT Flea DevSec API + console · HTTPS proxy
 #
 #   powershell -ExecutionPolicy Bypass -File scripts\windows\setup-myelin.ps1        # once (creates .venv)
 #   powershell -ExecutionPolicy Bypass -File scripts\windows\start-enterprise.ps1    # start / restart
@@ -132,7 +132,7 @@ if (-not (Test-Path $LicTool)) {
     }
   }
   $lic = Join-Path $env:TEMP "myelin-local.lic"
-  & $VPy $LicTool issue --key $existing.FullName --licensee "NERvvE DevSecOps - local installation" `
+  & $VPy $LicTool issue --key $existing.FullName --licensee "RAT Flea DevSec - local installation" `
       --plan enterprise --addons dast --max-tenants 5 --days 365 --out $lic | Out-Null
   if ($LASTEXITCODE -ne 0) { throw "licence issue failed" }
   $token = (Get-Content $lic -Raw).Trim(); Remove-Item $lic
@@ -201,7 +201,7 @@ if ((Dc cp "edge:/data/caddy/pki/authorities/local/root.crt" $crt) -eq 0) {
 } else { Warn "could not copy the local CA; your browser will show a certificate warning you can accept" }
 
 $kcPass = ((Select-String -Path $EnvFile -Pattern "^KEYCLOAK_ADMIN_PASSWORD=").Line -split "=", 2)[1]
-Write-Host "`nNERvvE DevSecOps is running." -ForegroundColor Cyan
+Write-Host "`nRAT Flea DevSec is running." -ForegroundColor Cyan
 Write-Host "  Console        $Console"
 Write-Host "  Sign in as     alice-admin (tenant admin, Acme)  |  sam-lead (security lead)  |  audit-arun (auditor)"
 Write-Host "                 gary-admin (admin of a second tenant, Globex - sees none of Acme's data)"

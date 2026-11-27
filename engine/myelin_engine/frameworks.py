@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Sudheer Kumar.
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
-"""Maps NERvvE DevSecOps findings to the security and compliance frameworks customers report against.
+"""Maps RAT Flea DevSec findings to the security and compliance frameworks customers report against.
 
 Control titles are short summaries written for this product (not the standards' own text); identifiers refer to the
 published standards, which remain the property of their owners. Every mapping is deliberate and conservative: a finding is tagged with a control only when the control's own text

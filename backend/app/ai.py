@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Sudheer Kumar.
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
-"""NERvvE DevSecOps AI assistant.
+"""RAT Flea DevSec AI assistant.
 
 Four capabilities, each with a deterministic built-in engine that always works (including air-gapped) and an optional
 large-language-model provider that the tenant configures:
@@ -201,7 +201,7 @@ def _signals(f):
 
 def explain(f: dict) -> dict:
     what, impact, steps = KB.get(str(f.get("cwe") or "").upper()) or ENGINE_KB.get(f.get("engine")) or (
-        "A security weakness reported by a NERvvE DevSecOps rule.", "Depends on how the affected code is used.", ["Apply the remediation shown."])
+        "A security weakness reported by a RAT Flea DevSec rule.", "Depends on how the affected code is used.", ["Apply the remediation shown."])
     steps = list(steps)
     if f.get("fixed_version") and f.get("package"):
         steps.insert(0, f"Upgrade {f['package']} from {f.get('version')} to {f['fixed_version']} or later.")
@@ -210,8 +210,8 @@ def explain(f: dict) -> dict:
     base = {"finding": f.get("id"), "summary": f"{f.get('title')} in {f.get('repo')} — {f.get('priority')} (risk score {f.get('mrs')}).",
             "what": what, "impact": impact, "why_it_matters": _signals(f), "steps": steps[:6], "fix": steps[0],
             "verify": "Push the fix or run `myelin scan`: the finding closes automatically when a scan of the same engine no longer reports it.",
-            "references": _references(f), "source": "built-in", "model": "NERvvE DevSecOps knowledge base"}
-    out = _json(_llm("You are NERvvE DevSecOps, an application security assistant for DevOps engineers. Answer with JSON only: "
+            "references": _references(f), "source": "built-in", "model": "RAT Flea DevSec knowledge base"}
+    out = _json(_llm("You are RAT Flea DevSec, an application security assistant for DevOps engineers. Answer with JSON only: "
                      '{"what": str, "impact": str, "steps": [str], "verify": str}. Be specific to the finding; at most 6 short steps; '
                      "do not invent CVE details that are not in the input.", json.dumps(_context(f))))
     if out and isinstance(out.get("steps"), list):

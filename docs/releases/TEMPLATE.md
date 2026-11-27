@@ -1,4 +1,4 @@
-# NERvvE DevSecOps {{VERSION}} — Release notes
+# RAT Flea DevSec {{VERSION}} — Release notes
 
 **Release date:** {{DATE}} · **Release type:** {{KIND}} release
 

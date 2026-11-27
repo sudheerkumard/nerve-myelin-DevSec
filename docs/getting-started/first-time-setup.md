@@ -103,7 +103,7 @@ per organisation by PostgreSQL row-level security.
 
 | Message after sign-in | Meaning | Fix |
 |---|---|---|
-| *Your account is not linked to an organisation … the 'tenant' claim is missing* | The Keycloak user has no organisation set | Set the user's **NERvvE DevSecOps tenant** field and a role (below) |
+| *Your account is not linked to an organisation … the 'tenant' claim is missing* | The Keycloak user has no organisation set | Set the user's **RAT Flea DevSec tenant** field and a role (below) |
 | *Your account names an organisation that does not exist … tenant not provisioned* | The field is set, but no organisation with that slug was created | Create the organisation (below), then sign in again |
 | *Multi-factor authentication is required* | MFA not completed | Sign in again and enter the authenticator code |
 | *Client secret does not match* | Keycloak's client secret changed | Windows: run `start-enterprise.ps1` again; otherwise set `MYELIN_OIDC_CLIENT_SECRET` to the secret of the `myelin-console` client |
@@ -113,7 +113,7 @@ per organisation by PostgreSQL row-level security.
 === "Windows (one command)"
 
     ```powershell
-    powershell -ExecutionPolicy Bypass -File scripts\windows\new-tenant.ps1 -Slug nervve -Name "NERvvE Labs" -User "<keycloak username>"
+    powershell -ExecutionPolicy Bypass -File scripts\windows\new-tenant.ps1 -Slug rat-flea -Name "RAT Flea Labs" -User "<keycloak username>"
     ```
 
     Creates the organisation, links it to Keycloak, sets the user's organisation and assigns `myelin-tenant-admin`
@@ -125,12 +125,12 @@ per organisation by PostgreSQL row-level security.
 
         ```bash
         docker compose -f docker-compose.enterprise.yml --env-file config/backend/enterprise.env run --rm migrate \
-          admin tenant-create --slug nervve --name "NERvvE Labs" --plan enterprise \
-          --bind https://auth.localtest.me:8444/realms/myelin=nervve
+          admin tenant-create --slug rat-flea --name "RAT Flea Labs" --plan enterprise \
+          --bind https://auth.localtest.me:8444/realms/myelin=rat-flea
         ```
 
-    2. In Keycloak (realm **myelin**) → **Users** → open or create the user → set **NERvvE DevSecOps tenant** to
-       `nervve` → **Save**.
+    2. In Keycloak (realm **myelin**) → **Users** → open or create the user → set **RAT Flea DevSec tenant** to
+       `rat-flea` → **Save**.
     3. **Role mapping → Assign role** → `myelin-tenant-admin` (or `myelin-security-lead`, `myelin-developer`,
        `myelin-auditor`, `myelin-viewer`).
     4. Sign out of the console and sign in again.

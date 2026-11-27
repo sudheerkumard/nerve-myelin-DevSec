@@ -180,19 +180,19 @@ class SVG:
         self.text(48, 52, eyebrow.upper(), 12, C["teal"], 700, ls=2.2)
         self.text(48, 86, title, 28, TX, 800)
         self.text(48, 114, sub, 14.5, TX2, 400, width=self.w - 96)
-        self.text(self.w - 48, 52, "NERVVE DEVSECOPS", 12, TX3, 700, "end", ls=2.2)
+        self.text(self.w - 48, 52, "RAT FLEA DEVSEC", 12, TX3, 700, "end", ls=2.2)
 
     def footer(self, note):
         self.text(48, self.h - 22, note, 11.5, TX3, 400)
-        self.text(self.w - 48, self.h - 22, "© 2026 Sudheer Kumar · NERvvE DevSecOps", 11.5, TX3, 400, "end")
+        self.text(self.w - 48, self.h - 22, "© 2026 Sudheer Kumar · RAT Flea DevSec", 11.5, TX3, 400, "end")
 
 
 # ===================================================================================== 1. platform architecture
 def architecture():
-    s = SVG(1680, 1110, "NERvvE DevSecOps platform architecture",
+    s = SVG(1680, 1110, "RAT Flea DevSec platform architecture",
             "Who uses the platform, the control plane with its engines and services, the data stores and the outbound integrations.")
     s.header("Architecture", "One platform from code to cloud to runtime",
-             "Clients and sensors on top, the stateless control plane in the middle, tenant-isolated data underneath and the systems NERvvE talks to on the right.")
+             "Clients and sensors on top, the stateless control plane in the middle, tenant-isolated data underneath and the systems RAT Flea talks to on the right.")
     # clients row
     clients = [("Developers & AI assistants", "code", C["blue"], ["myelin CLI", "pre-commit hook", "MCP server"]),
                ("CI/CD pipelines", "git", C["violet"], ["GitHub Actions", "Azure Pipelines", "GitLab CI", "Jenkins", "Argo CD"]),
@@ -264,14 +264,14 @@ def architecture():
 
 # ===================================================================================== 2. end-to-end data flow
 def data_flow():
-    s = SVG(1720, 990, "NERvvE DevSecOps end-to-end data flow",
+    s = SVG(1720, 990, "RAT Flea DevSec end-to-end data flow",
             "Eight numbered stages from a code change to proof for auditors, with the cloud and runtime lane joining at enrichment.")
     s.header("Data flow", "From a code change to proof, in eight steps",
              "Every number is a stage the data passes through. The cloud and runtime lane joins at step 4, so risk is judged with the context of where the code runs.")
     stages = [("1", "Change", "code", C["blue"], ["Commit or pull request", "Pre-commit hook and AI assistant (MCP) check first"]),
               ("2", "Scan in the runner", "cpu", C["violet"], ["15 engines + your scanners", "Source code never leaves the runner"]),
               ("3", "Ingest", "layers", C["cyan"], ["One finding schema", "Fingerprints de-duplicate across engines"]),
-              ("4", "Enrich & score", "chart", C["amber"], ["EPSS, KEV, reachability, exposure", "NERvvE Risk Score + CISA SSVC"]),
+              ("4", "Enrich & score", "chart", C["amber"], ["EPSS, KEV, reachability, exposure", "RAT Flea Risk Score + CISA SSVC"]),
               ("5", "Decide", "shield", C["red"], ["Policy gate: pass / warn / block", "Deployment allowed or stopped"]),
               ("6", "Act", "wrench", C["green"], ["Tickets routed to the owner", "AutoFix pull requests, campaigns"]),
               ("7", "Verify", "refresh", C["teal"], ["Re-scan closes what is fixed", "Regressions reopen automatically"]),
@@ -335,7 +335,7 @@ def trust_boundaries():
     s.header("Security", "Trust boundaries and the control on every crossing",
              "Each arrow crosses a boundary; its letter matches the table on the Security architecture page, and the label names what is sent.")
     s.zone(40, 160, 320, 760, "Customer network", C["blue"])
-    s.zone(500, 160, 760, 760, "NERvvE DevSecOps namespace", C["teal"])
+    s.zone(500, 160, 760, 760, "RAT Flea DevSec namespace", C["teal"])
     s.zone(1420, 160, 440, 330, "Customer cloud & clusters", C["cyan"])
     s.zone(1420, 530, 440, 390, "Third-party services", C["violet"])
     left = [("Developer workstation", "code", "CLI, pre-commit, MCP"), ("CI runner", "git", "myelin scan · myelin gate"), ("Browser", "user", "console"),
@@ -461,8 +461,8 @@ def attack_path():
 
 # ===================================================================================== 7. risk score
 def risk_score():
-    s = SVG(1600, 720, "NERvvE Risk Score", "Components of the risk score and the priority bands they produce.")
-    s.header("Prioritisation", "What the NERvvE Risk Score is made of",
+    s = SVG(1600, 720, "RAT Flea Risk Score", "Components of the risk score and the priority bands they produce.")
+    s.header("Prioritisation", "What the RAT Flea Risk Score is made of",
              "Points add up to at most 100, then business criticality weights the result. The score sets the priority and the fix-by date.")
     parts = [("Impact", "CVSS × 4", 40, C["blue"]), ("Exploit likelihood", "EPSS × 25", 25, C["violet"]), ("Known exploited", "CISA KEV", 15, C["red"]),
              ("Exposure", "internet / internal", 10, C["amber"]), ("Reachable", "first-party code path", 10, C["teal"]), ("Live secret", "provider confirmed", 25, C["orange"]),
@@ -489,14 +489,14 @@ def risk_score():
 
 # ===================================================================================== 8. integrations map
 def integrations():
-    s = SVG(1600, 960, "Integrations map", "Systems NERvvE DevSecOps connects to, grouped by purpose.")
+    s = SVG(1600, 960, "Integrations map", "Systems RAT Flea DevSec connects to, grouped by purpose.")
     s.header("Integrations", "Fits the tools you already run",
              "Inbound sources on the left, where results go on the right. Every credential is held in your vault.")
     cx, cy = 800, 540
     s.add(f'<circle cx="{cx}" cy="{cy}" r="118" fill="url(#core)" stroke="{C["teal"]}" stroke-width="2" filter="url(#sh)"/>')
     s.add(f'<circle cx="{cx}" cy="{cy}" r="138" fill="none" stroke="{C["teal"]}" stroke-opacity=".3" stroke-width="2" class="pulse"/>')
     s.icon("shield", cx - 20, cy - 58, 40, C["teal"])
-    s.text(cx, cy + 10, "NERvvE DevSecOps", 22, TX, 800, "middle")
+    s.text(cx, cy + 10, "RAT Flea DevSec", 22, TX, 800, "middle")
     s.text(cx, cy + 34, "one finding queue", 13, TX2, 400, "middle")
     left = [("Source & CI", "git", C["violet"], ["GitHub", "GitLab", "Azure DevOps", "Bitbucket", "Jenkins", "CodeCommit"]),
             ("Clouds & clusters", "cloud", C["cyan"], ["Azure", "AWS", "Google Cloud", "Kubernetes", "Kyverno"]),
@@ -522,7 +522,7 @@ def integrations():
 # ===================================================================================== 9. data model
 def data_model():
     s = SVG(1680, 1020, "Data model", "Main entities, their key fields and relationships. Every entity belongs to one tenant.")
-    s.header("Data model", "What NERvvE DevSecOps stores",
+    s.header("Data model", "What RAT Flea DevSec stores",
              "Every table below carries tenant_id and is protected by PostgreSQL forced row-level security.")
     ent = {
         "tenant": (720, 150, C["teal"], "Tenant", ["id · slug · name", "plan · region · settings"]),

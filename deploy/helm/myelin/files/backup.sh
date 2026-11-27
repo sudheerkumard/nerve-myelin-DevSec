@@ -1,7 +1,7 @@
 #!/bin/sh
 # Copyright (c) 2026 Sudheer Kumar.
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
-# NERvvE DevSecOps database backup: pg_dump -> SHA-256 manifest -> object storage.
+# RAT Flea DevSec database backup: pg_dump -> SHA-256 manifest -> object storage.
 # BACKUP_DEST: s3://bucket/prefix | azblob://account/container/prefix | file:///path
 set -eu
 : "${MYELIN_MIGRATIONS_DATABASE_URL:?}" "${BACKUP_DEST:?}"

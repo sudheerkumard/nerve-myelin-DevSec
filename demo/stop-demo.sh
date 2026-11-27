@@ -4,4 +4,4 @@
 cd "$(dirname "$0")/.."
 if [[ -f demo/.demo.pid ]]; then kill "$(cat demo/.demo.pid)" 2>/dev/null || true; rm -f demo/.demo.pid; fi
 docker compose down 2>/dev/null || true
-echo "NERvvE DevSecOps demo stopped."
+echo "RAT Flea DevSec demo stopped."

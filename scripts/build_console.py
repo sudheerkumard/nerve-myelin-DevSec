@@ -71,7 +71,7 @@ cfg = json.load(open(os.path.join(ROOT, "config", "frontend", "console.config.js
 sample_out = tpl.replace("/*__SNAPSHOT__*/null", json.dumps(snap, separators=(",", ":")).replace("</", "<\\/"))
 sample_out = sample_out.replace("/*__CONFIG__*/null", json.dumps(cfg, separators=(",", ":")).replace("</", "<\\/"))
 os.makedirs(os.path.join(ROOT, "demo", "offline"), exist_ok=True)
-offline_path = os.path.join(ROOT, "demo", "offline", "NERvvE-DevSecOps-Demo-Console.html")
+offline_path = os.path.join(ROOT, "demo", "offline", "RAT-Flea-DevSec-Demo-Console.html")
 open(offline_path, "w", encoding="utf-8").write(sample_out)
 
 # Production console contains no embedded tenant fixture and no demo API key.

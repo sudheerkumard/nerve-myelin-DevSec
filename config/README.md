@@ -1,4 +1,4 @@
-# NERvvE DevSecOps — Configuration
+# RAT Flea DevSec — Configuration
 
 *© 2026 Sudheer Kumar. Licensed under the GNU AGPL-3.0; see `LICENSE`.*
 
@@ -50,7 +50,7 @@ Related configuration elsewhere in the repository:
 | `MYELIN_PUBLIC_URL` | — | External URL for OIDC redirects and CORS |
 | `MYELIN_SESSION_IDLE_MINUTES` / `_ABSOLUTE_HOURS` | `30` / `12` | Console session lifetime |
 | `MYELIN_METRICS_ENABLED` | `true` | Exposes `/metrics` |
-| `MYELIN_LICENSE_REF` | `env://MYELIN_LICENSE` | Licence key issued for NERvvE DevSecOps; missing/expired → restricted (read-only) mode |
+| `MYELIN_LICENSE_REF` | `env://MYELIN_LICENSE` | Licence key issued for RAT Flea DevSec; missing/expired → restricted (read-only) mode |
 | `MYELIN_DEPLOYMENT_ID` | — | Only if the licence is bound to one installation |
 
 Secret references: `env://NAME`, `file:///path`, `azkv://vault/secret`, `awssm://region/name`, `vault://path#key`. Connector credentials must use a vault scheme and include the tenant id. Generate platform secrets with `scripts/ops/gen-secrets.sh`.
@@ -61,5 +61,5 @@ Environment variables always override file values. Never commit a real `myelin.e
 
 ```bash
 pip install -r backend/requirements.txt -r backend/requirements-dev.txt
-python scripts/build_console.py      # rebuilds console/index.html and demo/offline/NERvvE-DevSecOps-Demo-Console.html
+python scripts/build_console.py      # rebuilds console/index.html and demo/offline/RAT-Flea-DevSec-Demo-Console.html
 ```

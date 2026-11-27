@@ -4,7 +4,7 @@ const path = require("path");
 const puppeteer = require(process.env.PUPPETEER_PATH || "/opt/npm-tools/node_modules/puppeteer");
 (async () => {
   const src = path.resolve(__dirname, "../docs/enterprise/poster/architecture-poster.html");
-  const out = path.resolve(__dirname, "../docs/enterprise/poster/NERvvE-DevSecOps-Architecture");
+  const out = path.resolve(__dirname, "../docs/enterprise/poster/RAT-Flea-DevSec-Architecture");
   const b = await puppeteer.launch({ headless: "new", executablePath: process.env.CHROME, args: ["--no-sandbox"] });
   const p = await b.newPage();
   await p.setViewport({ width: 1920, height: 1080, deviceScaleFactor: 2 });

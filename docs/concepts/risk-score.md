@@ -1,9 +1,9 @@
-# NERvvE Risk Score
+# RAT Flea Risk Score
 
 ![Risk score composition](../assets/diagrams/risk-score.svg){ .nm-diagram }
 
 Severity alone over-alerts: a critical rule in a test fixture matters less than a high one that is exploited in the
-wild and reachable from an internet-facing service. The NERvvE Risk Score (MRS) ranks by how an attacker would use
+wild and reachable from an internet-facing service. The RAT Flea Risk Score (MRS) ranks by how an attacker would use
 the finding.
 
 | Component | Points | Source |

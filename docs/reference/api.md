@@ -53,7 +53,7 @@ The platform exposes **113 operations**. The live, interactive OpenAPI document 
 | `GET` | `/api/v1/cloud/identities` | Cloud Identities |
 | `DELETE` | `/api/v1/cloud/inventories` | Cloud Inventory Delete |
 | `GET` | `/api/v1/cloud/inventories` | Cloud Inventories |
-| `POST` | `/api/v1/cloud/inventory` | Analyse an inventory: a NERvvE inventory (`myelin cloud collect`), Azure Resource Graph rows, a Google Cloud Asset |
+| `POST` | `/api/v1/cloud/inventory` | Analyse an inventory: a RAT Flea inventory (`myelin cloud collect`), Azure Resource Graph rows, a Google Cloud Asset |
 | `GET` | `/api/v1/cloud/rules` | Cloud Rules |
 
 ## Cloud overview · `cnapp`

@@ -93,7 +93,7 @@ def _http_json(url, body=None, ttl=CACHE_TTL, headers=None):
         return None
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(url, data=data, method="POST" if data else "GET",
-                                 headers={"User-Agent": "NERvvE-DevSecOps", "Accept": "application/json",
+                                 headers={"User-Agent": "RAT-Flea-DevSec", "Accept": "application/json",
                                           **({"Content-Type": "application/json"} if data else {}), **(headers or {})})
     try:
         with urllib.request.urlopen(req, timeout=20) as r:  # myelin:ignore[NM-SAST-010] -- URLs are built from fixed OSV/PyPI/npm https endpoints or operator-set mirrors
@@ -778,7 +778,7 @@ def download_exports(dest: str, ecosystems=tuple(OSV_ECO.values())) -> list[str]
         filename = eco.replace("/", "_") + ".zip"
         path = os.path.join(dest, filename)
         url = f"{OSV_EXPORT_BASE}/{urllib.parse.quote(eco, safe='')}/all.zip"
-        req = urllib.request.Request(url, headers={"User-Agent": "NERvvE-DevSecOps"})
+        req = urllib.request.Request(url, headers={"User-Agent": "RAT-Flea-DevSec"})
         with urllib.request.urlopen(req, timeout=300) as response, open(path + ".part", "wb") as fh:  # myelin:ignore[NM-SAST-010] -- fixed OSV export host
             shutil_copy(response, fh)
         os.replace(path + ".part", path)

@@ -159,7 +159,7 @@ def _call(method, url, headers, body=None):
         return TRANSPORT(method, url, headers, data)
     host = urllib.parse.urlsplit(url).hostname or ""
     scm._guard_host(host)
-    req = urllib.request.Request(url, data=data, method=method, headers={"User-Agent": "NERvvE-DevSecOps-AutoFix",
+    req = urllib.request.Request(url, data=data, method=method, headers={"User-Agent": "RAT-Flea-DevSec-AutoFix",
                                  "Content-Type": "application/json", **headers})
     try:
         with urllib.request.urlopen(req, timeout=TIMEOUT) as r:  # myelin:ignore[NM-SAST-010] -- provider API host from scm.detect
@@ -259,8 +259,8 @@ def open_pull_request(info, token, base_branch, branch, proposal, body_text) -> 
 
 
 def pr_body(f, proposal) -> str:
-    return (f"**NERvvE DevSecOps AutoFix** for `{f.get('rule_id')}` — {f.get('title')}\n\n{proposal.get('explanation', '')}\n\n"
+    return (f"**RAT Flea DevSec AutoFix** for `{f.get('rule_id')}` — {f.get('title')}\n\n{proposal.get('explanation', '')}\n\n"
             f"- Repository: {f.get('repo')} · file: `{f.get('file')}`" + (f":{f['line']}" if f.get("line") else "") + "\n"
             f"- Priority {f.get('priority')} · risk score {f.get('mrs')}\n\n"
             + ("> Review required: this change can alter behaviour.\n\n" if proposal.get("review") else "")
-            + "When the next scan no longer reports the issue, NERvvE DevSecOps closes the finding and its ticket.")
+            + "When the next scan no longer reports the issue, RAT Flea DevSec closes the finding and its ticket.")

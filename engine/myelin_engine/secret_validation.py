@@ -44,7 +44,7 @@ def _call(method, url, headers):
     if TRANSPORT:
         return TRANSPORT(method, url, headers)
     req = urllib.request.Request(url, method=method, data=b"" if method == "POST" else None,
-                                 headers={"User-Agent": "NERvvE-DevSecOps-secret-validation", **headers})
+                                 headers={"User-Agent": "RAT-Flea-DevSec-secret-validation", **headers})
     try:
         with urllib.request.urlopen(req, timeout=TIMEOUT) as r:  # myelin:ignore[NM-SAST-010] -- fixed provider endpoints only
             return r.status, r.read()

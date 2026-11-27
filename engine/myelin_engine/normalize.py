@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Sudheer Kumar.
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
-"""Normalisers: third-party scanner JSON -> NERvvE DevSecOps unified Finding schema."""
+"""Normalisers: third-party scanner JSON -> RAT Flea DevSec unified Finding schema."""
 import re
 
 SEV = {"CRITICAL": "critical", "HIGH": "high", "MEDIUM": "medium", "LOW": "low", "UNKNOWN": "info",
@@ -30,7 +30,7 @@ def trivy(doc: dict, repo: str) -> list[dict]:
     return out
 
 
-# NERvvE taint rules that cover the same weakness as a built-in pattern rule: an inline suppression of either id
+# RAT Flea taint rules that cover the same weakness as a built-in pattern rule: an inline suppression of either id
 # applies to both, and the deeper result replaces the pattern match on the same line
 SAST_EQUIVALENT = {
     "nervve.python.sql-injection": "NM-SAST-001", "nervve.python.code-injection": "NM-SAST-002",
@@ -65,7 +65,7 @@ def _split_message(msg: str) -> tuple[str, str]:
 
 
 def semgrep(doc: dict, repo: str) -> list[dict]:
-    """Opengrep / Semgrep CE JSON. NERvvE rule ids are reported without the config-path prefix the engine adds."""
+    """Opengrep / Semgrep CE JSON. RAT Flea rule ids are reported without the config-path prefix the engine adds."""
     out = []
     for r in doc.get("results") or []:
         extra = r.get("extra") or {}
@@ -164,7 +164,7 @@ def grype(doc: dict, repo: str) -> list[dict]:
 BANDIT_SKIP = {"B101", "B110", "B112", "B603", "B607", "B311",            # asserts, try/except/pass, subprocess without shell, non-crypto random
                "B105", "B106", "B107"}                                    # password heuristics: the secrets engine covers these precisely
 # B401-B415 only report that a module was *imported* (pickle, subprocess, xml...). The dangerous *calls* are reported by
-# their own tests and by NERvvE DevSecOps rules, so import notices are noise in a security report.
+# their own tests and by RAT Flea DevSec rules, so import notices are noise in a security report.
 BANDIT_SEVERITY_OVERRIDE = {"B104": "low"}
 BANDIT_SEV = {"HIGH": "high", "MEDIUM": "medium", "LOW": "low"}
 

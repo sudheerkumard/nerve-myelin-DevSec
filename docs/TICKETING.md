@@ -2,7 +2,7 @@
 
 ![Integrations catalogue](assets/screenshots/integrations.webp){ .nm-shot }
 
-NERvvE DevSecOps turns findings into assigned work items and keeps them in step with the code.
+RAT Flea DevSec turns findings into assigned work items and keeps them in step with the code.
 
 * **One ticket per finding, never duplicated.** The ticket reference is stored on the finding (`SEC-123 ↗` in the console).
 * **Assigned to the right team.** Routing rules match repository (wildcards), engine and minimum priority; first match wins.
@@ -29,7 +29,7 @@ security leads can raise tickets by hand (`findings:triage`).
 
 ### Priority mapping
 
-| NERvvE DevSecOps | Jira priority | ServiceNow urgency / impact | Azure Boards priority / severity |
+| RAT Flea DevSec | Jira priority | ServiceNow urgency / impact | Azure Boards priority / severity |
 |---|---|---|---|
 | P0 | Highest | 1 / by severity | 1 / 1 - Critical |
 | P1 | High | 1 / by severity | 1 / 2 - High |
@@ -50,4 +50,4 @@ If the Jira project's create screen hides *Priority* or *Components*, the ticket
 
 Ticketing hosts on private networks are refused by default (protection against server-side request forgery in shared
 installations). Single-tenant installations set `MYELIN_ITSM_ALLOW_PRIVATE=1`. Set `MYELIN_PUBLIC_URL` to the console
-address to include a link back to NERvvE DevSecOps in every ticket.
+address to include a link back to RAT Flea DevSec in every ticket.

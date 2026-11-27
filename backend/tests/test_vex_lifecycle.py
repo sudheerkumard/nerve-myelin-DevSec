@@ -15,7 +15,7 @@ PURL = "pkg:pypi/urllib3@1.26.4"
 def test_cyclonedx_vex_not_affected_requires_exact_purl_and_keeps_audit_detail():
     doc = {
         "bomFormat": "CycloneDX", "specVersion": "1.5", "serialNumber": "urn:uuid:test",
-        "metadata": {"timestamp": "2026-11-19T10:00:00Z", "supplier": {"name": "NERvvE"}},
+        "metadata": {"timestamp": "2026-11-19T10:00:00Z", "supplier": {"name": "RAT Flea"}},
         "components": [{"bom-ref": "component-1", "purl": PURL}],
         "vulnerabilities": [{"id": "CVE-2021-33503",
             "analysis": {"state": "not_affected", "justification": "code_not_reachable", "detail": "Validated by call-path review"},

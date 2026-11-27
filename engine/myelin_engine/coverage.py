@@ -23,7 +23,7 @@ LANG_EXT = {
     "Ruby": (".rb",), "Scala": (".scala",), "Rust": (".rs",), "C/C++": (".c", ".cc", ".cpp", ".h", ".hpp"),
     "Swift": (".swift",),
 }
-# languages the bundled NERvvE taint rule pack covers (engine/myelin_engine/rules/sast)
+# languages the bundled RAT Flea taint rule pack covers (engine/myelin_engine/rules/sast)
 DEEP_SAST = {"Python", "JavaScript", "TypeScript", "Java", "Go", "C#", "PHP", "Ruby"}
 # languages the built-in pattern rules cover
 PATTERN_SAST = {"Python", "JavaScript", "TypeScript", "Java", "Kotlin", "Go", "C#", "PHP", "Ruby"}
@@ -143,7 +143,7 @@ def build(inv: dict, engines: list[str], tools_used: list[str], findings: list[d
     def tools_for(applicable_tools):
         names = []
         for t in applicable_tools:
-            if t.startswith(("NERvvE", "OSV")):
+            if t.startswith(("RAT Flea", "OSV")):
                 names.append({"name": t, "version": ""})
             elif t in tools_used:
                 names.append({"name": t, "version": tool_version(t), "error": errors.get(t), **run_info.get(t, {})})
@@ -153,7 +153,7 @@ def build(inv: dict, engines: list[str], tools_used: list[str], findings: list[d
     # SAST
     deep_tools = [t for t in ("opengrep", "semgrep") if t in tools_used]
     deep_ran = [t for t in deep_tools if t not in errors and run_info.get(t, {}).get("scanned_files") != 0]
-    sast_tools = (["NERvvE pattern rules"] if pattern_langs else []) + deep_tools
+    sast_tools = (["RAT Flea pattern rules"] if pattern_langs else []) + deep_tools
     if "Python" in langs and "bandit" in tools_used:
         sast_tools.append("bandit")
     unsupported = sorted(lang for lang in langs if lang not in PATTERN_SAST and lang not in DEEP_SAST)
@@ -174,7 +174,7 @@ def build(inv: dict, engines: list[str], tools_used: list[str], findings: list[d
                    "limitations": limitations, "rules": deep_rules if deep_ran else 0, "tools": tools_for(sast_tools)}
     # An advisory engine may find dependencies outside the built-in manifest inventory.
     has_deps = components > 0
-    sca_tools = (["NERvvE bundled advisories"] if has_deps else [])
+    sca_tools = (["RAT Flea bundled advisories"] if has_deps else [])
     sca_tools.extend(t for t in ("OSV", "OSV offline export") if t in intel.get("sources", []))
     sca_tools += [t for t in ("trivy", "grype") if t in tools_used
                                                and (t != "trivy" or "sca" in run_info.get(t, {}).get("domains", ["sca"]))]
@@ -185,29 +185,29 @@ def build(inv: dict, engines: list[str], tools_used: list[str], findings: list[d
                   "limitations": ["Coverage is limited to discovered dependencies and available advisory sources."]}
     cov["license"] = {"applicable": components > 0, "assessed": "license" in engines and components > 0,
                       "examined": f"{components} components" if components else "", "depth": "Licence of every component against the policy",
-                      "tools": [{"name": "NERvvE licence policy", "version": ""}]}
+                      "tools": [{"name": "RAT Flea licence policy", "version": ""}]}
     cov["supply"] = {"applicable": components > 0, "assessed": "supply" in engines and components > 0,
                      "examined": f"{components} components" if components else "",
                      "depth": "Known-malicious and typosquatted packages, install scripts, dependency confusion",
-                     "tools": [{"name": "NERvvE supply-chain rules", "version": ""}]}
+                     "tools": [{"name": "RAT Flea supply-chain rules", "version": ""}]}
     # Secrets: every repository has files
-    sec_tools = ["NERvvE secret rules"] + [t for t in ("gitleaks", "trivy") if t in tools_used
+    sec_tools = ["RAT Flea secret rules"] + [t for t in ("gitleaks", "trivy") if t in tools_used
                                                  and (t != "trivy" or "secrets" in run_info.get(t, {}).get("domains", ["secrets"]))]
     cov["secrets"] = {"applicable": inv.get("files", 0) > 0, "assessed": "secrets" in engines and inv.get("files", 0) > 0,
                       "examined": f"{inv.get('files', 0)} files" + (" and git history" if inv.get("git_history") and not errors.get("gitleaks") else ""),
                       "depth": "Credentials, keys and tokens, with high-entropy and provider-format detection",
                       "tools": tools_for(sec_tools)}
-    iac_tools = ["NERvvE IaC rules"] + [t for t in ("checkov", "trivy") if t in tools_used
+    iac_tools = ["RAT Flea IaC rules"] + [t for t in ("checkov", "trivy") if t in tools_used
                                                and (t != "trivy" or "iac" in run_info.get(t, {}).get("domains", ["iac"]))]
     cov["iac"] = {"applicable": bool(inv.get("iac")), "assessed": "iac" in engines and bool(inv.get("iac")),
                   "examined": f"{len(inv.get('iac') or [])} files (Dockerfile, Kubernetes, Helm, Terraform, Bicep, Compose)" if inv.get("iac") else "",
                   "depth": "Misconfiguration against CIS and cloud-provider baselines", "tools": tools_for(iac_tools)}
     cov["cicd"] = {"applicable": bool(inv.get("pipelines")), "assessed": "cicd" in engines and bool(inv.get("pipelines")),
                    "examined": f"{len(inv.get('pipelines') or [])} pipeline definitions" if inv.get("pipelines") else "",
-                   "depth": "OWASP Top 10 CI/CD Security Risks", "tools": [{"name": "NERvvE pipeline rules", "version": ""}]}
+                   "depth": "OWASP Top 10 CI/CD Security Risks", "tools": [{"name": "RAT Flea pipeline rules", "version": ""}]}
     cov["aibom"] = {"applicable": bool(inv.get("ai")), "assessed": "aibom" in engines and bool(inv.get("ai")),
                     "examined": f"{len(inv.get('ai') or [])} files using models, agents or MCP" if inv.get("ai") else "",
-                    "depth": "OWASP Top 10 for LLM Applications", "tools": [{"name": "NERvvE AI-BOM rules", "version": ""}]}
+                    "depth": "OWASP Top 10 for LLM Applications", "tools": [{"name": "RAT Flea AI-BOM rules", "version": ""}]}
     for k, c in cov.items():
         if k in found_domains and k in engines:         # an engine found something, so the domain was examined
             c["applicable"] = c["assessed"] = True

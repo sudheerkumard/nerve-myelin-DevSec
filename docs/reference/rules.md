@@ -2,7 +2,7 @@
 
 # Detection rules
 
-NERvvE DevSecOps ships **280 built-in rules** across 12 rule sets. Runtime detections come from the customer's Falco or Tetragon rules and are identified as `NM-RT-…` by rule name. Results imported from other scanners keep the scanner's own rule identifiers.
+RAT Flea DevSec ships **280 built-in rules** across 12 rule sets. Runtime detections come from the customer's Falco or Tetragon rules and are identified as `NM-RT-…` by rule name. Results imported from other scanners keep the scanner's own rule identifiers.
 
 <div class="grid cards" markdown>
 
@@ -221,7 +221,7 @@ NERvvE DevSecOps ships **280 built-in rules** across 12 rule sets. Runtime detec
 | `NM-CD-011` | Images deployed without signature or attestation verification | :material-alert-circle-outline:{ .med } medium | CICD-SEC-9 |
 | `NM-CD-012` | Plain-text secret in cloud build definition | :material-alert:{ .high } high | CICD-SEC-6 |
 | `NM-CD-013` | Build step runs privileged | :material-alert:{ .high } high | CICD-SEC-7 |
-| `NM-CD-014` | Deployment does not run the NERvvE DevSecOps gate | :material-information-outline:{ .low } low | CICD-SEC-1 |
+| `NM-CD-014` | Deployment does not run the RAT Flea DevSec gate | :material-information-outline:{ .low } low | CICD-SEC-1 |
 
 ## AI application & agent security { #aibom }
 

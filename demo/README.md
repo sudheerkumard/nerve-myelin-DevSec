@@ -1,4 +1,4 @@
-# NERvvE DevSecOps — Customer Live Demo Kit
+# RAT Flea DevSec — Customer Live Demo Kit
 
 *© 2026 Sudheer Kumar. Licensed under the GNU AGPL-3.0; see `LICENSE`. All demo data is fictional.*
 
@@ -8,7 +8,7 @@
 |---|---|
 | `start-demo.sh` / `stop-demo.sh` | Start and stop the live demo on macOS or Linux |
 | `start-demo.ps1` / `stop-demo.ps1` | Start and stop the live demo on Windows |
-| `offline/NERvvE-DevSecOps-Demo-Console.html` | Self-contained console with Risk graph; opens in any browser with no server (representative snapshot, not live tenant data) |
+| `offline/RAT-Flea-DevSec-Demo-Console.html` | Self-contained console with Risk graph; opens in any browser with no server (representative snapshot, not live tenant data) |
 | `vulnerable-app/` | Intentionally vulnerable multi-language repository that the **Live scan** screen scans in front of the customer |
 
 The demo uses `config/backend/myelin.env.demo`: a fictional sample tenant (Orion Financial Group), served on **localhost only**. Docker uses a separate `Dockerfile.demo`; the enterprise Dockerfile never copies the intentionally vulnerable app or sample credentials.
@@ -27,7 +27,7 @@ powershell -ExecutionPolicy Bypass -File demo\start-demo.ps1
 powershell -ExecutionPolicy Bypass -File demo\stop-demo.ps1
 ```
 
-**No install at all:** open `offline/NERvvE-DevSecOps-Demo-Console.html` in a browser. Every screen works, including the live scan (from a recorded result of the same engine).
+**No install at all:** open `offline/RAT-Flea-DevSec-Demo-Console.html` in a browser. Every screen works, including the live scan (from a recorded result of the same engine).
 
 ## Pre-demo checklist (15 minutes before)
 
@@ -35,7 +35,7 @@ powershell -ExecutionPolicy Bypass -File demo\stop-demo.ps1
 2. Start the demo; the pill at the top shows **Connected · live API**.
 3. Click **⚙ Customise**: customer name, industry, developer count, presenter.
 4. Run the **Live scan** once to warm up; it should end in **BLOCK**.
-6. Keep `offline/NERvvE-DevSecOps-Demo-Console.html` open in a second tab as a fallback.
+6. Keep `offline/RAT-Flea-DevSec-Demo-Console.html` open in a second tab as a fallback.
 7. Close other tabs; turn off notifications; set display scaling to 100%.
 
 ## During the demo

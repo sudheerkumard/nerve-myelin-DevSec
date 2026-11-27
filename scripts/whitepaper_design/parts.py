@@ -1,4 +1,4 @@
-"""Building blocks for the designed NERvvE DevSecOps whitepaper: styles, icons, charts and cover art.
+"""Building blocks for the designed RAT Flea DevSec whitepaper: styles, icons, charts and cover art.
 
 Copyright (c) 2026 Sudheer Kumar. SPDX-License-Identifier: AGPL-3.0-only.
 All artwork, icons and charts are drawn here from simple shapes; no third-party images or icon sets are used.

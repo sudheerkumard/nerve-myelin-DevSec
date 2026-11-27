@@ -1,9 +1,9 @@
 # Copyright (c) 2026 Sudheer Kumar.
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
-# NERvvE DevSecOps secure pipeline — GitHub Actions
+# RAT Flea DevSec secure pipeline — GitHub Actions
 # Copy to .github/workflows/myelin.yml. Pin every `uses:` to a full commit SHA in your org
-# (NERvvE DevSecOps reports NM-CICD-001 until you do; Renovate/Dependabot keep the pins current).
-# MYELIN_CLI_PACKAGE: the NERvvE DevSecOps CLI to install, e.g.
+# (RAT Flea DevSec reports NM-CICD-001 until you do; Renovate/Dependabot keep the pins current).
+# MYELIN_CLI_PACKAGE: the RAT Flea DevSec CLI to install, e.g.
 # git+https://github.com/sudheerkumard/nervve-devsecops@v1.5.0 or a wheel on your internal package index
 name: myelin-secure-pipeline
 on:
@@ -25,9 +25,9 @@ jobs:
         with: { fetch-depth: 0 }                 # full history for secrets-in-history scanning
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
-      - name: Install NERvvE DevSecOps CLI
+      - name: Install RAT Flea DevSec CLI
         run: pip install "${{ vars.MYELIN_CLI_PACKAGE }}"        # or run in the CLI image ghcr.io/sudheerkumard/myelin-cli:1.5.0
-      - name: NERvvE DevSecOps scan (SCA, SAST, secrets, IaC, pipeline posture, licences, AI-BOM)
+      - name: RAT Flea DevSec scan (SCA, SAST, secrets, IaC, pipeline posture, licences, AI-BOM)
         env:
           MYELIN_SERVER: ${{ vars.MYELIN_SERVER }}
           MYELIN_API_KEY: ${{ secrets.MYELIN_API_KEY }}
@@ -65,7 +65,7 @@ jobs:
           provenance: mode=max
           sbom: true
       - uses: sigstore/cosign-installer@v3
-      - name: NERvvE DevSecOps container scan (image, pre-deploy)
+      - name: RAT Flea DevSec container scan (image, pre-deploy)
         run: pip install "${{ vars.MYELIN_CLI_PACKAGE }}" && myelin scan --image ${{ vars.ACR_NAME }}.azurecr.io/${{ github.event.repository.name }}@${{ steps.build.outputs.digest }} --fail-on block
       - name: Sign + SLSA provenance + SBOM attestation (keyless)
         env:

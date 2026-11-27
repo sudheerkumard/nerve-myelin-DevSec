@@ -1,10 +1,10 @@
-NERvvE DevSecOps — COMMERCIAL LICENCE NOTICE (commercial and enterprise editions only; the Community edition is licensed under the GNU AGPL-3.0, see LICENSE)
+RAT Flea DevSec — COMMERCIAL LICENCE NOTICE (commercial and enterprise editions only; the Community edition is licensed under the GNU AGPL-3.0, see LICENSE)
 
-NERvvE DevSecOps Product designed and developed by Sudheer Kumar.
+RAT Flea DevSec Product designed and developed by Sudheer Kumar.
 Copyright (c) 2026 Sudheer Kumar. All rights reserved.
 Product: https://github.com/sudheerkumard/nervve-devsecops
 
-1. OWNERSHIP. NERvvE DevSecOps, including its source code, object code, container images, command-line tools,
+1. OWNERSHIP. RAT Flea DevSec, including its source code, object code, container images, command-line tools,
    user interfaces, visual designs, report templates, detection rules, risk models, policies, framework
    mappings, data files, documentation, demonstration material and collateral (together, the "Software"),
    is the proprietary and confidential property of Sudheer Kumar (the "Licensor"). The Software is protected
@@ -12,7 +12,7 @@ Product: https://github.com/sudheerkumard/nervve-devsecops
    copyright treaties including the Berne Convention, and contains trade secrets of the Licensor.
 
 2. LICENCE ONLY UNDER AGREEMENT. The Software is licensed, not sold. Any use of the Software requires a valid
-   NERvvE DevSecOps Subscription Agreement, Evaluation Agreement or Partner Agreement with the Licensor (each an
+   RAT Flea DevSec Subscription Agreement, Evaluation Agreement or Partner Agreement with the Licensor (each an
    "Agreement") and, where applicable, a licence key issued under it. The standard terms are in
    docs/legal/SUBSCRIPTION-AGREEMENT.md, together with the Acceptable Use Policy
    (docs/legal/ACCEPTABLE-USE-POLICY.md) and the Data Processing Addendum
@@ -27,7 +27,7 @@ Product: https://github.com/sudheerkumard/nervve-devsecops
 4. RESTRICTIONS. You must not (a) reverse engineer, decompile or disassemble the Software except to the
    extent applicable law expressly permits despite this restriction; (b) circumvent or tamper with licence
    keys, usage limits or security controls; (c) remove, obscure or alter any copyright, trademark,
-   attribution or proprietary notice, including the statement "NERvvE DevSecOps Product designed and developed
+   attribution or proprietary notice, including the statement "RAT Flea DevSec Product designed and developed
    by Sudheer Kumar"; or (d) use the Software, its rules, mappings, designs or documentation to build a
    competing product or service.
 
@@ -39,7 +39,7 @@ Product: https://github.com/sudheerkumard/nervve-devsecops
    listed in THIRD-PARTY-NOTICES.md. Nothing in this notice limits rights granted by those licences for those
    components.
 
-7. TRADEMARKS. "NERvvE DevSecOps" and its logos are trademarks of the Licensor. No trademark right is granted.
+7. TRADEMARKS. "RAT Flea DevSec" and its logos are trademarks of the Licensor. No trademark right is granted.
 
 8. DISCLAIMER. Except as expressly stated in an Agreement, the Software is provided "AS IS" without
    warranty of any kind, and the Licensor's liability is limited as stated in the Agreement.

@@ -25,7 +25,7 @@ DEFAULT_POLICY = {
         {"id": "block-secrets", "description": "Live credential committed", "when": {"engine": ["secrets"], "severity": ["critical", "high"]}, "action": "block"},
         {"id": "block-ppe", "description": "Poisoned pipeline execution path", "when": {"rule_id": ["NM-CICD-002", "NM-CICD-003"]}, "action": "block"},
         {"id": "block-unsigned", "description": "Artifacts not signed / no provenance", "when": {"rule_id": ["NM-CICD-009"]}, "action": "warn"},
-        {"id": "block-mrs-80", "description": "NERvvE Risk Score >= 80 (P0)", "when": {"mrs_gte": 80}, "action": "block"},
+        {"id": "block-mrs-80", "description": "RAT Flea Risk Score >= 80 (P0)", "when": {"mrs_gte": 80}, "action": "block"},
         {"id": "warn-high", "description": "High severity findings", "when": {"severity": ["high"]}, "action": "warn"},
         {"id": "block-copyleft", "description": "Strong copyleft licence requires legal approval", "when": {"rule_id": ["NM-LIC-001"]}, "action": "block"},
     ],

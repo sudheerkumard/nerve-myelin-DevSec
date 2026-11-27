@@ -3,7 +3,7 @@
 """Amazon Web Services connector (read-only, cross-account role).
 
 Least privilege: the customer creates role `NerveMyelinReadOnly` with the policy in
-config/connectors/aws-iam-policy.json and a trust policy that only allows the NERvvE DevSecOps platform
+config/connectors/aws-iam-policy.json and a trust policy that only allows the RAT Flea DevSec platform
 principal *with the tenant's ExternalId* (confused-deputy protection). The platform assumes the role for
 15 minutes per sync. No long-lived AWS keys are stored.
 Secret (JSON): {"role_arn": "arn:aws:iam::<acct>:role/NerveMyelinReadOnly", "external_id": "<per-tenant id>"}

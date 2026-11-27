@@ -1,4 +1,4 @@
-# Add NERvvE DevSecOps to your pipeline
+# Add RAT Flea DevSec to your pipeline
 
 Two commands do the work in any CI/CD system:
 
@@ -15,7 +15,7 @@ uploaded; only findings, the SBOM and the decision are sent to the platform.
 | You need | Where it comes from |
 |---|---|
 | The `myelin` CLI | `pip install .` from the repository, or the `myelin-cli` container image built with `Dockerfile.cli` |
-| `MYELIN_SERVER` | The URL of your NERvvE DevSecOps platform (optional: without it, `myelin scan` runs fully offline) |
+| `MYELIN_SERVER` | The URL of your RAT Flea DevSec platform (optional: without it, `myelin scan` runs fully offline) |
 | `MYELIN_API_KEY` | An integration API key, created in the console by a tenant administrator (**Create API key**). Store it as a CI secret |
 | A policy file | Start from [`policies/myelin-policy.yaml`](https://github.com/sudheerkumard/nervve-devsecops/blob/main/policies/myelin-policy.yaml) and commit it as `.myelin/policy.yaml` |
 
@@ -59,7 +59,7 @@ administer the tenant.
     ```
 
     Add your code-scanning upload step for `myelin.sarif` to see findings as pull request annotations. Pin every
-    `uses:` to a full commit SHA (NERvvE DevSecOps reports rule NM-CICD-001 until you do).
+    `uses:` to a full commit SHA (RAT Flea DevSec reports rule NM-CICD-001 until you do).
 
 === "Azure Pipelines"
 
@@ -107,7 +107,7 @@ administer the tenant.
       agent { docker { image 'ghcr.io/sudheerkumard/myelin-cli@sha256:<digest>' } }
       environment { MYELIN_SERVER = 'https://myelin.example.com' }
       stages {
-        stage('NERvvE DevSecOps scan') {
+        stage('RAT Flea DevSec scan') {
           steps {
             withCredentials([string(credentialsId: 'myelin-api-key', variable: 'MYELIN_API_KEY')]) {
               sh 'myelin scan . --policy .myelin/policy.yaml --sarif myelin.sarif --fail-on block'
@@ -127,7 +127,7 @@ administer the tenant.
       pull-requests:
         "**":
           - step:
-              name: NERvvE DevSecOps scan
+              name: RAT Flea DevSec scan
               script:
                 - myelin scan . --policy .myelin/policy.yaml --sarif myelin.sarif --fail-on block
               artifacts: [myelin.sarif]

@@ -1,4 +1,4 @@
-# NERvvE DevSecOps staging environment.
+# RAT Flea DevSec staging environment.
 # Keep identity, database, evidence storage and secret paths isolated from development and production.
 image:
   repository: ghcr.io/sudheerkumard/nerve-myelin

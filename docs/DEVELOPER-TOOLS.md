@@ -1,6 +1,6 @@
 # Developer tools: pre-commit hook, MCP server, AutoFix and air-gapped intelligence
 
-NERvvE DevSecOps Product designed and developed by Sudheer Kumar · <https://github.com/sudheerkumard/nervve-devsecops>
+RAT Flea DevSec Product designed and developed by Sudheer Kumar · <https://github.com/sudheerkumard/nervve-devsecops>
 
 ## Pre-commit hook
 
@@ -13,7 +13,7 @@ printf '#!/bin/sh\nexec myelin precommit\n' > .git/hooks/pre-commit && chmod +x 
 
 # or with the pre-commit framework (.pre-commit-config.yaml)
 repos:
-  - repo: <your NERvvE DevSecOps repository or mirror>
+  - repo: <your RAT Flea DevSec repository or mirror>
     rev: v1.5.0
     hooks:
       - id: nerve-myelin
@@ -30,7 +30,7 @@ Options: `--policy FILE`, `--fail-on warn`, or pass file names to check specific
 | `scan_path` | Scan a folder and return the highest-priority findings |
 | `scan_snippet` | Check a code or configuration snippet (with its intended file name) before it is written |
 | `check_package` | Known malicious release or look-alike of a popular npm / PyPI package |
-| `explain_rule` | What a NERvvE DevSecOps rule detects and how to fix it |
+| `explain_rule` | What a RAT Flea DevSec rule detects and how to fix it |
 | `gate` | Pass / warn / block for a folder under the default or a given policy |
 
 The server only reads folders under `MYELIN_MCP_ROOTS` (default: the working directory), works offline and never sends

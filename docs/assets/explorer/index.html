@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<!-- Copyright (c) 2026 Sudheer Kumar. All rights reserved. NERvvE DevSecOps interactive architecture explorer. Self-contained: no external resources. -->
+<!-- Copyright (c) 2026 Sudheer Kumar. All rights reserved. RAT Flea DevSec interactive architecture explorer. Self-contained: no external resources. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NERvvE DevSecOps · Architecture explorer</title>
+<title>RAT Flea DevSec · Architecture explorer</title>
 <link rel="icon" href="../brand/favicon.svg">
 <style>
 :root{--bg:#0B1220;--p:#111A2E;--p2:#16213A;--ln:#26324D;--tx:#EAF0FA;--tx2:#A9B6CF;--tx3:#6F7E9C;--teal:#14B8A6;--blue:#3B82F6;--violet:#8B5CF6;--amber:#F59E0B;--red:#EF4444;--green:#22C55E;--pink:#EC4899;--cyan:#06B6D4;--orange:#F97316;--slate:#64748B}
@@ -56,7 +56,7 @@ aside a{color:#7DD3FC}
 </head>
 <body>
 <header>
-  <div><div class="eb">NERvvE DevSecOps · Architecture explorer</div><h1>Click any component, or play a flow</h1></div>
+  <div><div class="eb">RAT Flea DevSec · Architecture explorer</div><h1>Click any component, or play a flow</h1></div>
   <span class="sp"></span>
   <div class="tabs" role="tablist" id="tabs"></div>
   <div class="ctl"><button class="pri" id="play">▶ Play</button> <button id="reset">Reset</button></div>
@@ -113,7 +113,7 @@ const C = {
    about:"Scans, imports (SARIF, CycloneDX, Trivy, Grype, Semgrep, Gitleaks, Checkov, Bandit, ZAP), SBOMs, cloud inventories and runtime events become one finding record. A fingerprint de-duplicates across tools and scans.",
    in:["uploads from CI, imports, inventories, runtime events"],out:["normalised findings"],ctl:["imports never close other findings","50,000 results per upload"],doc:["Data model","getting-started/data-model/"]},
  score:{band:"core",k:"amber",i:"chart",t:"Risk score & SSVC",d:"exploitability first",
-   about:"The NERvvE Risk Score combines impact, EPSS, CISA KEV, reachability, exposure, live secrets, malicious releases, runtime detections and attack paths, weighted by business criticality. Every finding also gets a CISA SSVC decision.",
+   about:"The RAT Flea Risk Score combines impact, EPSS, CISA KEV, reachability, exposure, live secrets, malicious releases, runtime detections and attack paths, weighted by business criticality. Every finding also gets a CISA SSVC decision.",
    in:["normalised findings, intelligence"],out:["score, priority, SLA, SSVC decision"],ctl:["every component visible in the drawer"],doc:["Risk score","concepts/risk-score/"]},
  policy:{band:"core",k:"violet",i:"shield",t:"Policy & gates",d:"policy as code, commit-bound gate",
    about:"Versioned policy (YAML or OPA/Rego) with four-eyes approval and bindings per organisation, project and repository. The gate returns pass, warn or block and signs the decision onto the image.",
@@ -150,7 +150,7 @@ const VIEWS = {
   ["dev","ci"],"1 · A change: a commit or pull request; the pre-commit hook and the AI assistant check it first.",
   ["ci","engines"],"2 · Scan in the runner: 15 engines and your scanners run inside CI. Source code never leaves the runner.",
   ["edge","ingest"],"3 · Ingest: findings and the SBOM arrive over TLS with an API key and become one de-duplicated finding queue.",
-  ["score","worker","cloudan"],"4 · Enrich and score: EPSS, KEV, reachability, exposure, runtime and attack paths → NERvvE Risk Score and SSVC.",
+  ["score","worker","cloudan"],"4 · Enrich and score: EPSS, KEV, reachability, exposure, runtime and attack paths → RAT Flea Risk Score and SSVC.",
   ["policy","ci"],"5 · Decide: the bound policy returns pass, warn or block, and the signed decision travels with the image.",
   ["triage","itsm","scm"],"6 · Act: tickets for the owner, AutoFix pull requests, campaigns.",
   ["ingest","triage"],"7 · Verify: the next scan closes what is fixed and reopens regressions; tickets follow.",

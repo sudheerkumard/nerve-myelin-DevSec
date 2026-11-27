@@ -26,17 +26,17 @@ spec:
           expr: absent(up{job=~".*myelin.*"} == 1)
           for: 5m
           labels: { severity: critical }
-          annotations: { summary: "NERvvE DevSecOps API has no healthy targets" }
+          annotations: { summary: "RAT Flea DevSec API has no healthy targets" }
         - alert: MyelinHigh5xxRate
           expr: sum(rate(myelin_http_requests_total{status=~"5.."}[5m])) / clamp_min(sum(rate(myelin_http_requests_total[5m])), 1) > 0.02
           for: 10m
           labels: { severity: warning }
-          annotations: { summary: "More than 2% of NERvvE DevSecOps requests are failing" }
+          annotations: { summary: "More than 2% of RAT Flea DevSec requests are failing" }
         - alert: MyelinSlowRequests
           expr: histogram_quantile(0.95, sum by (le) (rate(myelin_http_request_seconds_bucket[5m]))) > 1.5
           for: 15m
           labels: { severity: warning }
-          annotations: { summary: "NERvvE DevSecOps p95 latency above 1.5s" }
+          annotations: { summary: "RAT Flea DevSec p95 latency above 1.5s" }
     - name: myelin.security
       rules:
         - alert: MyelinAuthFailureSpike
@@ -53,14 +53,14 @@ spec:
           expr: min(myelin_license_days_remaining) < 30
           for: 1h
           labels: { severity: warning }
-          annotations: { summary: "NERvvE DevSecOps licence expires within 30 days — contact the NERvvE DevSecOps product owner to renew" }
+          annotations: { summary: "RAT Flea DevSec licence expires within 30 days — contact the RAT Flea DevSec product owner to renew" }
         - alert: MyelinLicenseRestricted
           expr: min(myelin_license_usable) == 0
           for: 5m
           labels: { severity: critical }
-          annotations: { summary: "NERvvE DevSecOps licence is missing, invalid or past grace — new scans are paused, data stays readable" }
+          annotations: { summary: "RAT Flea DevSec licence is missing, invalid or past grace — new scans are paused, data stays readable" }
         - alert: MyelinBackupMissing
           expr: time() - max(kube_cronjob_status_last_successful_time{cronjob=~".*myelin.*backup"}) > 93600
           labels: { severity: critical }
-          annotations: { summary: "No successful NERvvE DevSecOps database backup in 26 hours" }
+          annotations: { summary: "No successful RAT Flea DevSec database backup in 26 hours" }
 {{- end }}

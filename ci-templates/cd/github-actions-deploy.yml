@@ -1,5 +1,5 @@
-# NERvvE DevSecOps — CD gate for GitHub Actions. Deploy only commits that passed the security gate, from a protected environment.
-# MYELIN_CLI_PACKAGE: the NERvvE DevSecOps CLI to install, e.g.
+# RAT Flea DevSec — CD gate for GitHub Actions. Deploy only commits that passed the security gate, from a protected environment.
+# MYELIN_CLI_PACKAGE: the RAT Flea DevSec CLI to install, e.g.
 # git+https://github.com/sudheerkumard/nervve-devsecops@v1.5.0 or a wheel on your internal package index
 name: deploy
 on:
@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production  # required reviewers + wait timer are configured on the environment
     steps:
-      - name: NERvvE DevSecOps deployment gate
+      - name: RAT Flea DevSec deployment gate
         run: |
           pip install "${{ vars.MYELIN_CLI_PACKAGE }}"
           myelin gate --repo "${{ github.event.repository.name }}" --commit "${{ github.sha }}" --environment production

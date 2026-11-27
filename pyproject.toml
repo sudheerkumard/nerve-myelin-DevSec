@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "nerve-myelin"
 version = "1.5.0"
-description = "NERvvE DevSecOps scan engine and pipeline gate CLI"
+description = "RAT Flea DevSec scan engine and pipeline gate CLI"
 requires-python = ">=3.10"
 license = {text = "AGPL-3.0-only"}
 authors = [{name = "Sudheer Kumar"}]

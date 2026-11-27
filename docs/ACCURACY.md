@@ -1,6 +1,6 @@
-# Accuracy: how NERvvE DevSecOps keeps false positives and misses under control
+# Accuracy: how RAT Flea DevSec keeps false positives and misses under control
 
-No static scanner can promise zero false positives on every codebase. NERvvE DevSecOps controls them with four mechanisms:
+No static scanner can promise zero false positives on every codebase. RAT Flea DevSec controls them with four mechanisms:
 
 1. **Accuracy gate in CI.** `engine/tests/benchmark/corpus` contains real weaknesses next to safe look-alikes
    (parameterised queries, constant URLs, safe YAML loaders, hardened Dockerfile and Kubernetes manifests, `${VAR}`

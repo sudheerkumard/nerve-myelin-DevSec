@@ -1,6 +1,6 @@
-# Get NERvvE DevSecOps
+# Get RAT Flea DevSec
 
-The NERvvE DevSecOps **Community edition** is free and open source under the GNU AGPL-3.0. Every feature is included and
+The RAT Flea DevSec **Community edition** is free and open source under the GNU AGPL-3.0. Every feature is included and
 no licence key is needed: download it, run it on your own machines, and scan your own code today.
 
 ## 1. Explore
@@ -29,7 +29,7 @@ pip install .                         # provides the `myelin` command
 myelin scan /path/to/your/repo --policy policies/myelin-policy.yaml
 ```
 
-To add NERvvE DevSecOps to a pipeline, see [Add to your pipeline](../CI-INTEGRATION.md).
+To add RAT Flea DevSec to a pipeline, see [Add to your pipeline](../CI-INTEGRATION.md).
 
 ## What you need
 

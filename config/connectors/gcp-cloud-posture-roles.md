@@ -1,4 +1,4 @@
-# NERvvE DevSecOps — Google Cloud read-only access
+# RAT Flea DevSec — Google Cloud read-only access
 
 Grant the collector's service account these predefined roles on the project, folder or organisation it should cover
 (the parent given to `myelin cloud scan --parent` or the cloud account in the console):

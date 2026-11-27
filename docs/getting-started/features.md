@@ -9,7 +9,7 @@ Everything below ships in the current release and is covered by automated tests
 
 | Engine | Covers |
 |---|---|
-| Code (SAST) | Data-flow (taint) analysis with Opengrep and the NERvvE rule pack (78 rules) for Python, JavaScript/TypeScript, Java, Go, C#, PHP and Ruby; 40 pattern rules (also Kotlin); Bandit for Python. See [how scanning works](../concepts/scanning.md) |
+| Code (SAST) | Data-flow (taint) analysis with Opengrep and the RAT Flea rule pack (78 rules) for Python, JavaScript/TypeScript, Java, Go, C#, PHP and Ruby; 40 pattern rules (also Kotlin); Bandit for Python. See [how scanning works](../concepts/scanning.md) |
 | Open source (SCA) | npm, PyPI, Maven, Go, Rust, PHP, Ruby, Gradle, .NET, Hex, Dart and CocoaPods from manifests and lockfiles; OSV / PyPI intelligence plus Trivy and Grype; EPSS and CISA KEV enrichment; import-level reachability; fix versions; explicit partial-coverage status |
 | Secrets | 15 provider formats plus Gitleaks and Trivy (git history when the repository is cloned with git); opt-in confirmation with the issuing provider |
 | Infrastructure as Code | Dockerfile, Compose, Kubernetes, Helm, Terraform, Bicep (29 rules + Checkov + Trivy) |
@@ -27,7 +27,7 @@ Everything below ships in the current release and is covered by automated tests
 
 ## Decide
 
-- [NERvvE Risk Score](../concepts/risk-score.md) and CISA SSVC on every finding
+- [RAT Flea Risk Score](../concepts/risk-score.md) and CISA SSVC on every finding
 - [Policy as code](../POLICY-GOVERNANCE.md): versioned, four-eyes approval, bindings, time-boxed exceptions
 - [Commit-bound CI/CD gate](../CD-PIPELINE-SECURITY.md) that fails closed, deployment checks
 

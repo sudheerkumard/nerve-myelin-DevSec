@@ -28,7 +28,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-UA = "NERvvE-DevSecOps-DAST/1.2 (+authorised security scan)"
+UA = "RAT-Flea-DevSec-DAST/1.2 (+authorised security scan)"
 DOC_PATHS = ["/swagger.json", "/swagger/v1/swagger.json", "/openapi.json", "/v3/api-docs", "/v2/api-docs",
              "/swagger-ui.html", "/swagger-ui/", "/swagger/index.html", "/docs", "/redoc", "/api-docs", "/graphql"]
 STACK = re.compile(r"(Traceback \(most recent call last\)|at [\w$.]+\([\w]+\.java:\d+\)|System\.\w+Exception|"

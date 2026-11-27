@@ -1,5 +1,5 @@
 {
- "_note": "Every finding NERvvE DevSecOps must report on this corpus (rule, file, line). Anything missing is a false negative, anything extra is a false positive; both fail CI. Review each change by hand before updating this file.",
+ "_note": "Every finding RAT Flea DevSec must report on this corpus (rule, file, line). Anything missing is a false negative, anything extra is a false positive; both fail CI. Review each change by hand before updating this file.",
  "expected": [
   {
    "rule": "NM-AI-030",

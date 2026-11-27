@@ -1,12 +1,12 @@
 # Copyright (c) 2026 Sudheer Kumar.
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
-# NERvvE DevSecOps secure pipeline — Bitbucket Pipelines
+# RAT Flea DevSec secure pipeline — Bitbucket Pipelines
 image: ghcr.io/sudheerkumard/myelin-cli@sha256:REPLACE_WITH_DIGEST
 pipelines:
   pull-requests:
     '**':
-      - step: { name: NERvvE DevSecOps scan, script: [myelin scan . --policy .myelin/policy.yaml --sarif myelin.sarif --fail-on block], artifacts: [myelin.sarif] }
+      - step: { name: RAT Flea DevSec scan, script: [myelin scan . --policy .myelin/policy.yaml --sarif myelin.sarif --fail-on block], artifacts: [myelin.sarif] }
   branches:
     main:
-      - step: { name: NERvvE DevSecOps scan, script: [myelin scan . --policy .myelin/policy.yaml --sbom sbom.cdx.json --json myelin.json --fail-on block], artifacts: [sbom.cdx.json, myelin.json] }
+      - step: { name: RAT Flea DevSec scan, script: [myelin scan . --policy .myelin/policy.yaml --sbom sbom.cdx.json --json myelin.json --fail-on block], artifacts: [sbom.cdx.json, myelin.json] }
       - step: { name: Build, sign & attest, oidc: true, services: [docker], script: [docker build -t $REGISTRY/app:$BITBUCKET_COMMIT ., docker push $REGISTRY/app:$BITBUCKET_COMMIT, myelin attest --image $REGISTRY/app:$BITBUCKET_COMMIT --sbom sbom.cdx.json }

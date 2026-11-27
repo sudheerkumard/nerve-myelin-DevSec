@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Sudheer Kumar.
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
-"""NERvvE cloud inventory: one normalised shape for Azure, AWS, Google Cloud and Kubernetes.
+"""RAT Flea cloud inventory: one normalised shape for Azure, AWS, Google Cloud and Kubernetes.
 
     {"schema": "myelin-cloud-inventory/1", "provider": "azure|aws|gcp|kubernetes", "account": "<subscription|account|project|cluster>",
      "collected_at": ISO-8601, "resources": [{"id", "type", "name", "region", "tags", "props"}],
@@ -477,7 +477,7 @@ def _strip_spec(spec: dict) -> dict:
 
 # ------------------------------------------------------------------ loader
 def load(doc, provider: str = "", account: str = "") -> dict:
-    """Accept a NERvvE inventory or a provider-native export and return a NERvvE inventory."""
+    """Accept a RAT Flea inventory or a provider-native export and return a RAT Flea inventory."""
     if isinstance(doc, (bytes, bytearray)):
         doc = doc.decode("utf-8-sig")
     if isinstance(doc, str):
@@ -508,4 +508,4 @@ def load(doc, provider: str = "", account: str = "") -> dict:
         return from_gcp_assets(doc, account)
     if p == "azure":
         return from_azure_graph(doc, account)
-    raise ValueError("unrecognised inventory: expected a NERvvE inventory, Azure Resource Graph rows, a Cloud Asset export or a kubectl List")
+    raise ValueError("unrecognised inventory: expected a RAT Flea inventory, Azure Resource Graph rows, a Cloud Asset export or a kubectl List")

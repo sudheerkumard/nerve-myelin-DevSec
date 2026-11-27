@@ -1,20 +1,20 @@
 # Copyright (c) 2026 Sudheer Kumar.
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
 #
-# Trusted identity providers. Keycloak is the reference IdP shipped with NERvvE DevSecOps; customers may use
+# Trusted identity providers. Keycloak is the reference IdP shipped with RAT Flea DevSec; customers may use
 # any OIDC provider instead or as well. SAML-only IdPs (ADFS, PingFederate, Shibboleth) are brokered
 # through Keycloak. Several providers can be trusted at the same time.
 #
 # Per provider:
 #   type           keycloak | entra | okta | auth0 | ping | google | generic  (sets sensible defaults below)
 #   issuer         exact `iss` value; discovery at <issuer>/.well-known/openid-configuration
-#   client_id      OIDC client registered for NERvvE DevSecOps (also the expected audience unless `audiences` given)
+#   client_id      OIDC client registered for RAT Flea DevSec (also the expected audience unless `audiences` given)
 #   client_secret_ref  secret REFERENCE for the console's confidential client (never a literal secret)
-#   tenant_claim   claim holding the customer's tenant identifier; bound to a NERvvE tenant by the platform admin:
+#   tenant_claim   claim holding the customer's tenant identifier; bound to a RAT Flea tenant by the platform admin:
 #                  python -m app.admin_cli bind --tenant <slug> --issuer <issuer> --value <claim value>
-#   role_claims    claim paths holding roles/groups;  role_mapping  IdP value -> NERvvE role
+#   role_claims    claim paths holding roles/groups;  role_mapping  IdP value -> RAT Flea role
 #   require_mfa    reject tokens without an MFA signal (acr_values / amr_values); triggers RFC 9470 step-up
-# NERvvE roles: tenant_admin, security_lead, policy_approver, developer, auditor, viewer, integration
+# RAT Flea roles: tenant_admin, security_lead, policy_approver, developer, auditor, viewer, integration
 providers:
   - name: keycloak
     type: keycloak

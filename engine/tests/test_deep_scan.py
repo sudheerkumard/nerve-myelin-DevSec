@@ -137,7 +137,7 @@ def test_bandit_alone_does_not_count_as_data_flow():
     cov = coverage.build({"languages": {"Python": 10}}, ["sast"], ["myelin-builtin", "bandit"], [], 0)
     assert cov["sast"]["assessed"] and not cov["sast"]["complete"]
     assert cov["sast"]["depth"] == "Pattern rules for Python"
-    assert {t["name"] for t in cov["sast"]["tools"]} == {"NERvvE pattern rules", "bandit"}
+    assert {t["name"] for t in cov["sast"]["tools"]} == {"RAT Flea pattern rules", "bandit"}
     assert "Opengrep or Semgrep was not available" in R.render({"coverage": cov})
 
 

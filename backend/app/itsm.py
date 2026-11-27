@@ -161,7 +161,7 @@ def description(f: dict, console_url: str = "") -> str:
     if f.get("line"):
         loc += f":{f['line']}"
     rows = [("Repository", f.get("repo")), ("Finding", f"{f.get('id')} ({f.get('engine')})"),
-            ("Severity / priority", f"{f.get('severity')} · {f.get('priority')} · NERvvE Risk Score {f.get('mrs')} · fix within {f.get('sla_days')} days"),
+            ("Severity / priority", f"{f.get('severity')} · {f.get('priority')} · RAT Flea Risk Score {f.get('mrs')} · fix within {f.get('sla_days')} days"),
             ("CVE", f.get("cve")), ("Advisory", f.get("advisory")), ("Weakness", f.get("cwe")),
             ("Package", f"{f.get('package')} {f.get('version')}" + (f" → fixed in {f['fixed_version']}" if f.get("fixed_version") else "")
              if f.get("package") else None),
@@ -169,8 +169,8 @@ def description(f: dict, console_url: str = "") -> str:
             ("Remediation", f.get("remediation"))]
     text = "\n".join(f"{k}: {v}" for k, v in rows if v)
     if console_url:
-        text += f"\n\nOpen in NERvvE DevSecOps: {console_url.rstrip('/')}/#findings"
-    return text + "\n\nRaised by NERvvE DevSecOps. The ticket is updated automatically when a re-scan confirms the fix."
+        text += f"\n\nOpen in RAT Flea DevSec: {console_url.rstrip('/')}/#findings"
+    return text + "\n\nRaised by RAT Flea DevSec. The ticket is updated automatically when a re-scan confirms the fix."
 
 
 # ------------------------------------------------------------------ clients
@@ -202,7 +202,7 @@ class Client:
 
     def _req(self, method, url, **kw):
         _guard(url)
-        headers = {"Accept": "application/json", "User-Agent": "NERvvE-DevSecOps", **self._headers(), **kw.pop("headers", {})}
+        headers = {"Accept": "application/json", "User-Agent": "RAT-Flea-DevSec", **self._headers(), **kw.pop("headers", {})}
         try:
             r = self.http.request(method, url, headers=headers, **kw)
         except httpx.HTTPError as e:
@@ -235,7 +235,7 @@ class Client:
             p = self._req("GET", f"https://dev.azure.com/{c['organization']}/_apis/projects/{urllib.parse.quote(c['project'])}",
                           params={"api-version": "7.1"}).json()
             return f"connected; project {p.get('name')} found"
-        self._req("POST", c["url"], json={"text": "NERvvE DevSecOps: test message — ticketing integration connected."})
+        self._req("POST", c["url"], json={"text": "RAT Flea DevSec: test message — ticketing integration connected."})
         return "test message delivered"
 
     def create(self, f: dict, assign: dict, console_url: str = "") -> dict:
@@ -264,7 +264,7 @@ class Client:
         if k == "servicenow":
             rec = {"short_description": title[:160], "description": body, "category": c.get("category", "security"),
                    "urgency": SN_URGENCY.get(f.get("priority"), "2"), "impact": SN_IMPACT.get(f.get("severity"), "2"),
-                   "correlation_id": f"nerve-myelin:{f.get('fingerprint')}", "correlation_display": "NERvvE DevSecOps"}
+                   "correlation_id": f"nerve-myelin:{f.get('fingerprint')}", "correlation_display": "RAT Flea DevSec"}
             if assign.get("assignment_group") or c.get("assignment_group"):
                 rec["assignment_group"] = assign.get("assignment_group") or c["assignment_group"]
             if assign.get("assignee"):
@@ -382,8 +382,8 @@ def process_delta(store, integrations, delta, client_for, actor="nerve-myelin", 
             integ = by_id.get(str((t or {}).get("integration_id")))
             if not t or not integ:
                 continue
-            text = (f"NERvvE DevSecOps re-scan{' of commit ' + commit if commit else ''} no longer finds this issue: marked fixed."
-                    if resolve else f"NERvvE DevSecOps re-scan{' of commit ' + commit if commit else ''} found this issue again (regression): reopened.")
+            text = (f"RAT Flea DevSec re-scan{' of commit ' + commit if commit else ''} no longer finds this issue: marked fixed."
+                    if resolve else f"RAT Flea DevSec re-scan{' of commit ' + commit if commit else ''} found this issue again (regression): reopened.")
             try:
                 resolved = client_for(integ).update(t, text, resolve)
                 store.set_ticket(f["id"], {**t, "status": "resolved" if resolved else ("open" if not resolve else t.get("status", "open")),

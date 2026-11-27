@@ -1,7 +1,7 @@
 {{- if .Values.dast.zap.enabled }}
 # Copyright (c) 2026 Sudheer Kumar.
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
-# OWASP ZAP daemon (Apache-2.0) for deep DAST. Reachable only from the NERvvE DevSecOps API pods (NetworkPolicy below).
+# OWASP ZAP daemon (Apache-2.0) for deep DAST. Reachable only from the RAT Flea DevSec API pods (NetworkPolicy below).
 apiVersion: apps/v1
 kind: Deployment
 metadata:

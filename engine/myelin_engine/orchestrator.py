@@ -50,7 +50,7 @@ def _trivy_argv(p, domains=None):
 
 
 def _sast_argv(binary):
-    """Opengrep (or the Semgrep CE engine) with NERvvE's own rule pack, plus any rule set the customer owns or has
+    """Opengrep (or the Semgrep CE engine) with RAT Flea's own rule pack, plus any rule set the customer owns or has
     licensed (MYELIN_SAST_RULES). Never `--config auto` or the Semgrep Registry: those rules are under the Semgrep
     Rules License v1.0, which forbids use in competing commercial products and SaaS."""
     def build(p):
@@ -82,7 +82,7 @@ EXTERNAL = {
     "gitleaks": (_gitleaks_argv, normalize.gitleaks),
     "checkov": (lambda p: ["checkov", "-d", p, "-o", "json", "--quiet", "--skip-download", "--compact",
                            "--skip-path", "node_modules", "--skip-path", "tests"], normalize.checkov),   # never contacts a vendor service
-    # Bandit (Apache-2.0) ships with NERvvE DevSecOps for Python analysis; tests, virtualenvs and vendored code excluded
+    # Bandit (Apache-2.0) ships with RAT Flea DevSec for Python analysis; tests, virtualenvs and vendored code excluded
     "bandit": (lambda p: ["bandit", "-r", p, "-f", "json", "-q", "-x",
                           ",".join(f"{p}/{d}" for d in ("tests", "test", ".venv", "venv", "node_modules", "vendor", "build", "dist"))
                           + ",*/tests/*,*/test/*,*/.venv/*,*/node_modules/*"], normalize.bandit),
@@ -291,7 +291,7 @@ def extensions(bom: dict | None) -> dict:
     return out
 
 
-CHECKOV_EQUIVALENT = {   # Checkov checks that NERvvE DevSecOps's own IaC rules already report (same file)
+CHECKOV_EQUIVALENT = {   # Checkov checks that RAT Flea DevSec's own IaC rules already report (same file)
     "CKV_DOCKER_2": ("NM-IAC-011",), "CKV_DOCKER_3": ("NM-IAC-010",), "CKV_DOCKER_8": ("NM-IAC-010",),
     "CKV_DOCKER_7": ("NM-IAC-012",), "CKV2_DOCKER_16": ("NM-IAC-013",), "CKV2_DOCKER_2": ("NM-IAC-013",),
     "CKV_K8S_43": ("NM-IAC-039",), "CKV_K8S_14": ("NM-IAC-039",), "CKV_K8S_38": ("NM-IAC-032",),
@@ -304,7 +304,7 @@ CHECKOV_EQUIVALENT = {   # Checkov checks that NERvvE DevSecOps's own IaC rules 
 
 def _merge_duplicates(path, findings):
     """External tools report paths their own way and overlap with built-in rules: normalise paths and keep one
-    finding per (file, line, weakness), preferring NERvvE DevSecOps's own rule (richer remediation and autofix)."""
+    finding per (file, line, weakness), preferring RAT Flea DevSec's own rule (richer remediation and autofix)."""
     root = os.path.abspath(path)
     for f in findings:
         fp = f.get("file") or ""
@@ -338,14 +338,14 @@ def _merge_duplicates(path, findings):
         if f.get("source_tool") == "bandit" and (key in own or key in deep):
             continue
         out.append(f)
-    # Secrets: one finding per line; NERvvE's own rule carries validation and the rotation workflow
+    # Secrets: one finding per line; RAT Flea's own rule carries validation and the rotation workflow
     own_secret = {(f.get("file"), f.get("line")) for f in out if f.get("engine") == "secrets" and not f.get("source_tool")}
     gl_secret = {(f.get("file"), f.get("line")) for f in out if f.get("source_tool") == "gitleaks"}
     out = [f for f in out if not (f.get("engine") == "secrets" and f.get("source_tool") in ("gitleaks", "trivy")
                                   and ((f.get("file"), f.get("line")) in own_secret
                                        or (f.get("source_tool") == "trivy" and (f.get("file"), f.get("line")) in gl_secret)))]
     # Correlate OSV, Trivy and Grype by package identity, exact version and advisory aliases.
-    # Keep the richest NERvvE/OSV record, while retaining all contributing scanner names.
+    # Keep the richest RAT Flea/OSV record, while retaining all contributing scanner names.
     def _ids(f):
         return {str(x).upper() for x in [f.get("cve"), f.get("rule_id"), f.get("advisory"),
                                          *(f.get("aliases") or [])] if x}
@@ -374,7 +374,7 @@ def _merge_duplicates(path, findings):
                 retained.append(finding)
                 continue
             sources = set(match.get("scanner_sources") or [])
-            sources.add(finding.get("source_tool") or "NERvvE advisory engine")
+            sources.add(finding.get("source_tool") or "RAT Flea advisory engine")
             sources.update(finding.get("scanner_sources") or [])
             match["scanner_sources"] = sorted(sources)
             duplicate_ids.add(id(finding))

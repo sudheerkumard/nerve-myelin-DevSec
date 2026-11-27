@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Sudheer Kumar.
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
-# NERvvE DevSecOps CLI image for CI runners: built-in engines + the deep-scanning toolchain (Opengrep with the NERvvE
+# RAT Flea DevSec CLI image for CI runners: built-in engines + the deep-scanning toolchain (Opengrep with the RAT Flea
 # rule pack, Trivy, Gitleaks, Checkov, Bandit, Cosign). Pin these base images by digest in your registry mirror.
 FROM aquasec/trivy:0.76.2 AS trivy
 # Gitleaks (MIT) built from its release tag with a current Go toolchain and patched golang.org/x modules: the upstream

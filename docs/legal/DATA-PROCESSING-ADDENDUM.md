@@ -1,7 +1,7 @@
-# NERvvE DevSecOps Data Processing Addendum
+# RAT Flea DevSec Data Processing Addendum
 
-**Version 1.0 · Effective 21 November 2026** · Part of the NERvvE DevSecOps Subscription Agreement
-NERvvE DevSecOps Product designed and developed by Sudheer Kumar · Copyright © 2026 Sudheer Kumar
+**Version 1.0 · Effective 21 November 2026** · Part of the RAT Flea DevSec Subscription Agreement
+RAT Flea DevSec Product designed and developed by Sudheer Kumar · Copyright © 2026 Sudheer Kumar
 
 This Data Processing Addendum ("DPA") applies when the Licensor processes Personal Data on behalf of the Customer in
 providing the Hosted Service, support or professional services. It does not apply to Self-Hosted Software operated

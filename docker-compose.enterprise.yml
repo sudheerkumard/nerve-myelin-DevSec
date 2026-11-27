@@ -1,7 +1,7 @@
 # Copyright (c) 2026 Sudheer Kumar.
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
 #
-# NERvvE DevSecOps — enterprise evaluation / single-host stack:
+# RAT Flea DevSec — enterprise evaluation / single-host stack:
 #   PostgreSQL 16 (RLS)  ·  Keycloak 26 (OIDC + TOTP MFA)  ·  OpenBao (secret vault)  ·  migrations  ·  API  ·  Caddy TLS ingress
 #
 #   cp config/backend/enterprise.env.example config/backend/enterprise.env   # fill secrets (scripts/ops/gen-secrets.sh)
@@ -123,7 +123,7 @@ services:
       MYELIN_API_KEY_PEPPER: ${MYELIN_API_KEY_PEPPER:?}
       MYELIN_EVIDENCE_SIGNING_KEY: ${MYELIN_EVIDENCE_SIGNING_KEY:?}
       MYELIN_OIDC_CLIENT_SECRET: ${MYELIN_OIDC_CLIENT_SECRET}
-      MYELIN_LICENSE: ${MYELIN_LICENSE:-}       # evaluation or production licence for NERvvE DevSecOps
+      MYELIN_LICENSE: ${MYELIN_LICENSE:-}       # evaluation or production licence for RAT Flea DevSec
       MYELIN_EVIDENCE_STORE: file:///var/lib/myelin/evidence
       VAULT_ADDR: http://vault:8200                  # resolves vault:// identity references for live scans
       MYELIN_ZAP_URL: ${MYELIN_ZAP_URL:-}            # http://zap:8090 with the "dast" profile: deep DAST through OWASP ZAP

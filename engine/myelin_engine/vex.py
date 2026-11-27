@@ -221,7 +221,7 @@ def apply(findings: list[dict], documents: list[dict] | None) -> dict:
             "fixed": sum(1 for f in findings if (f.get("vex") or {}).get("state") == "fixed")}
 
 
-# ─── export: VEX documents built from NERvvE DevSecOps triage decisions ─────────────────────────────────────────────
+# ─── export: VEX documents built from RAT Flea DevSec triage decisions ─────────────────────────────────────────────
 # fixed -> fixed · suppressed / not_affected -> not_affected (justification from the recorded reason)
 # risk_accepted -> affected (action: accepted until …) · open with fix -> affected (upgrade) · open, untriaged -> under_investigation
 JUSTIFICATIONS = ("component_not_present", "vulnerable_code_not_present", "vulnerable_code_not_in_execute_path",
@@ -271,7 +271,7 @@ def _purl(f):
     return f"pkg:{eco}/{str(f.get('package', 'unknown')).replace(':', '/')}@{f.get('version', '')}"
 
 
-def openvex(findings, product: str, author: str = "NERvvE DevSecOps", now=None) -> dict:
+def openvex(findings, product: str, author: str = "RAT Flea DevSec", now=None) -> dict:
     now = (now or datetime.now(timezone.utc)).strftime("%Y-%m-%dT%H:%M:%SZ")
     stmts, seen = [], set()
     for f in findings:
@@ -289,7 +289,7 @@ def openvex(findings, product: str, author: str = "NERvvE DevSecOps", now=None) 
                       if (f.get("triage") or {}).get("at") else now})
     h = hashlib.sha256(f"{product}{now}{len(stmts)}".encode()).hexdigest()[:16]
     return {"@context": "https://openvex.dev/ns/v0.2.0", "@id": f"https://openvex.dev/docs/myelin-{h}", "author": author,
-            "role": "Document Creator", "timestamp": now, "version": 1, "tooling": "NERvvE DevSecOps", "statements": stmts}
+            "role": "Document Creator", "timestamp": now, "version": 1, "tooling": "RAT Flea DevSec", "statements": stmts}
 
 
 def cyclonedx_vex(findings, product: str, now=None) -> dict:
@@ -319,7 +319,7 @@ def cyclonedx_vex(findings, product: str, now=None) -> dict:
             v["ratings"] = [{"score": f["cvss"], "severity": f.get("severity"), "method": "CVSSv31"}]
         vulns.append(v)
     return {"bomFormat": "CycloneDX", "specVersion": "1.5", "version": 1,
-            "metadata": {"timestamp": now, "tools": [{"vendor": "NERvvE DevSecOps", "name": "NERvvE DevSecOps"}],
+            "metadata": {"timestamp": now, "tools": [{"vendor": "RAT Flea DevSec", "name": "RAT Flea DevSec"}],
                          "component": {"type": "application", "name": product, "bom-ref": product}},
             "components": list(comps.values()), "vulnerabilities": vulns}
 

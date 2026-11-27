@@ -71,7 +71,7 @@ def rules():
                                            "critical", "exposure + weakness + impact")]))
     total = sum(len(r) for _, _, r in eng)
     out = [HEAD, "# Detection rules\n\n",
-           f"NERvvE DevSecOps ships **{total} built-in rules** across {len(eng)} rule sets. Runtime detections come from the "
+           f"RAT Flea DevSec ships **{total} built-in rules** across {len(eng)} rule sets. Runtime detections come from the "
            "customer's Falco or Tetragon rules and are identified as `NM-RT-…` by rule name. Results imported from other scanners "
            "keep the scanner's own rule identifiers.\n\n",
            '<div class="grid cards" markdown>\n\n']
@@ -168,7 +168,7 @@ DESCRIPTIONS = {
     "MYELIN_PYPI_URL": "PyPI registry for existence checks", "MYELIN_OFFLINE": "1 = never contact the internet", "MYELIN_OSV_EXPORT_DIR": "OSV ecosystem exports for offline scanning",
     "MYELIN_OSV_URL": "OSV API URL", "MYELIN_SCAN_CONCURRENCY": "Repository scans run in parallel", "MYELIN_SCM_ALLOW_HTTP": "Allow plain-HTTP Git servers",
     "MYELIN_SCM_ALLOW_PRIVATE": "Allow Git servers on private networks", "MYELIN_VALIDATE_SECRETS": "1 = confirm detected secrets with their provider (read-only)",
-    "MYELIN_SAST_RULES": "Extra Opengrep/Semgrep rule file or folder you own or have licensed (added to the bundled NERvvE rule pack)", "MYELIN_TRIVY_CACHE": "Trivy cache directory (default: MYELIN_CACHE_DIR/trivy)", "MYELIN_ZAP_URL": "OWASP ZAP daemon for deep DAST, for example http://zap:8090", "MYELIN_ZAP_API_KEY": "API key of the ZAP daemon", "MYELIN_CLOUD_CREDENTIAL": "CLI: cloud credential JSON for `myelin cloud`", "MYELIN_DAST_AUTH": "CLI: Authorization header for DAST",
+    "MYELIN_SAST_RULES": "Extra Opengrep/Semgrep rule file or folder you own or have licensed (added to the bundled RAT Flea rule pack)", "MYELIN_TRIVY_CACHE": "Trivy cache directory (default: MYELIN_CACHE_DIR/trivy)", "MYELIN_ZAP_URL": "OWASP ZAP daemon for deep DAST, for example http://zap:8090", "MYELIN_ZAP_API_KEY": "API key of the ZAP daemon", "MYELIN_CLOUD_CREDENTIAL": "CLI: cloud credential JSON for `myelin cloud`", "MYELIN_DAST_AUTH": "CLI: Authorization header for DAST",
     "MYELIN_SERVER": "CLI: platform URL", "MYELIN_API_KEY": "CLI: integration API key", "MYELIN_CA_FILE": "CLI: extra CA certificate", "MYELIN_ENV_FILE": "Path of an env file to load",
     "MYELIN_MODE": "demo (in-memory sample tenant) or enterprise (PostgreSQL, OIDC, row-level security)",
     "MYELIN_DATABASE_URL": "Application database URL (role without BYPASSRLS); may be a secret reference",

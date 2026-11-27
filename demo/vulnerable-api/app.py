@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Sudheer Kumar.
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
-"""Orion Payments API (fictional) — a deliberately misconfigured API for NERvvE DevSecOps DAST demonstrations.
+"""Orion Payments API (fictional) — a deliberately misconfigured API for RAT Flea DevSec DAST demonstrations.
 DO NOT DEPLOY. Run locally only:  python demo/vulnerable-api/app.py   →  http://127.0.0.1:8090
 """
 import traceback

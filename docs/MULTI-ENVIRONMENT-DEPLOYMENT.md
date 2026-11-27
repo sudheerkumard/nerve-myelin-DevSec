@@ -1,4 +1,4 @@
-# NERvvE DevSecOps multi-environment deployment standard
+# RAT Flea DevSec multi-environment deployment standard
 
 ## Deployment decision
 

@@ -4,7 +4,7 @@
 FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PATH=/venv/bin:$PATH \
     MYELIN_MODE=demo MYELIN_DEMO_OPEN=true MYELIN_SEED_DEMO_DATA=true \
-    MYELIN_CONSOLE_PATH=/opt/myelin/demo/offline/NERvvE-DevSecOps-Demo-Console.html \
+    MYELIN_CONSOLE_PATH=/opt/myelin/demo/offline/RAT-Flea-DevSec-Demo-Console.html \
     MYELIN_LIVE_SCAN_ROOT=/opt/myelin
 ENV PIP_CERT=/etc/ssl/certs/ca-certificates.crt SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 # Networks that inspect HTTPS: trust the company root certificates placed in config/certs (see its README)

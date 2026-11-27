@@ -6,7 +6,7 @@ apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
   name: myelin-verify-supply-chain
-  annotations: { policies.kyverno.io/title: "NERvvE DevSecOps — verify signature and provenance" }
+  annotations: { policies.kyverno.io/title: "RAT Flea DevSec — verify signature and provenance" }
 spec:
   validationFailureAction: Enforce
   webhookTimeoutSeconds: 30

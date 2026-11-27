@@ -1,13 +1,13 @@
 # Finding remediation contract
 
-NERvvE enriches each normalized finding with consistent developer-facing guidance.
+RAT Flea enriches each normalized finding with consistent developer-facing guidance.
 
 ## Fields
 
 - `remediation`: actionable corrective instruction. Existing detailed scanner guidance is preserved.
 - `remediation_steps`: a display-friendly list derived from the remediation text.
 - `verification`: a concrete validation step developers can use after applying the fix.
-- `remediation_source`: whether guidance came from the scanner, a CWE mapping or NERvvE engine guidance.
+- `remediation_source`: whether guidance came from the scanner, a CWE mapping or RAT Flea engine guidance.
 - `remediation_version`: version of the guidance contract.
 
 ## Safety and accuracy

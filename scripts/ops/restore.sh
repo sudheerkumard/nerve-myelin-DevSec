@@ -1,7 +1,7 @@
 #!/bin/sh
 # Copyright (c) 2026 Sudheer Kumar.
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
-# Restore a NERvvE DevSecOps backup into an EMPTY database, verify integrity, then re-check isolation.
+# Restore a RAT Flea DevSec backup into an EMPTY database, verify integrity, then re-check isolation.
 #   scripts/ops/restore.sh /path/myelin-20261113T011700Z.dump postgresql://owner@host/myelin_restore
 # Run with the owner (migrations) role. Roles myelin_app/myelin_auth/myelin_admin must already exist on the
 # target cluster (create them by running `myelin migrate` once against any database on that cluster).

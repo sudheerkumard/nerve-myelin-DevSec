@@ -56,7 +56,7 @@ class Principal:
 
 
 def map_roles(idp_values: list[str], mapping: dict[str, str]) -> frozenset:
-    """Translate IdP roles/groups to NERvvE roles. Unknown values are ignored (deny by default)."""
+    """Translate IdP roles/groups to RAT Flea roles. Unknown values are ignored (deny by default)."""
     out = set()
     for v in idp_values:
         r = mapping.get(v)

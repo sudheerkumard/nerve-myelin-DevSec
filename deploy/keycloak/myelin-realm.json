@@ -1,6 +1,6 @@
 {
   "realm": "myelin",
-  "displayName": "NERvvE DevSecOps",
+  "displayName": "RAT Flea DevSec",
   "enabled": true,
   "sslRequired": "external",
   "registrationAllowed": false,
@@ -54,7 +54,7 @@
   "clients": [
     {
       "clientId": "myelin-console",
-      "name": "NERvvE DevSecOps Console (BFF)",
+      "name": "RAT Flea DevSec Console (BFF)",
       "protocol": "openid-connect",
       "enabled": true,
       "publicClient": false,
@@ -153,7 +153,7 @@
     },
     {
       "clientId": "myelin-api",
-      "name": "NERvvE DevSecOps API (audience)",
+      "name": "RAT Flea DevSec API (audience)",
       "protocol": "openid-connect",
       "enabled": true,
       "bearerOnly": true,
@@ -284,7 +284,7 @@
         "subComponents": {},
         "config": {
           "kc.user.profile.config": [
-            "{\"unmanagedAttributePolicy\": \"ADMIN_VIEW\", \"attributes\": [{\"name\": \"username\", \"displayName\": \"${username}\", \"validations\": {\"length\": {\"min\": 3, \"max\": 255}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}}, {\"name\": \"email\", \"displayName\": \"${email}\", \"validations\": {\"email\": {}}, \"required\": {\"roles\": [\"user\"]}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}}, {\"name\": \"firstName\", \"displayName\": \"${firstName}\", \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}}, {\"name\": \"lastName\", \"displayName\": \"${lastName}\", \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}}, {\"name\": \"tenant\", \"displayName\": \"NERvvE DevSecOps tenant\", \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\"]}, \"validations\": {\"pattern\": {\"pattern\": \"^[a-z0-9-]{2,40}$\", \"error-message\": \"tenant slug\"}}}]}"
+            "{\"unmanagedAttributePolicy\": \"ADMIN_VIEW\", \"attributes\": [{\"name\": \"username\", \"displayName\": \"${username}\", \"validations\": {\"length\": {\"min\": 3, \"max\": 255}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}}, {\"name\": \"email\", \"displayName\": \"${email}\", \"validations\": {\"email\": {}}, \"required\": {\"roles\": [\"user\"]}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}}, {\"name\": \"firstName\", \"displayName\": \"${firstName}\", \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}}, {\"name\": \"lastName\", \"displayName\": \"${lastName}\", \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}}, {\"name\": \"tenant\", \"displayName\": \"RAT Flea DevSec tenant\", \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\"]}, \"validations\": {\"pattern\": {\"pattern\": \"^[a-z0-9-]{2,40}$\", \"error-message\": \"tenant slug\"}}}]}"
           ]
         }
       }

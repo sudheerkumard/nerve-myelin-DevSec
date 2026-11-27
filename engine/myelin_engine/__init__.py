@@ -1,9 +1,9 @@
 # Copyright (c) 2026 Sudheer Kumar.
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
-"""NERvvE DevSecOps scan engine — shared by the API server and the `myelin` CLI.
+"""RAT Flea DevSec scan engine — shared by the API server and the `myelin` CLI.
 
 Every scanner (built-in or third-party) is normalised into one Finding schema,
-scored with the NERvvE Risk Score (MRS) and evaluated against policy-as-code.
+scored with the RAT Flea Risk Score (MRS) and evaluated against policy-as-code.
 """
 __version__ = "1.5.0"
 

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
 apiVersion: v2
 name: myelin
-description: NERvvE DevSecOps Platform (API + console)
+description: RAT Flea DevSec Platform (API + console)
 type: application
 version: 1.5.0
 appVersion: "1.5.0"

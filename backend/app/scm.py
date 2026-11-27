@@ -146,7 +146,7 @@ def _guard_host(host):
 
 
 def _http(url, headers, limit=MAX_ARCHIVE, want_json=False):
-    req = urllib.request.Request(url, headers={"User-Agent": "NERvvE-DevSecOps", **headers})
+    req = urllib.request.Request(url, headers={"User-Agent": "RAT-Flea-DevSec", **headers})
     try:
         with urllib.request.urlopen(req, timeout=60) as r:  # myelin:ignore[NM-SAST-010] -- provider API host fixed by detect()
             data = r.read(limit + 1)

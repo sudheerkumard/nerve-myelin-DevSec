@@ -19,7 +19,7 @@ class CollectorError(RuntimeError):
 def request(method: str, url: str, headers: dict | None = None, body=None, ca_file: str | None = None, insecure: bool = False):
     if not url.startswith("https://"):
         raise CollectorError("collectors only call HTTPS endpoints")
-    h = {"Accept": "application/json", "User-Agent": "NERvvE-DevSecOps-Cloud/1.0", **(headers or {})}
+    h = {"Accept": "application/json", "User-Agent": "RAT-Flea-DevSec-Cloud/1.0", **(headers or {})}
     data = body if isinstance(body, (bytes, type(None))) else (json.dumps(body).encode() if not isinstance(body, str) else body.encode())
     if data is not None and "Content-Type" not in h:
         h["Content-Type"] = "application/json"

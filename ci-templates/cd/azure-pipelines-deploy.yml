@@ -1,5 +1,5 @@
-# NERvvE DevSecOps — CD gate for Azure Pipelines. Approvals and checks live on the 'production' environment.
-# MYELIN_CLI_PACKAGE: the NERvvE DevSecOps CLI to install, e.g.
+# RAT Flea DevSec — CD gate for Azure Pipelines. Approvals and checks live on the 'production' environment.
+# MYELIN_CLI_PACKAGE: the RAT Flea DevSec CLI to install, e.g.
 # git+https://github.com/sudheerkumard/nervve-devsecops@v1.5.0 or a wheel on your internal package index
 stages:
   - stage: deploy_production
@@ -14,7 +14,7 @@ stages:
                 - script: |
                     pip install "$(MYELIN_CLI_PACKAGE)"
                     myelin gate --repo "$(Build.Repository.Name)" --commit "$(Build.SourceVersion)" --environment production
-                  displayName: NERvvE DevSecOps deployment gate
+                  displayName: RAT Flea DevSec deployment gate
                   env:
                     MYELIN_SERVER: $(MYELIN_SERVER)
                     MYELIN_API_KEY: $(MYELIN_API_KEY)     # secret variable from a variable group linked to Key Vault

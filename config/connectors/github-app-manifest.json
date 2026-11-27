@@ -1,6 +1,6 @@
 {
-  "_comment": "NERvvE DevSecOps GitHub App manifest — read-only, least privilege. (c) 2026 Sudheer Kumar. Create via https://github.com/settings/apps/new?manifest or org settings; install on selected repositories only.",
-  "name": "NERvvE DevSecOps (read-only)",
+  "_comment": "RAT Flea DevSec GitHub App manifest — read-only, least privilege. (c) 2026 Sudheer Kumar. Create via https://github.com/settings/apps/new?manifest or org settings; install on selected repositories only.",
+  "name": "RAT Flea DevSec (read-only)",
   "url": "https://github.com/sudheerkumard/nervve-devsecops",
   "public": false,
   "hook_attributes": { "active": false },

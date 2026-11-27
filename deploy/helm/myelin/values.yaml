@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Sudheer Kumar.
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
-# NERvvE DevSecOps — production defaults. Override per customer with config/deploy/values-customer.example.yaml.
+# RAT Flea DevSec — production defaults. Override per customer with config/deploy/values-customer.example.yaml.
 
 image:
   repository: acr.example.io/nerve/myelin
@@ -63,7 +63,7 @@ secrets:
     apiKeyPepper: MYELIN_API_KEY_PEPPER                  # >= 32 random bytes
     evidenceSigningKey: MYELIN_EVIDENCE_SIGNING_KEY      # Ed25519 private key (PEM or base64 raw)
     oidcClientSecret: MYELIN_OIDC_CLIENT_SECRET
-    license: MYELIN_LICENSE                              # NMLIC1.… licence key issued for NERvvE DevSecOps
+    license: MYELIN_LICENSE                              # NMLIC1.… licence key issued for RAT Flea DevSec
 
 externalSecret:
   enabled: false             # requires external-secrets.io operator

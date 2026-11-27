@@ -3,7 +3,7 @@
 providers:
   - name: keycloak
     type: keycloak
-    display_name: Sign in with NERvvE DevSecOps SSO
+    display_name: Sign in with RAT Flea DevSec SSO
     issuer: https://auth.localtest.me:8444/realms/myelin
     client_id: myelin-console
     client_secret_ref: env://MYELIN_OIDC_CLIENT_SECRET

@@ -150,7 +150,7 @@ def cbom(assets: list[dict], name: str = "application") -> dict:
         })
     return {"bomFormat": "CycloneDX", "specVersion": "1.6", "serialNumber": f"urn:uuid:{uuid.uuid4()}", "version": 1,
             "metadata": {"timestamp": datetime.now(timezone.utc).isoformat(),
-                         "tools": {"components": [{"type": "application", "name": "NERvvE DevSecOps", "version": "1.0.0"}]},
+                         "tools": {"components": [{"type": "application", "name": "RAT Flea DevSec", "version": "1.0.0"}]},
                          "component": {"type": "application", "bom-ref": f"urn:myelin:application:{name}", "name": name},
                          "properties": [{"name": "myelin:pqc-readiness", "value": str(readiness(assets)["score"])}]},
             "components": comps}

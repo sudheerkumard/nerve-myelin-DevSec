@@ -1,9 +1,9 @@
-# NERvvE DevSecOps Acceptable Use Policy
+# RAT Flea DevSec Acceptable Use Policy
 
-**Version 1.0 · Effective 21 November 2026** · Part of the NERvvE DevSecOps Subscription Agreement
-NERvvE DevSecOps Product designed and developed by Sudheer Kumar · Copyright © 2026 Sudheer Kumar
+**Version 1.0 · Effective 21 November 2026** · Part of the RAT Flea DevSec Subscription Agreement
+RAT Flea DevSec Product designed and developed by Sudheer Kumar · Copyright © 2026 Sudheer Kumar
 
-NERvvE DevSecOps is a security-testing product. Because it can read source code, test running applications and interact
+RAT Flea DevSec is a security-testing product. Because it can read source code, test running applications and interact
 with third-party platforms, its use is limited to systems the Customer is entitled to assess. Capitalised terms have
 the meanings in the Subscription Agreement.
 
@@ -36,7 +36,7 @@ The Customer must not use the Software, Outputs or any connected service to:
 7. circumvent licence keys, usage limits, tenant isolation, rate limits or other security controls of the Software or
    the Hosted Service, or probe the Hosted Service for vulnerabilities except under section 4; or
 8. misrepresent Outputs, including presenting framework mappings as a certification or altering reports while keeping
-   the NERvvE DevSecOps attribution.
+   the RAT Flea DevSec attribution.
 
 ## 3. Third-party platforms
 
@@ -45,9 +45,9 @@ model provider on the Customer's behalf, the Customer must comply with that prov
 the least privilege needed (for example read-only repository access for scanning; write access only where the Customer
 chooses to let AutoFix open pull requests).
 
-## 4. Responsible disclosure about NERvvE DevSecOps itself
+## 4. Responsible disclosure about RAT Flea DevSec itself
 
-Security researchers and customers who find a vulnerability in NERvvE DevSecOps should report it as described in
+Security researchers and customers who find a vulnerability in RAT Flea DevSec should report it as described in
 `SECURITY.md`. Good-faith research that follows that policy, avoids privacy violations and service disruption, and
 does not access other customers' data will not be treated as a breach of this policy.
 

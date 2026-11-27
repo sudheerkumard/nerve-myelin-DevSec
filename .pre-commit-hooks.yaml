@@ -1,5 +1,5 @@
 - id: nerve-myelin
-  name: NERvvE DevSecOps pre-commit scan
+  name: RAT Flea DevSec pre-commit scan
   description: Secrets, code, configuration, pipeline, supply-chain and AI agent checks on staged files.
   entry: myelin precommit
   language: python

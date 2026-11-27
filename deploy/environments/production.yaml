@@ -1,4 +1,4 @@
-# NERvvE DevSecOps production environment.
+# RAT Flea DevSec production environment.
 # Values below are safe structural defaults, not live customer infrastructure details.
 # Replace all REPLACE_WITH_* values and .invalid hostnames before deployment.
 image:

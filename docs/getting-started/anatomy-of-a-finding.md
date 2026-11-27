@@ -26,7 +26,7 @@ A finding is one weakness at one location. Every engine and every imported scann
 | Field | Meaning |
 |---|---|
 | **Severity** | From the rule or the scanner (critical, high, medium, low, info) |
-| **NERvvE Risk Score** | 0–100; every component is listed in the drawer ([how it is computed](../concepts/risk-score.md)) |
+| **RAT Flea Risk Score** | 0–100; every component is listed in the drawer ([how it is computed](../concepts/risk-score.md)) |
 | **Priority and SLA** | P0 (2 days) · P1 (7) · P2 (30) · P3 (90), from the score |
 | **CISA SSVC** | Track, Track\*, Attend or Act, with the four decision points |
 | **Exploitation signals** | EPSS, CISA KEV, reachability, exposure, live secret, malicious release, runtime detection |

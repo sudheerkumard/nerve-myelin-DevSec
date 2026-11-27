@@ -1,4 +1,4 @@
-# NERvvE DevSecOps — CD gate for GitLab CI. 'production' is a protected environment with required approvals.
+# RAT Flea DevSec — CD gate for GitLab CI. 'production' is a protected environment with required approvals.
 deploy_production:
   stage: deploy
   image: ghcr.io/sudheerkumard/myelin-cli@sha256:<digest>   # pin the CLI image by digest

@@ -1,6 +1,6 @@
-# NERvvE DevSecOps: VEX and advisory lifecycle
+# RAT Flea DevSec: VEX and advisory lifecycle
 
-NERvvE DevSecOps can ingest CycloneDX VEX documents and CSAF 2.0 VEX documents through
+RAT Flea DevSec can ingest CycloneDX VEX documents and CSAF 2.0 VEX documents through
 `myelin_engine.vex`. The importer normalizes dispositions and applies them to scan
 findings only when it can match both a vulnerability identifier and an exact package URL
 (PURL). Package-name-only or CVE-only matching is intentionally rejected.

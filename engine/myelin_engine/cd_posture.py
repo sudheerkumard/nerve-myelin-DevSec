@@ -47,7 +47,7 @@ RULES = {
                   "AWS: env.secrets-manager / parameter-store; Google Cloud Build: availableSecrets + secretEnv."),
     "NM-CD-013": ("Build step runs privileged", "high", "CICD-SEC-7",
                   "Remove privileged mode; build images with rootless tools (BuildKit rootless, kaniko, buildah)."),
-    "NM-CD-014": ("Deployment does not run the NERvvE DevSecOps gate", "low", "CICD-SEC-1",
+    "NM-CD-014": ("Deployment does not run the RAT Flea DevSec gate", "low", "CICD-SEC-1",
                   "Add `myelin gate` before deploying so commits blocked by policy never reach an environment."),
 }
 SECRET_KEY = re.compile(r"(?i)(passw(or)?d|secret|token|api[_-]?key|private[_-]?key|access[_-]?key|client[_-]?secret)$")

@@ -3,7 +3,7 @@
 """Offline-verifiable licence keys.
 
 A licence is one line:  NMLIC1.<base64url(JSON payload)>.<base64url(Ed25519 signature)>
-signed by the NERvvE DevSecOps vendor key (scripts/licensing/myelin_license.py). The platform verifies it
+signed by the RAT Flea DevSec vendor key (scripts/licensing/myelin_license.py). The platform verifies it
 against public keys shipped in app/licensing_keys/ — no call home, so it works in air-gapped sites.
 
 Enforcement is deliberately graceful, because a licence problem must never take a customer's
@@ -71,7 +71,7 @@ def decode(token: str, keys: dict | None = None) -> dict:
     keys = TRUSTED_KEYS if keys is None else keys
     parts = (token or "").strip().split(".")
     if len(parts) != 3 or parts[0] != PREFIX:
-        raise LicenseError("not a NERvvE DevSecOps licence key")
+        raise LicenseError("not a RAT Flea DevSec licence key")
     try:
         payload = json.loads(_b64d(parts[1]))
         sig = _b64d(parts[2])

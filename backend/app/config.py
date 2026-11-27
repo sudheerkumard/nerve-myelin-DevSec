@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Sudheer Kumar.
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
-"""Central configuration for the NERvvE DevSecOps platform API.
+"""Central configuration for the RAT Flea DevSec platform API.
 
 Order of precedence (highest first):
   1. Process environment variables (MYELIN_*)
@@ -51,7 +51,7 @@ class Settings:
     session_idle_minutes = int(_get("MYELIN_SESSION_IDLE_MINUTES", "30"))
     session_absolute_hours = int(_get("MYELIN_SESSION_ABSOLUTE_HOURS", "12"))
     metrics_enabled = _bool("MYELIN_METRICS_ENABLED", True)
-    license_ref = _get("MYELIN_LICENSE_REF", "env://MYELIN_LICENSE")      # NMLIC1.… key issued for NERvvE DevSecOps
+    license_ref = _get("MYELIN_LICENSE_REF", "env://MYELIN_LICENSE")      # NMLIC1.… key issued for RAT Flea DevSec
     deployment_id = _get("MYELIN_DEPLOYMENT_ID", "")                  # optional: binds a licence to one installation
     # Online live-application testing. SaaS: keep defaults. Self-hosted scanning of internal APIs: allow private networks.
     dast_allow_private = _bool("MYELIN_DAST_ALLOW_PRIVATE", False)

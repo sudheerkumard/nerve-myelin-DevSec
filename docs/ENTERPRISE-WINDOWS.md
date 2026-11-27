@@ -1,11 +1,11 @@
-# Production-style NERvvE DevSecOps on a Windows laptop
+# Production-style RAT Flea DevSec on a Windows laptop
 
 > **First installation?** Read [First-time setup and common issues](getting-started/first-time-setup.md): corporate networks, organisations and users.
 
 > **Step-by-step guide (offline and online, with tokens, ownership verification and timings):** [LIVE-APP-TESTING-GUIDE.md](LIVE-APP-TESTING-GUIDE.md)
 
 Runs the same components as a customer production deployment on one machine with Docker Desktop:
-PostgreSQL 16 (row-level security) · Keycloak 26 (single sign-on, mandatory MFA) · NERvvE DevSecOps API and console ·
+PostgreSQL 16 (row-level security) · Keycloak 26 (single sign-on, mandatory MFA) · RAT Flea DevSec API and console ·
 HTTPS proxy. Use it for evaluation, demos with real sign-in, and your own testing. Customer production uses the
 Helm chart on Kubernetes (`docs/enterprise/OPERATIONS.md`).
 
@@ -49,7 +49,7 @@ password and a fresh code.
 Manage users, roles and MFA in Keycloak: **https://auth.localtest.me:8444/admin** — user `kcadmin`, password shown
 at the end of the start script (also `KEYCLOAK_ADMIN_PASSWORD` in `config\backend\enterprise.env`).
 To add a user to an existing organisation: **Users → Add user** (or open an existing user), set the field
-**NERvvE DevSecOps tenant** to `acme` or `globex`, save, then **Role mapping → Assign role** (for example
+**RAT Flea DevSec tenant** to `acme` or `globex`, save, then **Role mapping → Assign role** (for example
 `myelin-security-lead`). The user enrols MFA at first sign-in.
 
 ## Add your own organisation (tenant)
@@ -59,7 +59,7 @@ Each organisation is a tenant with its own data, isolated by PostgreSQL row-leve
 
 ```powershell
 # create the organisation and link your Keycloak user to it as tenant administrator
-powershell -ExecutionPolicy Bypass -File scripts\windows\new-tenant.ps1 -Slug nervve -Name "NERvvE Labs" -User "sudheer kumar"
+powershell -ExecutionPolicy Bypass -File scripts\windows\new-tenant.ps1 -Slug rat-flea -Name "RAT Flea Labs" -User "sudheer kumar"
 ```
 
 Sign out of the console and sign in again: you land in the new, empty organisation. Start with **Integrations** (connect
@@ -72,11 +72,11 @@ What the script does, if you prefer to do it by hand:
 
    ```powershell
    docker compose -f docker-compose.enterprise.yml --env-file config\backend\enterprise.env run --rm migrate `
-     admin tenant-create --slug nervve --name "NERvvE Labs" --plan enterprise `
-     --bind "https://auth.localtest.me:8444/realms/myelin=nervve"
+     admin tenant-create --slug rat-flea --name "RAT Flea Labs" --plan enterprise `
+     --bind "https://auth.localtest.me:8444/realms/myelin=rat-flea"
    ```
 
-2. In Keycloak (realm `myelin`) open the user, set **NERvvE DevSecOps tenant** to `nervve`, save, and assign the realm
+2. In Keycloak (realm `myelin`) open the user, set **RAT Flea DevSec tenant** to `rat-flea`, save, and assign the realm
    role `myelin-tenant-admin`.
 
 List organisations: `docker compose -f docker-compose.enterprise.yml --env-file config\backend\enterprise.env run --rm migrate admin tenants`.
@@ -120,7 +120,7 @@ powershell -ExecutionPolicy Bypass -File scripts\windows\start-enterprise.ps1 -R
 | `auth.localtest.me does not resolve` | Add `127.0.0.1 myelin.localtest.me auth.localtest.me` to `C:\Windows\System32\drivers\etc\hosts` (Notepad as Administrator) |
 | Browser says "Not secure" | Accept once, or re-run the start script and confirm the certificate prompt; restart the browser |
 | Authenticator code rejected | Check the phone's time is set automatically; codes change every 30 seconds |
-| "We couldn't sign you in — not linked to an organisation" | Set the user's **NERvvE DevSecOps tenant** field in Keycloak to an existing organisation (`acme`, `globex`, or one you added with `new-tenant.ps1`), then sign in again |
+| "We couldn't sign you in — not linked to an organisation" | Set the user's **RAT Flea DevSec tenant** field in Keycloak to an existing organisation (`acme`, `globex`, or one you added with `new-tenant.ps1`), then sign in again |
 | Build fails: `CERTIFICATE_VERIFY_FAILED … self-signed certificate in certificate chain` | Your network inspects HTTPS. The start script normally saves the company root certificate to `config\certs` automatically. If not: `certmgr.msc` → Trusted Root Certification Authorities → Certificates → right-click the company root → All Tasks → Export → Base-64 encoded X.509, save as `config\certs\company-root.crt`, and run the start script again. Certificate checking stays on |
 | Anything else | `docker compose -f docker-compose.enterprise.yml logs --tail 80 myelin-api keycloak` |
 

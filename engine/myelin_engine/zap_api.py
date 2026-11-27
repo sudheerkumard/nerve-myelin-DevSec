@@ -126,7 +126,7 @@ def affected_endpoints(instances, url_key="url"):
 
 
 def normalize(alerts, f_builder):
-    """ZAP alerts (API format) -> NERvvE findings, one per rule with every affected URL counted as an instance."""
+    """ZAP alerts (API format) -> RAT Flea findings, one per rule with every affected URL counted as an instance."""
     groups = {}
     for a in alerts or []:
         if str(a.get("confidence") or "").lower() in {"false positive", "falsepositive"}:

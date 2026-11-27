@@ -1,6 +1,6 @@
 # Contributor Licence Agreement
 
-Thank you for contributing to NERvvE DevSecOps. By submitting a contribution (code, documentation, rules or other
+Thank you for contributing to RAT Flea DevSec. By submitting a contribution (code, documentation, rules or other
 material) to this project, you agree to the following:
 
 1. **Your right to contribute.** The contribution is your original work, or you have the right to submit it, and it does
@@ -15,4 +15,4 @@ material) to this project, you agree to the following:
 
 To agree, add this line to your pull request description:
 
-> I have read and agree to the NERvvE DevSecOps Contributor Licence Agreement (CLA.md).
+> I have read and agree to the RAT Flea DevSec Contributor Licence Agreement (CLA.md).

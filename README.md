@@ -1,17 +1,17 @@
-# NERvvE DevSecOps — Community edition
+# RAT Flea DevSec — Community edition
 
 **Secure the code, the pipeline that builds it, and the artifact that ships.**
 
 > Free and open source under the [GNU AGPL-3.0](LICENSE). © 2026 Sudheer Kumar.
-> NERvvE DevSecOps Product designed and developed by Sudheer Kumar.
+> RAT Flea DevSec Product designed and developed by Sudheer Kumar.
 
-NERvvE DevSecOps is a DevSecOps and cloud-native application protection platform. Fifteen engines from code to cloud
-to runtime write into one finding schema, one exploitability-based risk score (the NERvvE Risk Score) and one policy,
+RAT Flea DevSec is a DevSecOps and cloud-native application protection platform. Fifteen engines from code to cloud
+to runtime write into one finding schema, one exploitability-based risk score (the RAT Flea Risk Score) and one policy,
 enforced from the developer's laptop through the pull request and pipeline gate to Kubernetes admission.
 
 📖 **Documentation:** <https://sudheerkumard.github.io/nervve-devsecops/>
 
-![NERvvE DevSecOps console — overview](docs/assets/screenshots/overview.webp)
+![RAT Flea DevSec console — overview](docs/assets/screenshots/overview.webp)
 
 ## What it covers
 
@@ -44,7 +44,7 @@ git clone https://github.com/sudheerkumard/nervve-devsecops.git && cd nervve-dev
 
 ./demo/start-demo.sh                 # macOS / Linux  → http://localhost:8080   (Windows: demo\start-demo.ps1)
 docker compose up --build            # or Docker       → http://localhost:8080
-open demo/offline/NERvvE-DevSecOps-Demo-Console.html   # or no server: embedded demo snapshot
+open demo/offline/RAT-Flea-DevSec-Demo-Console.html   # or no server: embedded demo snapshot
 ```
 
 With the API running, **Live scan** runs the real engine against `demo/vulnerable-app`. The demo tenant
@@ -62,7 +62,7 @@ myelin dast --target https://api.example.com --openapi spec.json   # only APIs y
 myelin attest --image myregistry/app@sha256:… --sbom sbom.cdx.json   # cosign keyless sign + SBOM attestation
 ```
 
-The platform and CLI images bundle Opengrep (with NERvvE's own data-flow rule pack), Trivy, Gitleaks, Checkov and Bandit,
+The platform and CLI images bundle Opengrep (with RAT Flea's own data-flow rule pack), Trivy, Gitleaks, Checkov and Bandit,
 and run them alongside the built-in engines, normalising their output and removing duplicates. Each scan records which
 areas it actually examined; reports list only those (see docs/concepts/scanning.md). Ready-made pipeline templates are in [`ci-templates/`](ci-templates/).
 
@@ -129,7 +129,7 @@ pull requests need the [Contributor Licence Agreement](CLA.md). Report vulnerabi
 
 ## Licence
 
-NERvvE DevSecOps Community edition is licensed under the GNU Affero General Public License v3.0 only
+RAT Flea DevSec Community edition is licensed under the GNU Affero General Public License v3.0 only
 ([LICENSE](LICENSE)). If you run a modified version as a network service, the AGPL requires you to offer its source
 to the users of that service. Commercial licences (for use without AGPL obligations), support and customisation are
 available from the author through <https://github.com/sudheerkumard/nervve-devsecops>. Third-party components are
