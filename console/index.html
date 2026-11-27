@@ -92,9 +92,9 @@ nav svg{width:16px;height:16px;flex:none;opacity:.85}
 .tenant{margin:10px;padding:12px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel);font-size:12px;color:var(--tx2)}
 .tenant b{color:var(--tx);display:block;font-size:13px}
 main{overflow:auto;position:relative;min-width:0}
-header.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:12px;padding:16px 30px;background:var(--hdr);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+header.top{position:sticky;top:0;z-index:5;display:flex;flex-direction:column;align-items:stretch;gap:12px;padding:16px 30px;background:var(--hdr);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
 header.top h1{font-size:20px;line-height:1.2;letter-spacing:-.02em;margin:0;font-weight:700}
-header.top .sub{color:var(--tx3);font-size:12.5px;line-height:1.4;margin-top:4px} header.top>div:first-of-type{flex:1;min-width:0}header.top .btn,header.top .pill{white-space:nowrap}header.top .sp{flex:0}
+header.top .sub{color:var(--tx3);font-size:12.5px;line-height:1.4;margin-top:4px;overflow-wrap:anywhere}.header-heading{display:flex;align-items:center;gap:10px;min-width:0}.page-heading{min-width:0;flex:1}.header-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px 10px;min-width:0}.header-actions>*{max-width:100%;min-width:0}header.top .btn,header.top .pill{white-space:nowrap}
 .sp{flex:1}
 .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;font-size:12px;border:1px solid var(--line2);color:var(--tx2);background:var(--panel)}
 .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok)}
@@ -108,6 +108,7 @@ header.top .sub{color:var(--tx3);font-size:12.5px;line-height:1.4;margin-top:4px
 .g4{grid-template-columns:repeat(4,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g6{grid-template-columns:repeat(6,minmax(0,1fr))}
 .g21{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}.g12{grid-template-columns:minmax(0,1fr) minmax(0,2fr)}
 @media(max-width:1200px){.g4,.g6{grid-template-columns:repeat(2,1fr)}.g3,.g21,.g12{grid-template-columns:1fr}}
+@media(max-width:1100px){header.top{position:relative}}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;min-width:0}.card:has(table){overflow-x:auto}
 .card h3{margin:0 0 16px;font-size:13px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.045em;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .card h3 .sp{flex:1}
@@ -172,7 +173,7 @@ pre .a{color:#54d38a}pre .r{color:#ff6b81}pre .y{color:#f5c542}pre .c{color:#7d8
 .diff h5{margin:0 0 6px;font-size:14px}.diff p{margin:0;color:var(--tx2);font-size:13px}
 .legend{display:flex;gap:14px;font-size:12px;color:var(--tx2);flex-wrap:wrap}.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
 .hidden{display:none}
-.banner{font-size:12px;color:var(--tx3);padding:8px 30px;border-bottom:1px solid var(--line);background:var(--bg2)}
+.banner{font-size:12px;color:var(--tx3);padding:8px 30px;overflow-wrap:anywhere;border-bottom:1px solid var(--line);background:var(--bg2)}
 .banner.lic-warn{color:#7c4a03;background:#fff5e0;font-weight:600}.banner.lic-bad{color:#fff;background:#b42318;font-weight:600}
 .cover{border-radius:16px;padding:40px 40px 34px;color:#fff;position:relative;overflow:hidden;
   background:radial-gradient(900px 400px at 85% -10%,rgba(45,212,191,.30),transparent),radial-gradient(700px 300px at 0% 120%,rgba(59,130,246,.35),transparent),linear-gradient(135deg,#0c1218,#0f2a3a)}
@@ -200,9 +201,9 @@ pre .a{color:#54d38a}pre .r{color:#ff6b81}pre .y{color:#f5c542}pre .c{color:#7d8
 .tour .ft{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--line)}
 .tour .prog{height:3px;background:var(--line)}.tour .prog i{display:block;height:100%;background:var(--acc);transition:width .3s}
 .form{display:grid;grid-template-columns:150px 1fr;gap:10px 14px;align-items:center}.form input,.form select{width:100%}
-.cobrand{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--tx3);border-left:1px solid var(--line);padding-left:14px}
+.cobrand{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--tx3);max-width:260px;min-width:0;padding-right:12px;border-right:1px solid var(--line)}.cobrand>div{min-width:0;line-height:1.3}.cobrand b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cobrand b{color:var(--tx);font-size:13px}
-.cobrand .lg{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;font-weight:800;font-size:12px;color:#fff;background:linear-gradient(135deg,#0d9488,#2b5cf0)}
+.cobrand .lg{flex:none;width:26px;height:26px;border-radius:7px;display:grid;place-items:center;font-weight:800;font-size:12px;color:#fff;background:linear-gradient(135deg,#0d9488,#2b5cf0)}
 #signin{position:fixed;inset:0;z-index:200;display:grid;place-items:center;padding:20px;
   background:radial-gradient(900px 500px at 15% 10%,rgba(45,212,191,.18),transparent),radial-gradient(800px 500px at 90% 90%,rgba(43,92,240,.22),transparent),#070b12}
 body.signed-out .app{display:none}
@@ -212,10 +213,10 @@ body.signed-out .app{display:none}
 .si-btn{display:flex;justify-content:center;width:100%;padding:12px;font-size:15px;text-decoration:none;margin-bottom:10px;box-sizing:border-box}
 .si-err{background:#3a1414;border:1px solid #7f1d1d;border-radius:8px;padding:10px 12px;font-size:13px}
 .si-foot{color:#64748b;font-size:11.5px;margin:18px 0 0;line-height:1.6}
-.userchip{display:flex;align-items:center;gap:9px;margin-left:6px;padding-left:12px;border-left:1px solid var(--line)}
-.userchip .av{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:700;color:#fff;background:linear-gradient(135deg,#0d9488,#2b5cf0)}
-.userchip .ui{display:flex;flex-direction:column;line-height:1.2;font-size:12.5px}.userchip .ui span{color:var(--tx3);font-size:11px;text-transform:capitalize}
-@media(max-width:860px){.userchip{order:6;width:100%;border-left:0;padding-left:0;margin:0}.userchip .btn{margin-left:auto}}
+.userchip{display:flex;align-items:center;gap:9px;margin-left:auto;padding-left:12px;border-left:1px solid var(--line);min-width:0}
+.userchip .av{flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:700;color:#fff;background:linear-gradient(135deg,#0d9488,#2b5cf0)}
+.userchip .ui{display:flex;flex-direction:column;line-height:1.2;font-size:12.5px;min-width:0;max-width:200px}.userchip .ui b,.userchip .ui span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.userchip .ui span{color:var(--tx3);font-size:11px;text-transform:capitalize}
+@media(max-width:860px){.userchip{width:100%;border-left:0;padding-left:0;margin:0}.userchip .ui{max-width:none;flex:1}.userchip .btn{margin-left:auto}}
 .navbtn,.scrim{display:none}
 @media(max-width:860px){
   .app{display:block;height:auto}
@@ -225,13 +226,11 @@ body.signed-out .app{display:none}
   body.nav-open .scrim{display:block}
   main{overflow:visible;min-height:100vh}
   .navbtn{display:inline-flex;font-size:18px;padding:5px 11px}
-  header.top{flex-wrap:wrap;gap:8px 10px;padding:10px 14px}
-  header.top>div:first-of-type{flex:1;min-width:0}
+  header.top{position:relative;gap:10px;padding:12px 14px}
   header.top h1{font-size:16px}
-  header.top .sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .cobrand,header.top .sp{display:none}
+  header.top .sub{white-space:normal}
+  .cobrand{max-width:min(220px,100%)}
   header.top .btn{padding:6px 10px;font-size:12.5px}
-  header.top .pill{order:5}
   .banner{padding:6px 14px;font-size:11.5px}
   .wrap{padding:18px 16px 70px}
   .g3,.g2,.g21,.g12,.plans,.flow{grid-template-columns:1fr}
@@ -249,7 +248,6 @@ table:has(th:nth-child(6)){min-width:720px}
 button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
 @media(max-width:860px){
   .grid.g5{grid-template-columns:repeat(2,minmax(0,1fr))}.grid.g5>:last-child:nth-child(odd){grid-column:span 2}
-  header.top>div:first-of-type{min-width:140px}
   .filters input,.filters select{flex:1 1 160px}
   .cover .cta{flex-wrap:wrap}
 }
@@ -304,14 +302,17 @@ svg text{fill:var(--tx3);font-size:10.5px;font-family:inherit}
 <main id="main">
   <div class="banner" id="modeBanner"></div>
   <header class="top">
-    <button class="btn navbtn" onclick="toggleNav()" aria-label="Open menu" aria-expanded="false" aria-controls="nav">☰</button>
-    <div><h1 id="title">Overview</h1><div class="sub" id="subtitle"></div></div>
-    <div class="cobrand" id="cobrand"></div>
-    <div class="sp"></div>
-    <span class="pill"><span class="dot"></span><span id="modePill">Live</span></span>
-    <button class="btn" onclick="customise()" title="Personalise for this customer">⚙ Customise</button>
-    <button class="btn" onclick="toggleTheme()" title="Switch light / dark theme">☾ Theme</button>
-    <button class="btn pri" onclick="openProductDemo()">▶ Product demo</button>
+    <div class="header-heading">
+      <button class="btn navbtn" onclick="toggleNav()" aria-label="Open menu" aria-expanded="false" aria-controls="nav">☰</button>
+      <div class="page-heading"><h1 id="title">Overview</h1><div class="sub" id="subtitle"></div></div>
+    </div>
+    <div class="header-actions">
+      <div class="cobrand" id="cobrand"></div>
+      <span class="pill"><span class="dot"></span><span id="modePill">Live</span></span>
+      <button class="btn" onclick="customise()" title="Personalise for this customer">⚙ Customise</button>
+      <button class="btn" onclick="toggleTheme()" title="Switch light / dark theme">☾ Theme</button>
+      <button class="btn pri" onclick="openProductDemo()">▶ Product demo</button>
+    </div>
   </header>
   <div class="wrap" id="view"></div>
 </main>
@@ -1901,11 +1902,11 @@ function applyCustomer() {
   const t = S.api["/api/tenant"];
   if (AUTHMODE === "session") {                      // enterprise: show the signed-in organisation, not demo branding
     const org = t.name || "Your organisation", oi = org.split(/\s+/).filter(Boolean).map(w => w[0]).join("").slice(0, 2).toUpperCase();
-    $("#cobrand").innerHTML = `<span class="lg">${esc(oi)}</span><div>Organisation<br><b>${esc(org)}</b></div>`;
+    $("#cobrand").innerHTML = `<span class="lg">${esc(oi)}</span><div>Organisation<br><b title="${esc(org)}">${esc(org)}</b></div>`;
     $("#tenantBox").innerHTML = `<b>${esc(org)}</b>${esc(t.plan_detail.name)} plan${t.region ? " · " + esc(t.region) : ""}<br>Single sign-on · MFA enforced`;
     $("#modeBanner").textContent = `RAT Flea DevSec · ${org} · signed in as ${USER.email || USER.subject}`;
   } else {
-    $("#cobrand").innerHTML = `<span class="lg">${esc(ini)}</span><div>Prepared for<br><b>${esc(CUST.customer)}</b></div>`;
+    $("#cobrand").innerHTML = `<span class="lg">${esc(ini)}</span><div>Prepared for<br><b title="${esc(CUST.customer)}">${esc(CUST.customer)}</b></div>`;
     $("#tenantBox").innerHTML = `<b>${esc(CUST.customer)}</b>${esc(t.plan_detail.name)} plan · demo tenant<br>${esc(CUST.industry)}<br>${esc(t.region)} · SSO ${esc(t.sso)}`;
     $("#modeBanner").textContent = (MODE === "live" ? "Connected to RAT Flea DevSec API — all actions are live." : "Interactive demo environment with representative sample data.") + ` Prepared for ${CUST.customer}. ${CFG.confidentialityNotice}`;
   }
@@ -2060,9 +2061,9 @@ function renderUser() {
   if (!USER) return;
   const b = document.createElement("div"); b.className = "userchip";
   const nm = USER.name || USER.email || USER.subject;
-  b.innerHTML = `<span class="av">${esc((nm || "?").slice(0, 1).toUpperCase())}</span><span class="ui"><b>${esc(nm)}</b><span>${esc(USER.roles.join(", ").replace(/_/g, " "))}</span></span>
+  b.innerHTML = `<span class="av">${esc((nm || "?").slice(0, 1).toUpperCase())}</span><span class="ui"><b title="${esc(nm)}">${esc(nm)}</b><span title="${esc(USER.roles.join(", ").replace(/_/g, " "))}">${esc(USER.roles.join(", ").replace(/_/g, " "))}</span></span>
     <button class="btn sm" onclick="signOut()" title="Sign out">Sign out</button>`;
-  document.querySelector("header.top").appendChild(b);
+  document.querySelector(".header-actions").appendChild(b);
 }
 
 (async function boot() {
