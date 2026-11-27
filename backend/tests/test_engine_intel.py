@@ -100,6 +100,9 @@ def test_pypi_fallback_when_osv_unreachable(online, monkeypatch, tmp_path):
         {"id": "PYSEC-2026-1", "aliases": ["CVE-2026-2222"], "details": "### Summary\n\nRemote code execution in **oldlib** parser.",
          "fixed_in": ["1.2", "1.1"], "withdrawn": None}]}
     monkeypatch.setattr(vulndb, "OSV_URL", "http://127.0.0.1:9")                              # closed port
+    # This test verifies PyPI fallback semantics only. Keep NVD/EPSS/KEV
+    # enrichment out of scope so cached intelligence cannot alter the assertion.
+    monkeypatch.setattr(vulndb, "_enrich_threat_intel", lambda pairs: pairs)
     fs = sbom.match_advisories([vulndb._c("pypi", "oldlib", "1.0", "requirements.txt", "required")], "x")
     f = fs[0]
     assert f["rule_id"] == "CVE-2026-2222" and f["fixed_version"] == "1.1"
