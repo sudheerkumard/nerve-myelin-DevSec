@@ -17,8 +17,8 @@ MAJOR for breaking changes, MINOR for new features, PATCH for fixes. Each sectio
   (constant conditions, constant `switch`, known collection contents), and algorithms read from `.properties` files
   are resolved before weak-crypto findings are raised.
 - **Complete dependency inventory.** Lock files for npm, pnpm, Yarn, Poetry, uv, PDM, Pipenv, Cargo, Go, Composer,
-  Bundler, NuGet, Hex, Dart and CocoaPods; transitive resolution for Maven, Gradle, NuGet and npm projects without a
-  lock file; Grype as a second advisory scanner beside OSV and Trivy.
+  Bundler, NuGet, Hex, Dart and CocoaPods; transitive resolution for Maven, Gradle and NuGet, and for npm projects without a lock file where
+  npm is installed (CLI on a developer machine or CI runner); Grype as a second advisory scanner beside OSV and Trivy.
 - **Richer vulnerability intelligence.** NVD CVSS, EPSS percentile, CISA KEV and SSVC, exploit and patch references,
   and verified (manifest and checksum) offline OSV bundles for air-gapped sites.
 - **Secrets without the noise.** One finding per leaked credential with every file, line and commit listed; secrets
@@ -34,7 +34,6 @@ MAJOR for breaking changes, MINOR for new features, PATCH for fixes. Each sectio
   tokens, `Cipher.getInstance("AES")` default mode, LDAP and XPath injection with fully qualified types.
 - `myelin gate --results scan.json --require sast,sca,secrets` blocks when a required area is missing or partial.
 - CSV export columns `how_to_fix`, `mitigation_steps`, `how_to_verify`, `reference`, `occurrences`, `other_locations`.
-- Node.js and npm in the API and CLI images, used to resolve npm dependency trees without running package scripts.
 
 ### Fixed
 - Offline OSV exports: a leftover loader made every offline scan fail; the download test could fill the disk.

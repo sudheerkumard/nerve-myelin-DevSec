@@ -14,9 +14,6 @@ ARG PY_BASE=python:3.12-slim
 ARG TRIVY_IMAGE=aquasec/trivy:0.76.2
 ARG GRYPE_IMAGE=anchore/grype:v0.122.1
 
-# Node.js + npm (MIT/Artistic-2.0): resolves the dependency tree of npm projects without a lock file
-# (npm install --package-lock-only --ignore-scripts; no package code runs)
-FROM node:22-bookworm-slim AS node
 FROM ${TRIVY_IMAGE} AS trivy
 FROM ${GRYPE_IMAGE} AS grype
 # Gitleaks (MIT) built from its release tag with a current Go toolchain and patched golang.org/x modules: the upstream
@@ -104,9 +101,6 @@ COPY --from=grype /grype /usr/local/bin/grype
 COPY --from=gitleaks /usr/bin/gitleaks /usr/local/bin/gitleaks
 COPY --from=scanners /usr/local/bin/opengrep /usr/local/bin/opengrep
 COPY --from=scanners /opt/checkov /opt/checkov
-COPY --from=node /usr/local/bin/node /usr/local/bin/node
-COPY --from=node /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/npm
-RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && node --version >/dev/null
 RUN ln -s /opt/checkov/bin/checkov /usr/local/bin/checkov \
  && trivy --version >/dev/null && grype version >/dev/null && gitleaks version >/dev/null && checkov --version >/dev/null
 WORKDIR /opt/myelin
