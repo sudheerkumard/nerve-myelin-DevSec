@@ -526,7 +526,7 @@ def _severity_of(v: dict):
     if score is None and label:
         score = {"CRITICAL": 9.5, "HIGH": 8.0, "MODERATE": 5.5, "MEDIUM": 5.5, "LOW": 3.0}.get(label)
     if score is None:
-        return None, "medium"
+        return None, "unknown"
     return score, "critical" if score >= 9 else "high" if score >= 7 else "medium" if score >= 4 else "low"
 
 
@@ -671,7 +671,7 @@ def _offline_osv(comps):
     return out
 
 
-def download_exports(dest: str, ecosystems=("PyPI", "npm", "Maven", "Go", "crates.io", "NuGet", "RubyGems", "Packagist")) -> list[str]:
+def download_exports(dest: str, ecosystems=tuple(OSV_ECO.values())) -> list[str]:
     """On a connected host: fetch the OSV ecosystem exports (all.zip) into dest for transfer to an air-gapped site."""
     os.makedirs(dest, exist_ok=True)
     got = []
@@ -708,7 +708,10 @@ def vulnerabilities(comps: list[dict]) -> list[tuple[dict, dict]]:
         if found is None:
             STATUS["errors"].add("offline: no OSV export configured")
             return []
-        return _normalise([(comps[i], v) for i, docs in found.items() for v in docs])
+        normalised = _normalise([(comps[i], v) for i, docs in found.items() for v in docs])
+        # Offline mode uses only locally cached enrichment; _http_json never reaches the network offline.
+        normalised = _enrich_threat_intel(normalised)
+        return normalised
 
     found = _osv(comps)
     pairs = []
