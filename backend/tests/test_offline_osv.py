@@ -120,7 +120,6 @@ def test_download_exports_writes_valid_json_manifest(tmp_path, monkeypatch):
         def __exit__(self, *args): return False
         def read(self, n=-1): return b"test archive"
     monkeypatch.setattr(vulndb.urllib.request, "urlopen", lambda *a, **k: Response())
-    monkeypatch.setattr(vulndb.zipfile, "ZipFile", lambda *a, **k: None, raising=False)
     vulndb.download_exports(str(tmp_path), ecosystems=("npm",))
     manifest = json.loads((tmp_path / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["archives"][0]["ecosystem"] == "npm"
