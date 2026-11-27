@@ -200,7 +200,7 @@ def match_advisories(comps: list[dict], repo: str = "local", reachable_hint: set
             "fixed_version": v["fixed"], "file": c["file"], "repo": repo, "ecosystem": c["ecosystem"], "purl": c["purl"],
             "reachable": _reach(c["via"] or c["name"], reachable_hint), "exposure": "internet",
             "dependency_type": _dep_type(c), "introduced_by": c.get("via"), "autofix": bool(v["fixed"]),
-            "evidence": f"{c['name']} {c['version']}{via} · advisory {v['id']}" + ("" if v["severity_known"] else " · severity not published, rated medium"),
+            "evidence": f"{c['name']} {c['version']}{via} · advisory {v['id']}" + ("" if v["severity_known"] else " · severity not published; severity unknown"),
             "remediation": (f"Upgrade {c['name']} to {v['fixed']} or later" + (f" (it comes in through {c['via']}: upgrade {c['via']} to a release that allows it)" if c.get("via") else "") + ".")
             if v["fixed"] else f"No fixed release published for {c['name']}; assess exposure, apply the advisory's workaround or replace the component.",
         })
