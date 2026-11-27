@@ -627,7 +627,7 @@ def _export_index():
         actual = {fn for fn in os.listdir(d) if fn.endswith(".zip")}
         if actual != declared:
             raise ValueError("OSV export archive set does not match manifest")
-        signature = hashlib.sha256(json.dumps(sorted(rows)).encode()).hexdigest()
+        signature = hashlib.sha256((os.path.realpath(d) + json.dumps(sorted(rows))).encode()).hexdigest()
         if _EXPORT["signature"] == signature and _EXPORT["index"] is not None:
             return _EXPORT["index"]
         idx = {}
