@@ -217,6 +217,10 @@ def test_gcp_service_account_key_is_exchanged_for_a_token(tmp_path, monkeypatch)
 def test_rescan_closes_fixed_findings_and_reopens_regressions(monkeypatch):
     """A finding that disappears is closed; one that comes back is reopened; a false-positive mark sticks."""
     from app.main import DEMO
+    from myelin_engine import vulndb
+
+    # Simulate a complete offline feed; the scan still combines it with the bundled advisories.
+    monkeypatch.setattr(vulndb, "_offline_osv", lambda comps: {})
     archives = {"v1": _archive(top="acme-svc-1111111"), "v2": None}
     import tempfile
     tmp = tempfile.mkdtemp()
@@ -233,6 +237,11 @@ def test_rescan_closes_fixed_findings_and_reopens_regressions(monkeypatch):
     fp = next(f for f in first if f["engine"] == "sast")
     assert c.post(f"/api/findings/{fp['id']}/status", json={"status": "suppressed", "reason": "false positive: test fixture"}, headers=H).status_code == 200
     current["a"] = archives["v2"]                                                                # vulnerable code removed
+    with monkeypatch.context() as incomplete:
+        incomplete.setattr(vulndb, "_offline_osv", lambda comps: None)
+        rescan = c.post(f"/api/v1/repos/sources/{s['id']}/scan?wait=true", headers=H).json()
+        assert "sca" in rescan["summary"]["partial"]
+        assert any(f["status"] == "open" and f["engine"] == "sca" for f in mine())
     c.post(f"/api/v1/repos/sources/{s['id']}/scan?wait=true", headers=H)
     after = {f["fingerprint"]: f for f in mine()}
     assert all(f["status"] in ("fixed", "suppressed") for f in after.values())

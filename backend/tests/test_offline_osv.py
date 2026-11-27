@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
 """Air-gapped scans match components against OSV ecosystem exports on disk."""
 import hashlib
+import io
 import datetime
 import json
 import os
@@ -90,12 +91,13 @@ def test_offline_export_cache_invalidates_when_archive_changes(tmp_path, monkeyp
         z.writestr("empty.json", json.dumps({"id": "GHSA-empty", "affected": []}))
     manifest_path = os.path.join(export_dir, "manifest.json")
     manifest = json.loads(open(manifest_path, encoding="utf-8").read())
-    manifest["archives"][0]["sha256"] = hashlib.sha256(open(archive, "rb").read()).hexdigest()
-    manifest["archives"][0]["size_bytes"] = os.path.getsize(archive)
+    npm = next(entry for entry in manifest["archives"] if entry["ecosystem"] == "npm")
+    npm["sha256"] = hashlib.sha256(open(archive, "rb").read()).hexdigest()
+    npm["size_bytes"] = os.path.getsize(archive)
     with open(manifest_path, "w", encoding="utf-8") as fh:
         json.dump(manifest, fh)
     second = vulndb._export_index()
-    assert second == {}
+    assert set(second) == {("pypi", "pyyaml")}
 
 
 
@@ -138,11 +140,7 @@ def test_offline_export_rejects_invalid_max_age_policy(tmp_path, monkeypatch):
 
 
 def test_download_exports_writes_valid_json_manifest(tmp_path, monkeypatch):
-    class Response:
-        def __enter__(self): return self
-        def __exit__(self, *args): return False
-        def read(self, n=-1): return b"test archive"
-    monkeypatch.setattr(vulndb.urllib.request, "urlopen", lambda *a, **k: Response())
+    monkeypatch.setattr(vulndb.urllib.request, "urlopen", lambda *a, **k: io.BytesIO(b"test archive"))
     vulndb.download_exports(str(tmp_path), ecosystems=("npm",))
     manifest = json.loads((tmp_path / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["archives"][0]["ecosystem"] == "npm"

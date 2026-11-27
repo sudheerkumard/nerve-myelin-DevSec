@@ -254,28 +254,47 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
     dast = kind == "dast"
     now = now or datetime.now(timezone.utc)
     when = now.strftime("%d %B %Y")
-    fs_all = [f for f in result.get("findings", []) if f.get("engine") != "meta"]
+    scan_date = when
+    if result.get("started_at"):
+        try:
+            scan_date = datetime.fromisoformat(result["started_at"]).strftime("%d %B %Y")
+        except (TypeError, ValueError):
+            pass
+    cov = result.get("coverage") or {}
+    recorded_findings = [f for f in result.get("findings", []) if f.get("engine") != "meta"]
+    if dast:
+        engines_run = ["dast"] if result.get("requests") or recorded_findings else []
+    elif "coverage" in result:
+        engines_run = [k for k, c in cov.items() if c.get("assessed")]
+    else:                                       # older reports: findings are the only proof of assessment
+        engines_run = sorted({f["engine"] for f in recorded_findings if f.get("engine")})
+    fs_all = [f for f in recorded_findings if f.get("engine") in engines_run]
     fs = [f for f in fs_all if f.get("status", "open") not in ("suppressed", "fixed", "risk_accepted", "accepted", "false_positive")]
     excluded = len(fs_all) - len(fs)
     fs.sort(key=lambda f: (SEV.index(f.get("severity", "info")) if f.get("severity") in SEV else 9, -float(f.get("mrs") or 0)))
     sev = Counter(f.get("severity", "info") for f in fs)
     by_eng = Counter(f.get("engine") for f in fs)
-    comps = (result.get("sbom") or {}).get("components") or []
-    cov = {} if dast else (result.get("coverage") or {})
-    if dast:
-        engines_run = ["dast"]
-    elif cov:                                   # what the scan actually examined (engine coverage record)
-        engines_run = [k for k, c in cov.items() if c.get("assessed")]
-    else:                                       # scans recorded before coverage existed
-        engines_run = list(result.get("engines") or sorted({f.get("engine") for f in fs_all if f.get("engine")}))
+    comps = ((result.get("sbom") or {}).get("components") or []) if {"sca", "license", "supply"} & set(engines_run) else []
+    failed_tools = sorted({f["rule_id"].split(":", 1)[1] for f in result.get("findings", [])
+                           if f.get("engine") == "meta" and str(f.get("rule_id", "")).startswith("tool-error:")}
+                          | {t["name"] for c in cov.values() for t in c.get("tools") or [] if t.get("error")})
+    zap = (result.get("stats") or {}).get("zap") or {}
+    partial = {k for k in engines_run if cov.get(k, {}).get("status") == "partial"}
+    if dast and zap.get("complete") is False:
+        partial.update(engines_run)
+    incomplete = bool(partial or failed_tools or not engines_run)
+    empty_findings = ('<p class="muted">No open findings were recorded. Coverage is incomplete.</p>' if incomplete
+                      else '<p class="clear">✓ No open findings.</p>')
     # Only controls an assessed area tests are reported; frameworks with none are left out
     matrix = []
-    for m in FW.matrix(fs, engines_run):
+    for m in FW.matrix(fs, [k for k in engines_run if k not in partial and k != "dast"]):
         m["controls"] = [c for c in m["controls"] if c["status"] != "not_tested"]
         m["not_tested"] = 0
-        if m["controls"] or m["id"] == "cwe25":
+        if m["controls"]:
             matrix.append(m)
     risk, rcol, rink, rtext = _risk(fs)
+    if not fs and incomplete:
+        risk, rcol, rink, rtext = "Undetermined", "#766336", "#fff", "Coverage is incomplete."
     d = result.get("decision") or {}
     repo = result.get("repo") or (result.get("name") if dast else None) or ("application" if dast else "repository")
     src = source_url or result.get("target") or result.get("path") or ""
@@ -305,7 +324,9 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
         keymsgs.append(f'<b>{by_eng["secrets"]}</b> secret(s) were found in source; they must be revoked and rotated, not only deleted.')
     if gaps_fw:
         keymsgs.append("Gaps were identified against " + ", ".join(f'<b>{_e(m["name"])}</b>' for m in gaps_fw[:5]) + ".")
-    if not fs:
+    if incomplete:
+        keymsgs.append("Coverage is incomplete. Findings and risk ratings reflect the checks that returned results.")
+    elif not fs:
         keymsgs.append("No open weaknesses were identified across the assessed areas.")
     if d.get("decision"):
         keymsgs.append(f'Release gate ({_e(d.get("policy") or "default policy")}): <b>{_e(str(d["decision"]).upper())}</b>'
@@ -372,7 +393,7 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
             continue
         sec_no += 1
         cards = []
-        for f in items[:300]:
+        for f in items:
             meta = []
             vid = vuln_id(f) if k == "sca" else ""
             if vid:
@@ -396,6 +417,11 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
             ev = "" if external or not f.get("evidence") else f'<div class="ev"><b>Evidence</b><code>{_e(str(f["evidence"])[:500])}</code></div>'
             fix = f.get("remediation") or (f'Upgrade to {f["fixed_version"]} or later.' if f.get("fixed_version") else "")
             fix = fix.replace("NERvvE DevSecOps AutoFix can open a PR with the upgrade and lockfile refresh.", "").strip()
+            endpoints = f.get("affected_endpoints") or []
+            if k == "dast" and f.get("instances"):
+                meta.append(f'<span><i>Instances</i> {_e(f["instances"])}</span>')
+            affected = (f'<div class="ev"><b>Affected endpoints</b><code>{_e(", ".join(endpoints))}</code></div>'
+                        if endpoints and not external else "")
             cards.append(
                 f'<div class="card" id="{_e(f.get("id"))}"><div class="card-h">{_sevchip(f.get("severity"))}'
                 f'<b>{_e(f.get("title"))}</b><span class="rid mono">{_e(f.get("id"))}</span></div>'
@@ -403,10 +429,9 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
                 f'<span><i>Risk score</i> {_e(f.get("mrs"))}</span><span><i>Rule</i> {_e(f.get("rule_id"))}</span>'
                 f'<span><i>Location</i> <span class="mono">{_e(_loc(f, external))}</span>'
                 f'{"" if external or not str(f.get("code_url", "")).startswith("https://") else " " + chr(183) + " <a class=ext href=" + chr(34) + _e(f["code_url"]) + chr(34) + " target=_blank rel=noopener>open in source</a>"}</span>{"".join(meta)}</div>'
-                f'{ev}{f"<div class=fix><b>Remediation</b> {_e(fix)}</div>" if fix else ""}'
+                f'{ev}{affected}{f"<div class=fix><b>Remediation</b> {_e(fix)}</div>" if fix else ""}'
                 f'{f"<div class=fws>{fwt}</div>" if fwt else ""}</div>')
-        more = f'<p class="muted">{len(items) - 300} further findings in this area are listed in the NERvvE DevSecOps console.</p>' if len(items) > 300 else ""
-        body = "".join(cards) + more if items else '<p class="clear">✓ No open findings in this area.</p>'
+        body = "".join(cards) if items else (empty_findings if k in partial else '<p class="clear">✓ No open findings in this area.</p>')
         det.append(f'<h3 id="d-{k}">8.{sec_no} {_e(name)} <span class="cnt">{len(items)}</span></h3><p class="muted">{_e(what)}</p>{body}')
 
     # ------------------------------------------------------------ SBOM
@@ -465,7 +490,8 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
         c = cov.get(k) or {}
         detail = " · ".join(x for x in (c.get("examined"), c.get("depth")) if x) or w
         eng_cov += (f'<tr><td><a href="#d-{k}"><b>{_e(n)}</b></a><div class="muted">{_e(detail)}</div>'
-                    + (f'<div class="muted">Not covered: {_e(", ".join(c["not_covered"]))}</div>' if c.get("not_covered") else "")
+                    + ('<div class="muted">Partial coverage</div>' if k in partial else "")
+                    + "".join(f'<div class="muted">{_e(note)}</div>' for note in c.get("limitations", []))
                     + f'</td><td>{_tools(c) if c else "<span class=muted>—</span>"}</td><td class="num">{by_eng[k]}</td></tr>')
     if not dast and comps:
         eng_cov += (f'<tr><td><a href="#sbom"><b>Software bill of materials (SBOM)</b></a><div class="muted">Inventory of every third-party component '
@@ -484,39 +510,47 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
         f'<p class="lede">{len(comps)} third-party components were inventoried, including transitive dependencies. '
         f'The machine-readable CycloneDX 1.5 SBOM is available from the NERvvE DevSecOps console.</p>{sbom_body}</section>')
     if dast:
-        result.get("auth_checks") or {}
+        stats = result.get("stats") or {}
         idents = result.get("identities") or []
-        safe = "safe" in str(result.get("mode") or "safe")
+        tools_run = result.get("tools") or []
         scope_rows = (f'<tr><th>Target</th><td class="mono">{_e(src)}</td></tr>'
-                      f'<tr><th>API specification</th><td>{result.get("spec_operations", 0)} operations</td></tr>'
-                      f'<tr><th>Test identities</th><td>{_e(", ".join(map(str, idents)) or "single identity / anonymous")}</td></tr>'
-                      f'<tr><th>Assessment date</th><td>{when} (automated, {_e(result.get("duration_s"))} s, {_e(result.get("requests", 0))} requests)</td></tr>')
-        method_rows = [
-            ("Approach", "Automated dynamic testing of the running service from the outside, as real users: transport security, security headers, "
-                         "authentication enforcement and, with several test identities, object-, property- and function-level authorisation."),
-            ("Safety", "Read-only: GET, HEAD and OPTIONS requests only (the ZAP spider does not submit forms); no data was created, changed or "
-                       "deleted. Requests were locked to the target host."
-                       if safe else "Includes active testing; attack payloads were sent to the target with the owner's authorisation."),
-            ("Ownership", "Testing ran only after the target's owner proved control of the host (verification file)."),
-            *([("OWASP ZAP", f'OWASP ZAP {_e((result.get("stats") or {}).get("zap", {}).get("version", ""))}: the spider explored '
-                             f'{(result.get("stats") or {}).get("zap", {}).get("urls", 0)} URLs and every response was analysed by the passive scanner'
-                             + ("; the active scanner then sent attack payloads with the owner's authorisation." if (result.get("stats") or {}).get("zap", {}).get("mode") == "active" else "."))]
-              if "zap" in (result.get("tools") or []) else []),
+                      + (f'<tr><th>API specification</th><td>{_e(result["spec_operations"])} operations</td></tr>' if result.get("spec_operations") else "")
+                      + (f'<tr><th>Test identities</th><td>{_e(", ".join(map(str, idents)))}</td></tr>' if idents else "")
+                      + f'<tr><th>Assessment date</th><td>{scan_date} (automated, {_e(result.get("duration_s"))} s, '
+                        f'{_e(result.get("requests", 0))} requests)</td></tr>')
+        method_rows = [("Approach", "Automated dynamic testing of the running service.")]
+        if "myelin-dast" in tools_run:
+            method_rows.append(("Baseline checks", "Transport and response checks."))
+        if stats.get("baseline_auth_checks"):
+            method_rows.append(("Authentication checks", str(stats["baseline_auth_checks"])))
+        if "myelin-authz" in tools_run:
+            method_rows.append(("Authorisation", "Multi-user checks with the configured test identities."))
+        if "myelin-crawler" in tools_run:
+            method_rows.append(("Crawler", f'{stats.get("crawled_endpoints", 0)} endpoints discovered.'))
+        if "myelin-active" in tools_run:
+            method_rows.append(("Active checks", "Built-in active checks were enabled for this run."))
+        if zap:
+            detail = f'OWASP ZAP {zap.get("version", "")}: {zap.get("urls", 0)} URLs discovered, {zap.get("mode", "unknown")} mode.'
+            if zap.get("complete") is False:
+                detail += " ZAP did not complete. Results cover only the work it returned."
+            method_rows.append(("OWASP ZAP", detail))
+        elif "zap" in tools_run:
+            method_rows.append(("OWASP ZAP", "ZAP results were collected. Completion details are unavailable."))
+        method_rows += [
             ("Prioritisation", "NERvvE DevSecOps Risk Score (0–100) combines severity, exploitability, exposure and asset criticality; it sets the priority (P0–P3)."),
             ("Limitations", "Automated testing does not replace manual penetration testing of business logic, chained attacks or write operations. "
                             "Results reflect the state of the service at the time of testing."),
         ]
     else:
         scope_rows = (f'<tr><th>Repository</th><td class="mono">{_e(src)}</td></tr>'
-                      f'<tr><th>Snapshot</th><td>{_e(result.get("branch") or "default branch")}{", commit " + _e(commit) if commit else ""}. '
-                      f'The source was retrieved read-only for the duration of the scan and was not retained.</td></tr>'
-                      f'<tr><th>Assessment date</th><td>{when} (automated, {_e(result.get("duration_s"))} s)</td></tr>'
+                      + (f'<tr><th>Snapshot</th><td>{_e(result.get("branch") or "")}{", " if result.get("branch") and commit else ""}'
+                         f'{"commit " + _e(commit) if commit else ""}</td></tr>' if result.get("branch") or commit else "")
+                      + f'<tr><th>Assessment date</th><td>{scan_date} (automated, {_e(result.get("duration_s"))} s)</td></tr>'
                       + (f'<tr><th>Components inventoried</th><td>{len(comps)} ({dep.get("direct", 0)} direct, {dep.get("transitive", 0)} transitive)</td></tr>'
                          if comps else ""))
         area_names = [names[k][0] for k in [k for k, *_ in ENGINES if k in engines_run]]
-        versions = result.get("tool_versions") or {}
-        tool_list = ["NERvvE DevSecOps built-in rules"] + [f"{t} {versions.get(t, '')}".strip() for t in (result.get("tools") or [])
-                                                            if t != "myelin-builtin"]
+        tool_list = sorted({f'{t["name"]} {t.get("version", "")}'.strip() for k in engines_run
+                            for t in cov.get(k, {}).get("tools", []) if not t.get("error")})
         depth = []
         for k in engines_run:
             c = cov.get(k) or {}
@@ -525,18 +559,17 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
         method_rows = [
             ("Approach", "Automated static assessment of the repository snapshot. Areas examined: " + (", ".join(area_names) or "none")
                          + ". No code was executed and no live system was tested."),
-            ("Analysis engines", ", ".join(tool_list)),
+            *([("Analysis engines", ", ".join(tool_list))] if tool_list else []),
         ]
         if depth:
             method_rows.append(("Depth of analysis", " ".join(depth)))
         if "sca" in engines_run:
-            method_rows.append(("Vulnerability intelligence", f'{srcs}{" — offline mode (bundled data)" if intel.get("offline") else ""}. CVSS v3 base scores; '
+            method_rows.append(("Vulnerability intelligence", f'{srcs}{" — offline mode" if intel.get("offline") else ""}. CVSS v3 base scores; '
                                                              f'EPSS exploit probability; CISA KEV catalogue.'
                                                              + (f' Unavailable during this scan: {", ".join(intel["errors"])}.' if intel.get("errors") else "")))
-        failed = sorted({t["name"] for c in cov.values() for t in c.get("tools") or [] if t.get("error")})
-        if failed:
-            method_rows.append(("Tool errors", "These tools did not complete and their results are missing from this report: " + ", ".join(failed)
-                                + ". The areas they serve were assessed by the remaining engines only."))
+        if failed_tools:
+            method_rows.append(("Tool errors", "These tools did not complete: " + ", ".join(failed_tools)
+                                + ". Any findings they returned are included."))
         method_rows += [
             ("Prioritisation", "NERvvE DevSecOps Risk Score (0–100) combines severity, exploit likelihood, known exploitation, reachability from "
                                "first-party code, exposure and asset criticality. The score sets the priority (P0–P3) and the remediation target."),
@@ -563,13 +596,12 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
     toc = [t for t in toc if (t[2] != "cve" or has_cve) and (t[2] != "sbom" or has_sbom)]
     toc = [((no_cve if t[2] == "cve" else no_sbom if t[2] == "sbom" else no_method), t[1], t[2])
            if t[2] in ("cve", "sbom", "method") else t for t in toc]
-    subtitle = ("Live application and API security assessment — transport, authentication and multi-user authorisation" if dast
-                else "Source code, open-source supply chain, infrastructure and CI/CD pipeline security assessment")
-    lede_tail = (f'{result.get("requests", 0)} requests to the running service' if dast else f'{len(comps)} third-party components')
+    subtitle = "Live application security assessment" if dast else "Repository security assessment"
+    lede_tail = (f' and {result["requests"]} requests recorded by the built-in scanner' if dast and result.get("requests")
+                 else f' and {len(comps)} third-party components inventoried' if comps else "")
     target_label, snap_label = ("Target", "Identities") if dast else ("Repository", "Snapshot")
-    snap_value = (", ".join(map(str, result.get("identities") or [])) or "anonymous") if dast else \
-        f'{result.get("branch") or "default branch"}{" @ " + commit[:12] if commit else ""}'
-
+    snap_value = ", ".join(map(str, result.get("identities") or [])) if dast else (
+        f'{result.get("branch") or ""}{" @ " if commit and result.get("branch") else ""}{commit[:12]}')
     n_areas = len([k for k, *_ in ENGINES if k in engines_run])
     ch = sev["critical"] + sev["high"]
     fw_gap_total = sum(m["gaps"] for m in matrix if m["id"] != "cwe25")
@@ -577,8 +609,9 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
     kpi_html = _kpis([
         ("Open findings", len(fs), f"across {n_areas} area{'' if n_areas == 1 else 's'}", "#0b2a4a"),
         ("Critical & high", ch, f"{len(pri.get('P0', [])) + len(pri.get('P1', []))} due within 7 days", "#d03b3b" if ch else "#0ca30c"),
-        (("Requests sent" if dast else "Distinct CVEs"), (result.get("requests", 0) if dast else len(cves)),
-         ("read-only" if dast else (f"{kev} known exploited" if kev else f"{len(comps)} components")), "#2a78d6"),
+        *([("Requests recorded", result.get("requests", 0), "built-in scanner", "#2a78d6")] if dast and engines_run else []),
+        *([("Distinct CVEs", len(cves), f"{kev} known exploited" if kev else f"{len(comps)} components", "#2a78d6")]
+          if "sca" in engines_run else []),
         ("Control gaps", fw_gap_total, f"of {fw_ctl_total} mapped controls", "#ec835a" if fw_gap_total else "#0ca30c"),
     ])
     "".join(f'<div class="tile"><b>{sev[s]}</b><span>{_sevchip(s)}</span></div>' for s in ["critical", "high", "medium", "low"])
@@ -715,7 +748,7 @@ a{{color:#1c5cab}}
     <div><i>Report date</i><b>{when}</b></div>
     <div><i>Report reference</i><b class="mono">{rid}</b></div>
     <div><i>{target_label}</i><b>{_e(src)}</b></div>
-    <div><i>{snap_label}</i><b>{_e(snap_value)}</b></div>
+    {f'<div><i>{snap_label}</i><b>{_e(snap_value)}</b></div>' if snap_value else ""}
   </div>
   <div class="cls"><span>{footer_class} · {_e("External edition" if external else "Internal edition")}</span><span>{_e(PRODUCT)} · {SITE}</span></div>
 </div>
@@ -738,16 +771,16 @@ a{{color:#1c5cab}}
 </section>
 
 <section id="exec" class="pb"><h2><span class="no">2</span>Executive summary</h2>
-<p class="lede">An automated assessment of <b>{_e(repo)}</b> was performed on {when} across {n_areas} security area{"" if n_areas == 1 else "s"} and {lede_tail}.</p>
+<p class="lede">An automated assessment of <b>{_e(repo)}</b> was performed on {scan_date} across {n_areas} security area{"" if n_areas == 1 else "s"}{lede_tail}.</p>
 <div class="hero">
   <div class="riskbox" style="background:{rcol};color:{rink}"><i>Overall risk rating</i><b>{risk}</b><div style="font-size:12px">{_e(rtext)}</div></div>
   <div><h4 style="margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink2)">Key messages</h4><ul class="msgs">{"".join(f"<li>{m}</li>" for m in keymsgs)}</ul></div>
 </div>
 {kpi_html}
-<div class="box" style="margin-bottom:16px"><h4>Severity mix of open findings</h4>{_sev_strip(sev, len(fs))}</div>
+<div class="box" style="margin-bottom:16px"><h4>Severity mix of open findings</h4>{_sev_strip(sev, len(fs)) if fs else empty_findings}</div>
 <div class="dash">
-  <div class="box"><h4>Open findings by area and severity</h4>{_area_stack(fs, [(k, n) for k, n, _ in ENGINES if k in engines_run])}</div>
-  <div class="box"><h4>Risk score distribution</h4>{_hist(fs) or '<p class="clear">✓ No open findings.</p>'}</div>
+  <div class="box"><h4>Open findings by area and severity</h4>{_area_stack(fs, [(k, n) for k, n, _ in ENGINES if k in engines_run]) if fs else empty_findings}</div>
+  <div class="box"><h4>Risk score distribution</h4>{_hist(fs) or empty_findings}</div>
 </div>
 <h3>Control coverage heat map</h3>
 <p class="muted" style="margin:-4px 0 10px">Each square is one control of the framework; hover in the HTML edition for its name.</p>
@@ -766,7 +799,7 @@ a{{color:#1c5cab}}
 
 <section id="top"><h2><span class="no">4</span>Top risks</h2>
 <p class="lede">The ten findings with the highest NERvvE DevSecOps Risk Score — fix these first.</p>
-{f'<table><thead><tr><th class="num">#</th><th>Finding</th><th>Severity</th><th class="num">Priority</th><th style="text-align:right">Risk score</th><th>Reference</th></tr></thead><tbody>{top_rows}</tbody></table>' if top else '<p class="clear">✓ No open findings.</p>'}
+{f'<table><thead><tr><th class="num">#</th><th>Finding</th><th>Severity</th><th class="num">Priority</th><th style="text-align:right">Risk score</th><th>Reference</th></tr></thead><tbody>{top_rows}</tbody></table>' if top else empty_findings}
 </section>
 
 <section id="areas"><h2><span class="no">5</span>Risk by area</h2>
@@ -779,7 +812,7 @@ a{{color:#1c5cab}}
 <section id="fw" class="pb"><h2><span class="no">6</span>Framework &amp; compliance alignment</h2>
 <p class="lede">Each finding is mapped to the controls it bears on. A control is shown as a <b>gap</b> when critical or high-severity findings are open against it,
 an <b>observation</b> when only medium or low findings are open, and <b>no issues found</b> when an assessed area tests for it and found nothing.
-Only controls tested by the areas assessed in this scan are listed.</p>
+The table lists controls mapped to recorded findings or checks from completed scan areas.</p>
 <div class="note">Automated evidence supports — but does not by itself establish — compliance with a standard. Controls that depend on process, people or
 physical security are outside the scope of this assessment.</div>
 <h3>6.1 Summary</h3>
@@ -822,7 +855,7 @@ physical security are outside the scope of this assessment.</div>
 </section>
 
 <section id="att" class="pb"><h2><span class="no">B</span>Attestation &amp; disclaimer</h2>
-<p>This report records the results of an automated security assessment of the {"application identified" if dast else "repository snapshot identified"} in section 3, performed on {when}{" for " + _e(customer) if customer else ""} using {_e(PRODUCT)}.
+<p>This report records the results of an automated security assessment of the {"application identified" if dast else "repository snapshot identified"} in section 3, performed on {scan_date}{" for " + _e(customer) if customer else ""} using {_e(PRODUCT)}.
 The findings reflect {"the state of the service at the time of testing" if dast else "the state of the code at that commit"} only.</p>
 <p>The assessment is a point-in-time evaluation and is not a guarantee that the software is free of vulnerabilities. Framework mappings indicate where automated evidence
 bears on a control; they do not constitute a certification or an auditor's opinion.</p>

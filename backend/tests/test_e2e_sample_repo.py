@@ -176,7 +176,8 @@ def test_09_gates(world):
     new = c.get("/api/v1/gate", headers=H, params={"repo": REPO, "commit": "1111111aaa", "scope": "new"}).json()
     assert new["new_findings"] > 0                       # the first scan introduces everything
     cov = c.get("/api/v1/gate", headers=H, params={"repo": REPO, "commit": "1111111aaa", "require": "sast,sca,dast"}).json()
-    assert cov["decision"] == "block" and cov["missing_engines"] == ["dast"]
+    # A bundled advisory pack is assessed but partial; the coverage gate must not count it as complete.
+    assert cov["decision"] == "block" and {"sca", "dast"} <= set(cov["missing_engines"])
     assert c.get("/api/v1/gate", headers=H, params={"repo": REPO, "commit": "9999999"}).status_code == 404   # unscanned fails closed
 
 

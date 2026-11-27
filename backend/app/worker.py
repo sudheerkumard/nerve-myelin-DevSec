@@ -68,7 +68,7 @@ def main() -> int:
                     continue
                 claimed = True
                 source = str(job.get("source") or "").upper()
-                if job.get("kind") != "advisory_sync" or source not in {"OSV", "KEV", "EPSS", "NVD", "GITHUB"}:
+                if job.get("kind") != "advisory_sync" or source not in platform.advisory_feeds.SOURCES:
                     store.update_import_job(job["id"], "failed", error="unsupported worker job kind or source")
                     log.error("rejected unsupported job id=%s kind=%s source=%s",
                               job.get("id"), job.get("kind"), source)
@@ -83,7 +83,7 @@ def main() -> int:
                     job["id"], source, tenant_id,
                     targets if source == "OSV" else [],
                     targets if source != "OSV" else [],
-                    job.get("requested_by") or "myelin-worker",
+                    job.get("requested_by") or "myelin-worker", scope=job.get("counters"),
                 )
                 log.info("finished job id=%s", job["id"])
             except Exception:

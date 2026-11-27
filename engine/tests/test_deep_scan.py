@@ -124,3 +124,42 @@ def test_dependency_duplicates_from_osv_trivy_and_grype_preserve_all_sources(tmp
     primary = next(f for f in out if f["rule_id"] == "GHSA-aaaa")
     assert primary["scanner_sources"] == ["grype", "trivy"]
     assert any(f["rule_id"] == "CVE-2024-9" for f in out)
+
+
+def test_bandit_preserves_different_weakness_on_same_line(tmp_path):
+    built_in = {"engine": "sast", "rule_id": "NM-SAST-005", "file": "app.py", "line": 4, "cwe": "CWE-327"}
+    distinct = dict(built_in, source_tool="bandit", rule_id="BANDIT-B605", cwe="CWE-78")
+    duplicate = dict(built_in, source_tool="bandit", rule_id="BANDIT-B324")
+    assert orchestrator._merge_duplicates(str(tmp_path), [built_in, distinct, duplicate]) == [built_in, distinct]
+
+
+def test_bandit_alone_does_not_count_as_data_flow():
+    cov = coverage.build({"languages": {"Python": 10}}, ["sast"], ["myelin-builtin", "bandit"], [], 0)
+    assert cov["sast"]["assessed"] and not cov["sast"]["complete"]
+    assert cov["sast"]["depth"] == "Pattern rules for Python"
+    assert {t["name"] for t in cov["sast"]["tools"]} == {"NERvvE pattern rules", "bandit"}
+    assert "Opengrep or Semgrep was not available" in R.render({"coverage": cov})
+
+
+def test_external_deep_scanner_requires_actual_scanned_files():
+    cov = coverage.build({"languages": {"Python": 10}}, ["sast"], ["opengrep"], [], 0,
+                         run_info={"opengrep": {"scanned_files": 0}}, deep_rules=75)
+    assert "Data-flow" not in cov["sast"]["depth"]
+    assert cov["sast"]["rules"] == 0 and cov["sast"]["status"] == "partial"
+
+
+def test_report_follows_coverage_and_keeps_all_assessed_findings():
+    findings = [{"engine": "sast", "id": f"f-{i}", "title": f"Source finding {i}", "severity": "medium"}
+                for i in range(301)]
+    findings.append({"engine": "dast", "title": "Unassessed runtime finding", "severity": "high"})
+    html = R.render({"coverage": {"sast": {"assessed": True}, "dast": {"assessed": False}}, "findings": findings,
+                     "sbom": {"components": [{"name": "inventory-only"}]}, "started_at": "2025-04-11T11:30:00+00:00"})
+    assert 'id="f-300"' in html and "11 April 2025" in html
+    assert 'id="d-dast"' not in html and "Unassessed runtime finding" not in html
+    assert 'id="cve"' not in html and 'id="sbom"' not in html
+
+
+def test_no_assessed_areas_does_not_generate_a_clean_report():
+    html = R.render({"coverage": {}, "engines": ["sast"], "findings": []})
+    assert "Undetermined" in html and "Coverage is incomplete" in html
+    assert 'id="d-sast"' not in html and "✓ No open findings" not in html

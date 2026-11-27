@@ -229,7 +229,7 @@ def test_connectors_least_privilege_and_isolation(ent):
 
 def test_readiness_and_metrics(ent):
     r = ent["c"].get("/readyz").json()
-    assert r["status"] == "ready" and r["checks"]["database"] == "ok" and r["checks"]["schema"] == "0010"
+    assert r["status"] == "ready" and r["checks"]["database"] == "ok" and r["checks"]["schema"] == "0011"
     assert "myelin_http_requests_total" in ent["c"].get("/metrics").text
     h = ent["c"].get("/api/health").headers
     assert h["x-frame-options"] == "DENY" and "max-age" in h["strict-transport-security"] and h["cache-control"] == "no-store"

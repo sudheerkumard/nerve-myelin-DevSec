@@ -18,6 +18,7 @@ import uuid
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from typing import Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -31,7 +32,7 @@ sys.path.insert(0, os.path.join(ROOT, "engine"))
 from myelin_engine import __version__, orchestrator, policy as pol  # noqa: E402
 from myelin_engine.scoring import enrich  # noqa: E402
 
-from . import plans, seed  # noqa: E402
+from . import advisory_feeds, plans, seed  # noqa: E402
 from .auth.rbac import ROLES, Principal  # noqa: E402
 from .auth.service import demo_principal  # noqa: E402
 from .config import settings  # noqa: E402
@@ -1516,7 +1517,8 @@ class ScanUpload(BaseModel):
     commit: str = Field("", max_length=64)
     findings: list[dict] = Field(max_length=50000)
     sbom: dict | None = None
-    engines: list[str] | None = Field(default=None, max_length=20)   # engines that ran: lets the platform close fixed findings
+    engines: list[str] | None = Field(default=None, max_length=20)   # engines with completed coverage
+    reconcile_engines: list[str] | None = Field(default=None, max_length=20)  # includes areas with confirmed removed inputs
     stats: dict | None = None                                         # {"raw", "after_dedup", "reported"} from the CLI
 
 
@@ -1528,8 +1530,11 @@ def upload_scan(body: ScanUpload, c: Ctx = Depends(ctx("scans:write"))):
         f.setdefault("first_seen", datetime.now(timezone.utc).isoformat())
         f.setdefault("age_days", 0)
         f["repo"] = body.repo
-    decision = pol.evaluate(fs, _effective_policy(c.store, repo=body.repo))
+    errors = [enrich(dict(f)) for f in body.findings
+              if f.get("engine") == "meta" and f.get("scanner_status") == "required_error"]
+    decision = pol.evaluate(fs + errors, _effective_policy(c.store, repo=body.repo))
     sid, new = c.store.add_scan(body.repo, body.branch, body.commit, fs, body.sbom, decision, c.p.actor, scanned_engines=body.engines,
+                                  reconcile_engines=body.reconcile_engines,
                                   stats=body.stats if isinstance(body.stats, dict) else None)
     tickets = after_scan(c.store, getattr(c.store, "last_delta", None), c.p.tenant_id)
     if not ENTERPRISE:
@@ -1627,10 +1632,11 @@ def live_scan(body: LiveScan, c: Ctx = Depends(ctx("scans:run"))):
     p = os.path.abspath(os.path.join(ROOT, body.path))
     if os.path.commonpath([p, base]) != base or not os.path.isdir(p):
         raise HTTPException(400, "path must be a directory inside the NERvvE DevSecOps workspace")
-    res = orchestrator.scan(p, repo=body.repo, criticality=1.4)
+    res = orchestrator.scan(p, repo=body.repo, criticality=1.4, advisory_lookup=c.store.advisories_for)
     decision = pol.evaluate(res["findings"], _effective_policy(c.store, repo=body.repo))
     c.store.audit_event("scan.completed", c.p.actor, f"live scan {body.repo}: {len(res['findings'])} findings, gate={decision['decision']}")
-    return {**{k: res[k] for k in ("repo", "duration_s", "tools", "components")}, "findings": res["findings"], "decision": decision}
+    return {**{k: res[k] for k in ("repo", "duration_s", "tools", "components", "coverage", "engines")},
+            "findings": res["findings"], "decision": decision}
 
 
 # ─── API keys (enterprise) ────────────────────────────────────────────────────
@@ -2293,16 +2299,21 @@ def _feed_store(tenant_id):
     return PgStore(DB_URL, tenant_id) if ENTERPRISE else DEMO
 
 
-def _run_advisory_feed_sync(job_id, source, tenant_id, purls, cves, actor):
+def _run_advisory_feed_sync(job_id, source, tenant_id, purls, cves, actor, *, scope=None):
     """Fixed-host, bounded advisory synchronization. No user-supplied URLs are fetched."""
     import httpx, time
     store = _feed_store(tenant_id)
-    store.update_import_job(job_id, "running", {"requested": len(purls) if source == "OSV" else len(cves), "processed": 0, "stored": 0})
+    scope = scope or {}
+    requested = scope.get("limit", 0) if scope.get("window_start") else len(purls if source == "OSV" else cves)
+    store.update_import_job(job_id, "running", {"requested": requested, "processed": 0, "stored": 0})
+    budget = time.monotonic() + min(600, max(1, scope.get("lease_seconds", 900) - 30))
     records, processed = [], 0
     timeout = httpx.Timeout(20.0, connect=5.0)
     def request(client, method, url, **kwargs):
         last = None
         for attempt in range(3):
+            if time.monotonic() >= budget:
+                raise advisory_feeds.WindowTooLarge("job exceeded its feed time budget; reduce the window or target limit")
             response = client.request(method, url, **kwargs)
             if response.status_code not in {429, 500, 502, 503, 504}:
                 response.raise_for_status()
@@ -2316,25 +2327,10 @@ def _run_advisory_feed_sync(job_id, source, tenant_id, purls, cves, actor):
         last.raise_for_status()
     try:
         with httpx.Client(timeout=timeout, follow_redirects=False, headers={"User-Agent": "NERVVE-DEVSECOPS/2.1 advisory-sync"}) as client:
-            if source == "OSV":
-                for offset in range(0, len(purls), 1000):
-                    chunk = purls[offset:offset + 1000]
-                    response = request(client, "POST", "https://api.osv.dev/v1/querybatch", json={"queries": [{"package": {"purl": p}} for p in chunk]})
-                    if len(response.content) > 10000000: raise ValueError("OSV batch response exceeded 10 MB limit")
-                    payload = response.json()
-                    results = payload.get("results")
-                    if not isinstance(results, list) or len(results) != len(chunk):
-                        raise ValueError("OSV batch response did not align with submitted package queries")
-                    for purl, result in zip(chunk, results):
-                        for vuln in result.get("vulns") or []:
-                            advisory_id = str(vuln.get("id") or "")
-                            if advisory_id:
-                                records.append({"advisory_id": advisory_id, "modified_at": vuln.get("modified"),
-                                    "payload": {"id": advisory_id, "purl": purl, "aliases": vuln.get("aliases", []),
-                                        "summary": vuln.get("summary", ""), "details": vuln.get("details", ""),
-                                        "modified": vuln.get("modified"), "published": vuln.get("published"),
-                                        "references": vuln.get("references", []), "affected": vuln.get("affected", [])}})
-                        processed += 1
+            if source in advisory_feeds.NORMALIZED:
+                records = advisory_feeds.collect(source, lambda method, url, **kw: request(client, method, url, **kw),
+                                                purls=purls, cves=cves, scope=scope)
+                processed = len(records) if scope.get("window_start") else requested
             elif source == "KEV":
                 response = request(client, "GET", "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json")
                 if len(response.content) > 25000000: raise ValueError("CISA KEV feed exceeded 25 MB limit")
@@ -2359,66 +2355,58 @@ def _run_advisory_feed_sync(job_id, source, tenant_id, purls, cves, actor):
                             records.append({"advisory_id": cve, "modified_at": None,
                                 "payload": {"cve": cve, "epss": item.get("epss"), "percentile": item.get("percentile"), "date": item.get("date")}})
                     processed += len(chunk)
-            elif source == "NVD":
-                api_key = os.getenv("NVD_API_KEY", "")
-                for cve in cves:
-                    headers = {"apiKey": api_key} if api_key else {}
-                    response = request(client, "GET", "https://services.nvd.nist.gov/rest/json/cves/2.0",
-                        params={"cveId": cve}, headers=headers)
-                    payload = response.json()
-                    for entry in payload.get("vulnerabilities", []):
-                        item = entry.get("cve") or {}
-                        cve_id = str(item.get("id") or cve)
-                        metrics = item.get("metrics") or {}
-                        metric_list = next((metrics.get(k) for k in ("cvssMetricV40", "cvssMetricV31", "cvssMetricV30", "cvssMetricV2") if metrics.get(k)), [])
-                        metric = metric_list[0].get("cvssData", {}) if metric_list else {}
-                        description = next((x.get("value") for x in item.get("descriptions", []) if x.get("lang") == "en"), "")
-                        records.append({"advisory_id": cve_id, "modified_at": item.get("lastModified"),
-                            "payload": {"cve": cve_id, "source": "NVD", "published": item.get("published"),
-                                "last_modified": item.get("lastModified"), "description": description,
-                                "cvss": metric.get("baseScore"), "severity": metric.get("baseSeverity"),
-                                "weaknesses": item.get("weaknesses", []), "references": item.get("references", [])}})
-                    processed += 1
-                    if not api_key: time.sleep(6)
-            elif source == "GITHUB":
-                token = os.getenv("GITHUB_ADVISORY_TOKEN", "")
-                headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
-                if token: headers["Authorization"] = "Bearer " + token
-                for cve in cves:
-                    response = request(client, "GET", "https://api.github.com/advisories",
-                        params={"cve_id": cve, "per_page": 100}, headers=headers)
-                    payload = response.json()
-                    if not isinstance(payload, list): raise ValueError("GitHub Advisory API returned an unexpected response")
-                    for advisory in payload:
-                        ghsa = str(advisory.get("ghsa_id") or "")
-                        if not ghsa: continue
-                        records.append({"advisory_id": ghsa, "modified_at": advisory.get("updated_at"),
-                            "payload": {"id": ghsa, "cve": advisory.get("cve_id"), "summary": advisory.get("summary"),
-                                "description": advisory.get("description"), "severity": advisory.get("severity"),
-                                "cvss": advisory.get("cvss"), "published_at": advisory.get("published_at"),
-                                "updated_at": advisory.get("updated_at"), "withdrawn_at": advisory.get("withdrawn_at"),
-                                "vulnerabilities": advisory.get("vulnerabilities", []), "references": advisory.get("references", [])}})
-                    processed += 1
-            if records: store.upsert_advisories(source, records)
-            counters = {"requested": len(purls) if source == "OSV" else len(cves), "processed": processed, "stored": len(records)}
-            store.update_import_job(job_id, "succeeded", counters)
+            else:
+                raise ValueError("unsupported advisory feed")
+            if records:
+                store.upsert_advisories(source, records)
+            store.update_import_job(job_id, "succeeded", {"requested": requested, "processed": processed, "stored": len(records)})
+    except advisory_feeds.WindowTooLarge as exc:
+        store.update_import_job(job_id, "partial", {"requested": requested, "processed": processed, "stored": 0}, str(exc))
     except Exception as exc:
-        store.update_import_job(job_id, "failed", {"requested": len(purls) if source == "OSV" else len(cves),
-            "processed": processed, "stored": len(records)}, str(exc)[:2000])
+        store.update_import_job(job_id, "failed", {"requested": requested, "processed": processed, "stored": 0},
+                                f"{type(exc).__name__}: {str(exc)[:500]}")
 
 
 class AdvisorySyncIn(BaseModel):
     limit: int = Field(default=500, ge=1, le=5000)
+    mode: Literal["inventory", "changes"] = "inventory"
+    since: datetime | None = None
+    until: datetime | None = None
+    ecosystems: list[str] = Field(default_factory=list, max_length=5)
 
 
 @app.post("/api/v1/intelligence/feeds/{source}/sync", status_code=202)
 def start_advisory_sync(source: str, body: AdvisorySyncIn = AdvisorySyncIn(),
                         c: Ctx = Depends(ctx("scans:write"))):
     source = source.upper()
-    if source not in {"OSV", "KEV", "EPSS", "NVD", "GITHUB"}:
-        raise HTTPException(422, "Supported live feeds: OSV, KEV, EPSS, NVD and GitHub Advisory Database.")
+    if source not in advisory_feeds.SOURCES:
+        raise HTTPException(422, "Supported feeds: OSV, KEV, EPSS, NVD, GitHub and Red Hat CSAF.")
+    scope = {}
+    targets = []
+    changes = body.mode == "changes" or source == "REDHAT"
+    if changes:
+        if source not in advisory_feeds.NORMALIZED:
+            raise HTTPException(422, "This source does not support a change window.")
+        ecosystems = sorted(set(body.ecosystems))
+        if source == "OSV" and (not ecosystems or set(ecosystems) - advisory_feeds.OSV_ECOSYSTEM.keys()):
+            raise HTTPException(422, "Supply one to five supported OSV ecosystems for a changes job.")
+        now = datetime.now(timezone.utc).replace(microsecond=0)
+        # Bulk feeds can publish records after their upstream modified time.
+        stable_end = now - (timedelta(hours=2) if source == "OSV" else timedelta(minutes=15))
+        prior = c.store.advisory_watermark(source, ecosystems) if body.since is None else None
+        if any(stamp is not None and stamp.utcoffset() is None for stamp in (body.since, body.until)):
+            raise HTTPException(422, "Change window timestamps must include a timezone.")
+        start = (body.since.astimezone(timezone.utc) if body.since else
+                 advisory_feeds.parse_time(prior) - timedelta(minutes=5) if prior else stable_end - timedelta(hours=1))
+        end = body.until.astimezone(timezone.utc) if body.until else min(stable_end, start + timedelta(days=1))
+        if start >= end or end > now or end - start > timedelta(days=1):
+            raise HTTPException(422, "Use an ordered UTC change window of at most one day ending in the past.")
+        scope = {"window_start": start.isoformat(), "window_end": end.isoformat(), "ecosystems": ecosystems,
+                 "limit": body.limit, "rolling": body.since is None}
+    elif body.since or body.until or body.ecosystems:
+        raise HTTPException(422, "since, until and ecosystems apply only to changes jobs.")
     purls = set()
-    if source == "OSV":
+    if not changes and source == "OSV":
         for repo in c.store.repos():
             name = repo.get("name") if isinstance(repo, dict) else None
             sbom = c.store.sbom(name) if name else None
@@ -2431,13 +2419,14 @@ def start_advisory_sync(source: str, body: AdvisorySyncIn = AdvisorySyncIn(),
         if not purls:
             raise HTTPException(409, "No package URLs found in stored SBOMs. Import CycloneDX or SPDX JSON first.")
         targets = sorted(purls)[:body.limit]
-    else:
-        targets = sorted({str(f.get("cve")) for f in c.store.findings() if f.get("cve")})[:body.limit]
+    elif not changes:
+        targets = sorted({str(f["cve"]) for f in c.store.findings()
+                          if re.fullmatch(r"CVE-\d{4}-\d{4,}", str(f.get("cve") or ""))})[:body.limit]
         if source == "NVD" and not os.getenv("NVD_API_KEY"): targets = targets[:10]
         if source == "GITHUB" and not os.getenv("GITHUB_ADVISORY_TOKEN"): targets = targets[:20]
         if not targets and source in {"EPSS", "NVD", "GITHUB"}: raise HTTPException(409, "No CVE identifiers found in tenant findings.")
     item = {"id": str(uuid.uuid4()), "kind": "advisory_sync", "source": source, "status": "queued",
-        "requested_by": c.p.actor, "counters": {"targets": targets, "requested": len(targets)}, "error": "", "created_at": datetime.now(timezone.utc).isoformat(),
+        "requested_by": c.p.actor, "counters": {"targets": targets, "requested": body.limit if changes else len(targets), **scope}, "error": "", "created_at": datetime.now(timezone.utc).isoformat(),
         "started_at": None, "finished_at": None}
     c.store.create_import_job(item)
     return {"job": item, "note": "Job persisted to the tenant queue. A separately deployed MYELIN worker claims it using a database lease, retries after worker interruption and records the outcome. Configure MYELIN_WORKER_TENANT_IDS, NVD_API_KEY and GITHUB_ADVISORY_TOKEN in the worker environment."}
@@ -2452,7 +2441,7 @@ def retry_advisory_sync(job_id: str, c: Ctx = Depends(ctx("scans:write"))):
     if job.get("status") not in {"failed", "queued"}:
         raise HTTPException(409, "only failed or queued jobs can be requeued; stale running jobs are recovered by the worker lease")
     source = job["source"]
-    if source not in {"OSV", "KEV", "EPSS", "NVD", "GITHUB"}: raise HTTPException(422, "unsupported retry source")
+    if source not in advisory_feeds.SOURCES: raise HTTPException(422, "unsupported retry source")
     try:
         c.store.requeue_import_job(job_id, c.p.actor)
     except ValueError as exc:
@@ -2468,13 +2457,14 @@ def list_advisory_sync_jobs(c: Ctx = Depends(ctx("findings:read"))):
 @app.get("/api/v1/intelligence/feeds/{source}")
 def get_advisory_feed(source: str, c: Ctx = Depends(ctx("findings:read"))):
     source = source.upper()
-    if source not in {"OSV", "KEV", "EPSS", "NVD", "GITHUB"}: raise HTTPException(404, "Feed not found")
+    if source not in advisory_feeds.SOURCES: raise HTTPException(404, "Feed not found")
     items = c.store.advisory_records(source, limit=5000)
     jobs = [x for x in c.store.import_jobs() if x.get("source") == source]
     latest_success = next((x for x in jobs if x.get("status") == "succeeded"), None)
     state = "synced" if items else ("synced_empty" if latest_success else ("failed" if jobs and jobs[0].get("status") == "failed" else "not_synced"))
     return {"source": source, "state": state, "records": len(items),
         "last_successful_sync": latest_success.get("finished_at") if latest_success else None,
+        "coverage_through": (latest_success.get("counters") or {}).get("window_end") if latest_success else None,
         "last_job": jobs[0] if jobs else None, "items": items[:500]}
 
 
@@ -2549,7 +2539,8 @@ def vulnerability_intelligence(c: Ctx = Depends(ctx("findings:read"))):
     jobs = c.store.import_jobs()
     feeds = []
     for name, source, records in (("OSV", "OSV", osv_records), ("CISA KEV", "KEV", kev_records), ("EPSS", "EPSS", epss_records),
-                                  ("NVD", "NVD", c.store.advisory_records("NVD", limit=5000)), ("GitHub Advisory Database", "GITHUB", c.store.advisory_records("GITHUB", limit=5000))):
+                                  ("NVD", "NVD", c.store.advisory_records("NVD", limit=5000)), ("GitHub Advisory Database", "GITHUB", github_records),
+                                  ("Red Hat CSAF", "REDHAT", c.store.advisory_records("REDHAT", limit=5000))):
         latest = next((j for j in jobs if j.get("source") == source and j.get("status") == "succeeded"), None)
         feeds.append({"name": name, "state": "synced" if records else ("synced_empty" if latest else ("failed" if any(j.get("source") == source and j.get("status") == "failed" for j in jobs) else "not_configured")),
             "records": len(records), "last_successful_sync": latest.get("finished_at") if latest else None})
@@ -2559,7 +2550,7 @@ def vulnerability_intelligence(c: Ctx = Depends(ctx("findings:read"))):
             "kev_open": sum(x["kev"] and x["open_instances"] > 0 for x in items),
             "open_instances": len(open_fs), "fix_available": sum(x["open_instances"] > 0 and bool(x["fixed_versions"]) for x in items)},
         "advisory_feeds": feeds, "items": items,
-        "limitations": ["OSV is queried for PURLs in stored SBOMs; KEV, EPSS, NVD and GitHub Advisory are queried for CVEs already present in tenant findings.",
+        "limitations": ["Inventory jobs use stored packages or CVEs. Change jobs retrieve bounded upstream windows; the latest job records its scope.",
             "NVD rate limits apply without NVD_API_KEY and GitHub rate limits apply without GITHUB_ADVISORY_TOKEN; unauthenticated batches are capped.",
             "A missing advisory or feed is not evidence that a component is safe."]}
 

@@ -23,64 +23,55 @@ fixtures (`engine/tests/sast_rules`). No Semgrep Registry rules are used. Add ru
 Language coverage: data-flow analysis for Python, JavaScript, TypeScript, Java, Go, C#, PHP and Ruby; pattern rules also
 for Kotlin. Other languages (Scala, Rust, C/C++, Swift) are listed under "not covered" in the scan's coverage record.
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:f9f333f1875d9f7dc3ba569308eba6fd9c53825115b012a2113414206b737026 -->
+
 ## One finding per weakness
 
-When two engines report the same thing, the scan keeps one finding:
-
-- A data-flow result replaces a pattern match for the same weakness on the same line; the pattern rule's id is kept as
-  an alias, so an existing `myelin:ignore[NM-SAST-...]` suppression still applies.
-- Bandit results on a line already reported by NERvvE or Opengrep are dropped.
-- Gitleaks or Trivy secrets on a line NERvvE already reports are dropped (NERvvE's finding carries validation and the
-  rotation workflow).
-- A Trivy dependency finding with the same package, version and advisory as an OSV finding is dropped.
-- A Trivy misconfiguration on a line another IaC engine reports is dropped.
-
-A data-flow finding shows its path in the evidence, for example
-``untrusted input `req.query` (line 15) → url → sink at line 16``. Proven flows from a request into SQL, an OS command,
-code evaluation, file inclusion, templates or deserialisation are rated **critical**.
+When two engines identify the same SAST weakness on the same line, the scan keeps the better supported result.
+A data flow result replaces the matching pattern result and retains its rule ID as an alias for existing suppressions.
+Bandit findings with a different CWE stay visible, even when another engine reports a finding on that line.
+Infrastructure findings from separate engines can describe different configuration problems at the same location.
+The CVE register groups results for the same dependency version and advisory. It does not count untested areas as clean.
 
 ## Coverage record and reports
 
-Every scan stores a coverage record per area:
+A scan records the areas it assessed, the tools it used, and any known gaps. For SAST, the source file inventory is
+reported separately from the number of files the data flow engine scanned. A missing or failed data flow engine,
+a partial advisory feed, and errors reported by an external scanner appear as coverage limitations. Repository
+rescans retain earlier findings when incomplete coverage cannot establish a fix.
 
-- **assessed** only when the repository contains something the area applies to (source files, resolvable dependencies,
-  IaC files, pipeline definitions, AI components) and an engine for it ran;
-- what was examined (files and languages, components, pipeline files), the depth of analysis, the tools and their
-  versions, and any tool that failed;
-- the reason an area was not assessed, for example "no infrastructure-as-code files" or "dependency manifests found but
-  no resolvable versions (commit a lock file)".
+The HTML report includes only assessed areas and lists all current open findings from the scan. It omits the
+CVE register and software inventory unless those areas were assessed. An older scan without a coverage
+record can show the areas evidenced by its findings; run a fresh scan to report current scope.
 
-The assessment report is built from this record: its scope table, findings, framework mapping, CVE register, SBOM and
-methodology include **only the areas that were assessed**. Framework controls that no assessed area tests are left
-out. A tool that failed is named in the methodology; it is never shown as a clean result.
+## Scanning on a laptop
 
-The command line prints the same record:
+The offline demo console displays sample data. A repository scan started in the local enterprise console
+(`myelin.localtest.me`) fetches and scans the selected repository snapshot using the scanners bundled in the
+platform image. A CLI scan reads the actual folder you pass to it. It uses built-in engines and runs installed
+external tools from `PATH`, including Opengrep (or Semgrep), Bandit, Trivy, Grype, Gitleaks and Checkov where
+applicable.
 
-```text
-  Assessed: sast, sca, license, supply, secrets, iac, cicd
-    sast     44 source files: JavaScript (44)                     NERvvE pattern rules, opengrep 1.33.0
-    sca      1110 components from 2 manifest/lock files           OSV, trivy 0.76.2
-    secrets  96 files and git history                             NERvvE secret rules, gitleaks 8.30.1, trivy 0.76.2
-  Not assessed: aibom (no AI models, agents or MCP servers)
+```sh
+myelin scan . --report assessment.html --json scan.json
 ```
 
-## Where the scanners run
+The report's **Assessment scope** and **Methodology** show what ran. On a workstation, verify that Opengrep
+is on `PATH` for data flow analysis; `--builtin-only` skips all external scanners. For deeper dependency
+coverage, commit current lockfiles and ensure the scanner can reach the advisory feeds. For offline scans,
+configure a current OSV export and mirrored Trivy database; the bundled advisory pack alone has limited coverage.
+The first Trivy scan can take longer while it downloads its database to the scanner cache.
 
-| Where | What you get |
-|---|---|
-| Platform image (`docker-compose.enterprise.yml`, Helm) | All scanners bundled; repository scans from the console use them |
-| CLI image (`Dockerfile.cli`) for pipelines | All scanners bundled, plus Cosign |
-| `pip install .` on a workstation | Built-in engines and Bandit; Opengrep, Trivy, Gitleaks and Checkov run when they are on `PATH` |
-| Demo (`demo/start-demo.*`) | Built-in engines on the sample data |
+A repository scan assesses source and other files. A DAST report comes from a separate run against a live
+application, and lists the checks recorded by that run. Outputs from different tools are only comparable on
+the same revision, lockfiles, advisory snapshot and scan scope. Use a labelled set of known findings to
+measure recall and precision; matching finding counts alone does not establish accuracy.
 
-The first scan downloads the Trivy vulnerability database (about 1 GB with the Java index) into the scanner cache
-(`MYELIN_CACHE_DIR`, a volume in Compose and an `emptyDir` in Helm). With `MYELIN_OFFLINE=1`, Trivy uses a mirrored
-database if one is in the cache, and dependency scanning otherwise relies on OSV exports and bundled data.
 
-On networks that inspect HTTPS, put the company root certificate in `config/certs`: the images, the API's CA bundle and
-the scanners then trust it (see [first-time setup](../getting-started/first-time-setup.md)).
 
-## Deep DAST with OWASP ZAP
+<!-- /coderabbit-ai-generated:v1 -->## Deep DAST with OWASP ZAP
 
 ZAP runs as an optional service that only the API can reach:
 

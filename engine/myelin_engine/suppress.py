@@ -69,6 +69,9 @@ def apply(root: str, findings: list[dict]) -> tuple[list[dict], int]:
     patterns = load_ignore(root) if os.path.isdir(root) else []
     kept, ignored, cache = [], 0, {}
     for f in findings:
+        if f.get("scanner_status") == "required_error":
+            kept.append(f)
+            continue
         if patterns and path_ignored(f.get("file", ""), patterns):
             ignored += 1
             continue

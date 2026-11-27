@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT / "engine") not in sys.path:
     sys.path.insert(0, str(ROOT / "engine"))
 
-from myelin_engine import orchestrator, report_enterprise  # noqa: E402
+from myelin_engine import coverage, orchestrator, report_enterprise  # noqa: E402
 
 from . import scm  # noqa: E402
 
@@ -190,10 +190,12 @@ def _summary(res: dict, decision: dict) -> dict:
         by_engine[f["engine"]] = by_engine.get(f["engine"], 0) + 1
         by_sev[f["severity"]] = by_sev.get(f["severity"], 0) + 1
     return {"by_engine": by_engine, "by_severity": by_sev, "components": res.get("components", 0),
-            "decision": decision.get("decision"), "duration_s": res.get("duration_s")}
+            "decision": decision.get("decision"), "duration_s": res.get("duration_s"),
+            "assessed": res["engines"],
+            "partial": [k for k, c in res["coverage"].items() if c.get("status") == "partial"]}
 
 
-def execute(src: dict, token: str | None, decide) -> dict:
+def execute(src: dict, token: str | None, decide, *, advisory_lookup=None) -> dict:
     tmp = tempfile.mkdtemp(prefix="myelin-repo-")
     try:
         try:
@@ -201,12 +203,11 @@ def execute(src: dict, token: str | None, decide) -> dict:
         except scm.ScmError as e:
             raise SourceError(str(e)) from None
         crit = {"low": 0.6, "medium": 1.0, "high": 1.3, "critical": 1.5}.get((src.get("config") or {}).get("criticality"), 1.0)
-        res = orchestrator.scan(root, repo=src["name"], criticality=crit)
+        res = orchestrator.scan(root, repo=src["name"], criticality=crit, advisory_lookup=advisory_lookup)
         res["path"] = src["url"]
-        decision = decide([f for f in res["findings"] if f.get("engine") != "meta"])
+        decision = decide(res["findings"])
         res["decision"], res["commit"], res["branch"] = decision, commit, src.get("branch") or "default"
         res["summary"] = _summary(res, decision)
-        res["engines"] = res.get("engines") or list(CODE_ENGINES)     # domains actually assessed (see engine coverage)
         return res
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
@@ -228,21 +229,21 @@ def start_scan(repo, store_factory, tenant_id, src, actor, *, token_resolver, de
     def _work():
         try:
             token = token_resolver(src) if src.get("credential_ref") else None
-            res = execute(src, token, decide)
+            store = store_factory()
+            res = execute(src, token, decide, advisory_lookup=store.advisories_for)
             fs = [f for f in res["findings"] if f.get("engine") != "meta"]
             for f in fs:
                 if f.get("file") and f.get("engine") not in ("sca", "license", "aibom", "container"):
                     link = scm.blob_url(src["provider"], src["url"], res["commit"], f["file"], f.get("line"))
                     if link:
                         f["code_url"] = link
-            store = store_factory()
             sid, _ = store.add_scan(src["name"], res["branch"], res["commit"], fs, res["sbom"], res["decision"], actor,
-                                    scanned_engines=CODE_ENGINES, stats=res.get("stats"))   # engines run: absent findings are fixed
+                                    scanned_engines=coverage.completed(res["coverage"]),
+                                    reconcile_engines=coverage.reconciled(res["coverage"], CODE_ENGINES), stats=res.get("stats"))
             if on_scanned:
                 on_scanned(store, getattr(store, "last_delta", None))
-            keep = {**res, "findings": res["findings"][:3000]}
             repo.update(tenant_id, src["id"], status="done", last_run_at=now(), last_scan_id=sid,
-                        last_commit=res["commit"] or None, last_result=json.loads(json.dumps(keep, default=str)))
+                        last_commit=res["commit"] or None, last_result=json.loads(json.dumps(res, default=str)))
         except (Exception, SystemExit) as e:
             msg = str(e) if isinstance(e, (SourceError, SystemExit, RuntimeError)) else f"{type(e).__name__}: {e}"
             repo.update(tenant_id, src["id"], status="failed", last_run_at=now(), last_error=msg[:1000])

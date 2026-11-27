@@ -112,16 +112,29 @@ class Zap:
         return {"alerts": alerts, "urls": len(urls), "complete": complete, "version": self.version(), "mode": "active" if active else "passive"}
 
 
+def affected_endpoints(instances, url_key="url"):
+    """Keep report locations without URL query values, which can contain secrets."""
+    endpoints = set()
+    for item in instances:
+        url = item.get(url_key)
+        if url:
+            try:
+                endpoints.add(f'{item.get("method") or "GET"} {urllib.parse.urlsplit(url).path or "/"}')
+            except ValueError:
+                continue
+    return sorted(endpoints)
+
+
 def normalize(alerts, f_builder):
     """ZAP alerts (API format) -> NERvvE findings, one per rule with every affected URL counted as an instance."""
     groups = {}
     for a in alerts or []:
+        if str(a.get("confidence") or "").lower() in {"false positive", "falsepositive"}:
+            continue
         groups.setdefault((a.get("pluginId"), a.get("name") or a.get("alert")), []).append(a)
     out = []
     for (pid, name), items in groups.items():
         a = items[0]
-        if a.get("confidence") == "False Positive":
-            continue
         cwe = a.get("cweid")
         f = f_builder(f"ZAP-{pid}", name or "ZAP alert", RISK.get(str(a.get("risk")), "info"), a.get("url", ""), "API8",
                       re.sub("<[^>]+>", "", a.get("solution", ""))[:400], (a.get("evidence") or a.get("param") or "")[:300],
@@ -129,5 +142,6 @@ def normalize(alerts, f_builder):
         f["source_tool"], f["instances"] = "zap", len(items)
         f["confidence"] = (a.get("confidence") or "").lower() or None
         f["affected_urls"] = sorted({i.get("url") for i in items if i.get("url")})[:20]
+        f["affected_endpoints"] = affected_endpoints(items)
         out.append(f)
     return out

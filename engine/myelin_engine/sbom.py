@@ -122,7 +122,7 @@ def _pick_pypi(name, spec):
 def inventory(root: str) -> list[dict]:
     """Every third-party component: manifests (direct), lockfiles (exact transitive) and, for Python requirements
     without a lockfile, transitive dependencies resolved from PyPI. Licences filled in from the registries."""
-    vulndb.STATUS["sources"].clear(); vulndb.STATUS["errors"].clear()
+    vulndb.scan_status()["sources"].clear(); vulndb.scan_status()["errors"].clear()
     direct = parse_manifests(root)
     for c in direct:
         c.setdefault("via", None)
@@ -164,7 +164,7 @@ def inventory(root: str) -> list[dict]:
             for c, lic in zip(todo, ex.map(vulndb.licence, todo)):
                 c["license"] = lic
         if any(c["license"] != "unknown" for c in todo):
-            vulndb.STATUS["sources"].add("package registries (licences)")
+            vulndb.scan_status()["sources"].add("package registries (licences)")
     return comps
 
 
@@ -179,13 +179,32 @@ def _dep_type(c):
     return {"required": "direct", "optional": "dev", "dev": "dev", "transitive": "transitive"}.get(c.get("scope"), "direct")
 
 
-def match_advisories(comps: list[dict], repo: str = "local", reachable_hint: set | None = None) -> list[dict]:
+def match_advisories(comps: list[dict], repo: str = "local", reachable_hint: set | None = None, *, advisory_lookup=None) -> list[dict]:
     out, seen = [], set()
-    for c, v in vulndb.vulnerabilities(comps):                    # live intelligence (OSV / PyPI)
+    pairs = vulndb.vulnerabilities(comps)
+    if advisory_lookup and comps:
+        from . import advisories
+        try:
+            pairs += advisories.evaluate(comps, advisory_lookup, pairs)
+        except Exception as exc:
+            vulndb.scan_status()["errors"].add(f"tenant advisory store unavailable: {type(exc).__name__}")
+    merged, by_component = {}, {}
+    for c, v in pairs:
         key = (c["ecosystem"], c["name"], c["version"], v["cve"] or v["id"])
-        if key in seen:
+        prior = merged.get(key)
+        if prior is not None:
+            for field in ("aliases", "references", "advisory_sources"):
+                prior[field] = sorted({*(prior.get(field) or []), *(v.get(field) or [])})
+            if not prior.get("fixed") and v.get("fixed"):
+                prior["fixed"] = v["fixed"]
+            if prior.get("cvss") is None and v.get("cvss") is not None:
+                prior.update(cvss=v["cvss"], severity=v["severity"], severity_known=True)
             continue
+        by_component.setdefault(key[:3], c)
+        merged[key] = dict(v)
+    for key, v in merged.items():
         seen.add(key)
+        c = by_component[key[:3]]
         if str(v.get("id", "")).startswith("MAL-"):             # OSV malicious-package feed: malware, not a CVE
             from . import supply_chain
             out.append(supply_chain.malicious_advisory_finding(c, v, repo))
@@ -196,7 +215,8 @@ def match_advisories(comps: list[dict], repo: str = "local", reachable_hint: set
             "title": f"{c['name']}@{c['version']}: {v['summary'] or v['id']}", "severity": v["severity"],
             "cvss": v["cvss"], "epss": v.get("epss"), "epss_percentile": v.get("epss_percentile"),
             "kev": v.get("kev"), "kev_details": v.get("kev_details"), "cwe": v["cwe"],
-            "nvd_intelligence": v.get("nvd"), "package": c["name"], "version": c["version"],
+            "nvd_intelligence": v.get("nvd"), "advisory_sources": v.get("advisory_sources", []),
+            "references": v.get("references", []), "package": c["name"], "version": c["version"],
             "fixed_version": v["fixed"], "file": c["file"], "repo": repo, "ecosystem": c["ecosystem"], "purl": c["purl"],
             "reachable": _reach(c["via"] or c["name"], reachable_hint), "exposure": "internet",
             "dependency_type": _dep_type(c), "introduced_by": c.get("via"), "autofix": bool(v["fixed"]),

@@ -30,6 +30,8 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
+from contextvars import ContextVar, copy_context
 
 OSV_URL = os.environ.get("MYELIN_OSV_URL", "https://api.osv.dev").rstrip("/")
 PYPI_URL = os.environ.get("MYELIN_PYPI_URL", "https://pypi.org").rstrip("/")
@@ -38,7 +40,29 @@ OSV_ECO = {"pypi": "PyPI", "npm": "npm", "maven": "Maven", "go": "Go", "cargo": 
            "gem": "RubyGems", "composer": "Packagist", "hex": "Hex", "pub": "Pub", "cocoapods": "CocoaPods"}
 CACHE_TTL = 24 * 3600
 MAX_TRANSITIVE = 600
-STATUS = {"sources": set(), "errors": set()}     # what the last scan could reach, shown in reports
+STATUS = {"sources": set(), "errors": set()}  # standalone callers outside a scan
+_SCAN_STATUS = ContextVar("scan_status", default=None)
+
+
+def scan_status():
+    state = _SCAN_STATUS.get()
+    return STATUS if state is None else state
+
+
+@contextmanager
+def scan_intelligence():
+    """Keep feed and inventory errors isolated to the current repository scan."""
+    token = _SCAN_STATUS.set({"sources": set(), "errors": set()})
+    try:
+        yield
+    finally:
+        _SCAN_STATUS.reset(token)
+
+
+def _map_scan(pool, fn, items):
+    # Each worker needs its own Context object, with the same per-scan status.
+    work = ((copy_context(), item) for item in items)
+    return pool.map(lambda pair: pair[0].run(fn, pair[1]), work)
 
 
 def offline() -> bool:
@@ -156,7 +180,7 @@ def parse_lockfiles(root: str) -> list[dict]:
                     with open(p, encoding="utf-8") as fh:
                         out += _podfile_lock(fh.read(), rel)
             except (OSError, ValueError, KeyError, TypeError, ImportError, ET.ParseError):
-                STATUS["errors"].add(f"lockfile parse: {rel}")
+                scan_status()["errors"].add(f"lockfile parse: {rel}")
                 continue
     # Keep one exact component per ecosystem/name/version while preserving all source paths.
     unique, by_key = [], {}
@@ -178,7 +202,7 @@ def _python_toml_lock(path, rel, kind):
         try:
             import tomli as tomllib
         except ImportError:
-            STATUS["errors"].add(f"TOML lock parser unavailable: {rel}")
+            scan_status()["errors"].add(f"TOML lock parser unavailable: {rel}")
             return []
     with open(path, "rb") as fh:
         data = tomllib.load(fh)
@@ -213,7 +237,7 @@ def _pnpm_lock(text, rel):
         import yaml
         data = yaml.safe_load(text) or {}
     except Exception as exc:
-        STATUS["errors"].add(f"pnpm lock parse: {rel}: {type(exc).__name__}")
+        scan_status()["errors"].add(f"pnpm lock parse: {rel}: {type(exc).__name__}")
         return []
     out = []
     packages = data.get("packages") or {}
@@ -254,7 +278,7 @@ def _cargo_lock(path, rel):
         try:
             import tomli as tomllib
         except ImportError:
-            STATUS["errors"].add(f"cargo lock parser unavailable: {rel}")
+            scan_status()["errors"].add(f"cargo lock parser unavailable: {rel}")
             return []
     with open(path, "rb") as fh:
         data = tomllib.load(fh)
@@ -361,7 +385,7 @@ def _pubspec_lock(text, rel):
         import yaml
         data = yaml.safe_load(text) or {}
     except Exception as exc:
-        STATUS["errors"].add(f"pubspec lock parse: {rel}: {type(exc).__name__}")
+        scan_status()["errors"].add(f"pubspec lock parse: {rel}: {type(exc).__name__}")
         return []
     out = []
     for name, meta in (data.get("packages") or {}).items():
@@ -422,7 +446,7 @@ def resolve_pypi(direct: list[dict]) -> list[dict]:
     while queue and len(out) < MAX_TRANSITIVE:
         batch, queue = queue[:16], queue[16:]
         with ThreadPoolExecutor(max_workers=8) as ex:
-            metas = list(ex.map(lambda q: _safe(_pypi_release, q[0], q[1]), batch))
+            metas = list(_map_scan(ex, lambda q: _safe(_pypi_release, q[0], q[1]), batch))
         for (name, version, extras, root, file), meta in zip(batch, metas):
             reqs = ((meta or {}).get("info") or {}).get("requires_dist") or []
             for raw in reqs:
@@ -460,7 +484,7 @@ def _safe(fn, *a):
     try:
         return fn(*a)
     except Exception as e:  # noqa: BLE001 - network intelligence is best effort
-        STATUS["errors"].add(f"{fn.__name__}: {type(e).__name__}")
+        scan_status()["errors"].add(f"{fn.__name__}: {type(e).__name__}")
         return None
 
 
@@ -552,20 +576,25 @@ def _osv(comps):
     hits = {}
     try:
         for start in range(0, len(queries), 500):
-            res = _http_json(f"{OSV_URL}/v1/querybatch", {"queries": queries[start:start + 500]}, ttl=6 * 3600)
-            if res is None:
+            batch = queries[start:start + 500]
+            res = _http_json(f"{OSV_URL}/v1/querybatch", {"queries": batch}, ttl=6 * 3600)
+            if not isinstance(res, dict) or not isinstance(res.get("results"), list) or len(res["results"]) != len(batch):
+                scan_status()["errors"].add("OSV query batch returned missing or incomplete results")
                 return None
-            for j, r in enumerate(res.get("results") or []):
+            for j, r in enumerate(res["results"]):
                 ids = [v["id"] for v in (r or {}).get("vulns") or []]
                 if ids:
                     hits[idx[start + j]] = ids
     except Exception as e:  # noqa: BLE001
-        STATUS["errors"].add(f"osv: {type(e).__name__}")
+        scan_status()["errors"].add(f"osv: {type(e).__name__}")
         return None
-    STATUS["sources"].add("OSV")
+    scan_status()["sources"].add("OSV")
     all_ids = sorted({i for v in hits.values() for i in v})
     with ThreadPoolExecutor(max_workers=8) as ex:
-        docs = dict(zip(all_ids, ex.map(lambda i: _safe(_http_json, f"{OSV_URL}/v1/vulns/{i}"), all_ids)))
+        docs = dict(zip(all_ids, _map_scan(ex, lambda i: _safe(_http_json, f"{OSV_URL}/v1/vulns/{i}"), all_ids)))
+    missing = sum(not doc for doc in docs.values())
+    if missing:
+        scan_status()["errors"].add(f"OSV advisory details unavailable for {missing} records")
     return {k: [docs[i] for i in v if docs.get(i)] for k, v in hits.items()}
 
 
@@ -573,7 +602,7 @@ def _pypi_vulns(c):
     meta = _safe(_pypi_release, c["name"], c["version"])
     if meta is None:
         return []
-    STATUS["sources"].add("PyPI advisory database")
+    scan_status()["sources"].add("PyPI advisory database")
     out = []
     for v in meta.get("vulnerabilities") or []:
         if v.get("withdrawn"):
@@ -654,8 +683,12 @@ def _export_index():
         if actual != declared:
             raise ValueError("OSV export archive set does not match manifest")
         signature = hashlib.sha256((os.path.realpath(d) + json.dumps(sorted(rows))).encode()).hexdigest()
-        if _EXPORT["signature"] == signature and _EXPORT["index"] is not None:
-            return _EXPORT["index"]
+        sources = {"OSV offline export", "OSV export manifest verified", "OSV export generated: " + generated,
+                   "OSV export ecosystems: " + ", ".join(sorted({e["ecosystem"] for e in entries}))}
+        cached = _EXPORT.copy()
+        if cached["signature"] == signature and cached["index"] is not None:
+            scan_status()["sources"].update(sources)
+            return cached["index"]
         idx = {}
         for entry in entries:
             with zipfile.ZipFile(os.path.join(d, entry["file"])) as archive:
@@ -671,14 +704,11 @@ def _export_index():
                         eco = next((key for key, value in OSV_ECO.items() if value == pkg.get("ecosystem")), None)
                         if eco:
                             idx.setdefault((eco, norm_name(eco, pkg.get("name", ""))), []).append(doc)
-        STATUS["sources"].add("OSV offline export")
-        STATUS["sources"].add("OSV export manifest verified")
-        STATUS["sources"].add("OSV export generated: " + generated)
-        STATUS["sources"].add("OSV export ecosystems: " + ", ".join(sorted({e["ecosystem"] for e in entries})))
+        scan_status()["sources"].update(sources)
         _EXPORT.update(signature=signature, index=idx)
         return idx
     except (OSError, ValueError, TypeError, KeyError, zipfile.BadZipFile, json.JSONDecodeError) as exc:
-        STATUS["errors"].add("offline OSV export invalid: " + str(exc)[:180])
+        scan_status()["errors"].add("offline OSV export invalid: " + str(exc)[:180])
         _EXPORT.update(signature=None, index=None)
         return None
 
@@ -725,40 +755,11 @@ def affected(doc: dict, eco: str, name: str, version: str) -> bool:
     return False
 
 
-def _export_index():
-    d = os.environ.get("MYELIN_OSV_EXPORT_DIR")
-    if not d:
-        return None
-    if _EXPORT["dir"] == d and _EXPORT["index"] is not None:
-        return _EXPORT["index"]
-    import zipfile
-    idx = {}
-    for dp, _, fns in os.walk(d):
-        for fn in fns:
-            if not fn.endswith(".zip"):
-                continue
-            try:
-                with zipfile.ZipFile(os.path.join(dp, fn)) as z:
-                    for member in z.namelist():
-                        if not member.endswith(".json"):
-                            continue
-                        doc = json.loads(z.read(member))
-                        for a in doc.get("affected") or []:
-                            pkg = a.get("package") or {}
-                            eco = next((k for k, v in OSV_ECO.items() if v == pkg.get("ecosystem")), None)
-                            if eco:
-                                idx.setdefault((eco, norm_name(eco, pkg.get("name", ""))), []).append(doc)
-            except (OSError, ValueError, zipfile.BadZipFile) as e:
-                STATUS["errors"].add(f"osv export {fn}: {type(e).__name__}")
-    _EXPORT.update(dir=d, index=idx)
-    return idx
-
-
 def _offline_osv(comps):
     idx = _export_index()
     if idx is None:
         return None
-    STATUS["sources"].add("OSV offline export")
+    scan_status()["sources"].add("OSV offline export")
     out = {}
     for i, c in enumerate(comps):
         docs = [d for d in idx.get((c["ecosystem"], c["name"]), []) if affected(d, c["ecosystem"], c["name"], str(c["version"]))]
@@ -820,7 +821,7 @@ def vulnerabilities(comps: list[dict]) -> list[tuple[dict, dict]]:
     if offline():
         found = _offline_osv(comps)
         if found is None:
-            STATUS["errors"].add("offline: no OSV export configured")
+            scan_status()["errors"].add("offline: no OSV export configured")
             return []
         normalised = _normalise([(comps[i], v) for i, docs in found.items() for v in docs])
         # Offline mode uses only locally cached enrichment; _http_json never reaches the network offline.
@@ -833,7 +834,7 @@ def vulnerabilities(comps: list[dict]) -> list[tuple[dict, dict]]:
         for i, docs in found.items():
             pairs.extend((comps[i], v) for v in docs)
     else:
-        STATUS["errors"].add("OSV unavailable; using available ecosystem fallbacks")
+        scan_status()["errors"].add("OSV unavailable; using available ecosystem fallbacks")
 
     # Independent PyPI enrichment avoids the previous blind spot where a reachable
     # but incomplete OSV response suppressed PyPI-only advisories.
@@ -925,16 +926,16 @@ def _enrich_nvd(pairs, cves):
     records = {}
     try:
         with ThreadPoolExecutor(max_workers=4) as pool:
-            results = list(pool.map(_safe, [lambda c=c: _nvd_record(c) for c in cves]))
+            results = list(_map_scan(pool, _safe, [lambda c=c: _nvd_record(c) for c in cves]))
         records = {c: r for c, r in zip(cves, results) if r}
         if any(r is not None for r in results):
-            STATUS["sources"].add("NVD CVE API 2.0")
+            scan_status()["sources"].add("NVD CVE API 2.0")
         if any(r is None for r in results):
             # A valid no-record response is not a feed failure. Only transport errors
             # are exposed by _safe as None, so do not infer completeness from record count.
             pass
     except Exception as exc:
-        STATUS["errors"].add(f"NVD enrichment unavailable: {type(exc).__name__}")
+        scan_status()["errors"].add(f"NVD enrichment unavailable: {type(exc).__name__}")
         return pairs
 
     enriched = []
@@ -978,9 +979,9 @@ def _enrich_threat_intel(pairs):
                     epss[row["cve"]] = {"score": float(row["epss"]), "percentile": float(row["percentile"])}
                 except (KeyError, TypeError, ValueError):
                     continue
-        STATUS["sources"].add("FIRST EPSS")
+        scan_status()["sources"].add("FIRST EPSS")
     except Exception as exc:
-        STATUS["errors"].add(f"EPSS enrichment unavailable: {type(exc).__name__}")
+        scan_status()["errors"].add(f"EPSS enrichment unavailable: {type(exc).__name__}")
 
     kev_records = _THREAT_INTEL.get("kev")
     kev_available = kev_records is not None
@@ -995,9 +996,9 @@ def _enrich_threat_intel(pairs):
                 for row in data.get("vulnerabilities") or [] if row.get("cveID")}
             _THREAT_INTEL["kev"] = kev_records
             kev_available = True
-            STATUS["sources"].add("CISA KEV")
+            scan_status()["sources"].add("CISA KEV")
         except Exception as exc:
-            STATUS["errors"].add(f"CISA KEV enrichment unavailable: {type(exc).__name__}")
+            scan_status()["errors"].add(f"CISA KEV enrichment unavailable: {type(exc).__name__}")
             kev_records = {}
 
     enriched = []
@@ -1018,6 +1019,8 @@ def _enrich_threat_intel(pairs):
 def _normalise(pairs):
     out = []
     for c, v in pairs:
+        if v.get("withdrawn"):
+            continue
         cvss, sev = _severity_of(v)
         aliases = v.get("aliases") or []
         ids = [v.get("id", "")] + aliases + (v.get("upstream") or []) + (v.get("related") or [])

@@ -87,3 +87,14 @@ def test_active_scan_runs_only_when_requested():
     names = [(c, n) for c, _, n, _, _ in CALLS]
     assert ("ascan", "scan") in names
     assert next(q for c, _, n, q, _ in CALLS if n == "scan" and c == "ascan")["contextId"] == "7"
+
+
+def test_alerts_keep_report_locations_when_the_first_instance_is_a_false_positive():
+    alerts = [
+        {"pluginId": "10038", "name": "Missing CSP", "confidence": "False Positive", "url": "https://app.example/ignored"},
+        {"pluginId": "10038", "name": "Missing CSP", "confidence": "High", "url": "https://app.example/one?param=redacted"},
+        {"pluginId": "10038", "name": "Missing CSP", "confidence": "High", "url": "https://app.example/two"},
+    ]
+    finding, = zap_api.normalize(alerts, dast._f)
+    assert finding["instances"] == 2
+    assert finding["affected_endpoints"] == ["GET /one", "GET /two"]

@@ -11,11 +11,19 @@ import uuid
 from collections import Counter
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import cast, func, literal_column, or_, select, Text
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, insert
 
 from .db.models import Finding, Repo, Scan, Tenant
 from .db.session import tenant_tx
 from .evidence import audit as audit_log
+
+
+def _advisory_timestamp(value):
+    if not value:
+        return None
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
 
 
 class DemoStore:
@@ -122,12 +130,33 @@ class DemoStore:
             return dict(item)
         return None
 
+    def advisory_watermark(self, source, ecosystems):
+        return max((row["counters"]["window_end"] for row in self.db.get("import_jobs", [])
+                    if row["source"] == source and row["status"] == "succeeded"
+                    and row["counters"].get("rolling") and row["counters"].get("ecosystems") == ecosystems
+                    and row["counters"].get("window_end")), default=None)
+
+    def advisories_for(self, keys, cves=()):
+        keys, cves = set(keys), set(cves)
+        records = list(self.db.get("advisory_records", {}).items())
+        matching = [row for _, row in records if keys.intersection(row["payload"].get("package_keys") or [])]
+        cves.update(cve for row in matching for cve in row["payload"].get("cve_ids") or [])
+        matching_ids = {id(row) for row in matching}
+        matching.extend(row for (source, _), row in records if source in {"NVD", "REDHAT"} and id(row) not in matching_ids
+                        and cves.intersection(row["payload"].get("cve_ids") or []))
+        return matching
+
     def upsert_advisories(self, source, items):
         records = self.db.setdefault("advisory_records", {})
         for item in items:
             import hashlib, json
             item = {**item, "sha256": hashlib.sha256(json.dumps(item["payload"], sort_keys=True, separators=(",", ":")).encode()).hexdigest()}
-            records[(source, item["advisory_id"])] = item
+            key = (source, item["advisory_id"])
+            previous = records.get(key)
+            old = _advisory_timestamp(previous.get("modified_at")) if previous else None
+            new = _advisory_timestamp(item.get("modified_at"))
+            if old is None or (new is not None and new >= old):
+                records[key] = item
         return len(items)
 
     def advisory_records(self, source=None, limit=5000):
@@ -224,7 +253,7 @@ class DemoStore:
             self.audit_event("finding.acceptance_expired", "system", f"{n} risk acceptance(s) expired and reopened")
         return n
 
-    def add_scan(self, repo, branch, commit, findings, sbom, decision, actor, scanned_engines=None, stats=None, refresh=()):
+    def add_scan(self, repo, branch, commit, findings, sbom, decision, actor, scanned_engines=None, stats=None, refresh=(), reconcile_engines=None):
         known = {f["fingerprint"]: f for f in self.db["findings"]}
         new = [f for f in findings if f["fingerprint"] not in known]
         for f in findings:      # refresh live fields (evidence, event counts, attack-path steps) of findings already stored
@@ -235,10 +264,11 @@ class DemoStore:
             f.setdefault("introduced_in", (commit or "")[:12] or None)
         seen = {f["fingerprint"] for f in findings}
         engines = set(scanned_engines) if scanned_engines is not None else {f["engine"] for f in findings}
+        reconcile = engines if reconcile_engines is None else set(reconcile_engines)
         now = datetime.now(timezone.utc).isoformat()
         fixed, reopened = [], []
         for f in self.db["findings"]:
-            if f.get("repo") != repo or f.get("engine") not in engines:
+            if f.get("repo") != repo or (f.get("engine") not in reconcile and f["fingerprint"] not in seen):
                 continue
             if f["fingerprint"] not in seen and f.get("status") == "open":
                 f.update(status="fixed", fixed_at=now, fixed_in=commit[:12] or None)
@@ -570,24 +600,53 @@ class PgStore:
                 "requested_by": row.requested_by, "counters": counters, "error": row.error,
                 "created_at": row.created_at.isoformat(), "started_at": now.isoformat()}
 
-    def upsert_advisories(self, source, items):
-        from .db.models import AdvisoryRecord
-        import hashlib, json
+    def advisory_watermark(self, source, ecosystems):
+        from .db.models import ImportJob
         with self._tx() as s:
-            for item in items:
-                digest = hashlib.sha256(json.dumps(item["payload"], sort_keys=True, separators=(",", ":")).encode()).hexdigest()
-                row = s.scalars(select(AdvisoryRecord).where(AdvisoryRecord.source == source,
-                    AdvisoryRecord.advisory_id == item["advisory_id"])).first()
-                modified = datetime.fromisoformat(item["modified_at"].replace("Z", "+00:00")) if item.get("modified_at") else None
-                if modified and modified.tzinfo is None: modified = modified.replace(tzinfo=timezone.utc)
-                if row:
-                    row.payload, row.sha256, row.modified_at = item["payload"], digest, modified
-                else:
-                    s.add(AdvisoryRecord(id=uuid.uuid4(), tenant_id=self.tid, source=source,
-                        advisory_id=item["advisory_id"], modified_at=modified, sha256=digest, payload=item["payload"]))
+            return s.scalar(select(func.max(ImportJob.counters["window_end"].astext)).where(
+                ImportJob.source == source, ImportJob.status == "succeeded",
+                ImportJob.counters["rolling"].as_boolean().is_(True), ImportJob.counters["ecosystems"] == ecosystems))
+
+    def advisories_for(self, keys, cves=()):
+        from .db.models import AdvisoryRecord as A
+        package_keys = A.payload.op("->", return_type=JSONB)(literal_column("'package_keys'"))
+        cve_ids = A.payload.op("->", return_type=JSONB)(literal_column("'cve_ids'"))
+        with self._tx() as s:
+            matching = list(s.scalars(select(A).where(package_keys.has_any(cast(list(keys), ARRAY(Text)))))) if keys else []
+            aliases = set(cves) | {cve for row in matching for cve in row.payload.get("cve_ids", [])}
+            if aliases:
+                extra = s.scalars(select(A).where(A.source.in_(("NVD", "REDHAT")), or_(
+                    cve_ids.has_any(cast(sorted(aliases), ARRAY(Text))),
+                    (A.source == "NVD") & A.advisory_id.in_(sorted(aliases)))))
+                matching = list({x.id: x for x in [*matching, *extra]}.values())
+            return [{"source": x.source, "advisory_id": x.advisory_id, "payload": x.payload} for x in matching]
+
+    def upsert_advisories(self, source, items):
+        from .db.models import AdvisoryRecord as A
+        import hashlib, json
+
+        rows = {}
+        for item in items:
+            key = item["advisory_id"]
+            modified = _advisory_timestamp(item.get("modified_at"))
+            previous = rows.get(key)
+            if previous and previous["modified_at"] is not None and (modified is None or modified < previous["modified_at"]):
+                continue
+            rows[key] = {"id": uuid.uuid4(), "tenant_id": self.tid, "source": source, "advisory_id": key,
+                         "modified_at": modified, "payload": item["payload"], "sha256": hashlib.sha256(
+                             json.dumps(item["payload"], sort_keys=True, separators=(",", ":")).encode()).hexdigest()}
+        values = list(rows.values())
+        with self._tx() as s:
+            for offset in range(0, len(values), 500):
+                incoming = insert(A).values(values[offset:offset + 500])
+                s.execute(incoming.on_conflict_do_update(
+                    index_elements=[A.tenant_id, A.source, A.advisory_id],
+                    set_={k: getattr(incoming.excluded, k) for k in ("payload", "sha256", "modified_at")},
+                    where=(A.sha256 != incoming.excluded.sha256) & or_(
+                        A.modified_at.is_(None), incoming.excluded.modified_at >= A.modified_at)))
             audit_log.append(s, self.tid, "myelin-advisory-sync", "advisory.feed.upserted",
-                {"source": source, "records": len(items)})
-            return len(items)
+                             {"source": source, "records": len(values)})
+        return len(values)
 
     def advisory_records(self, source=None, limit=5000):
         from .db.models import AdvisoryRecord
@@ -723,13 +782,14 @@ class PgStore:
                 audit_log.append(s, self.tid, "system", "finding.acceptance_expired", {"text": f"{n} risk acceptance(s) expired and reopened"})
         return n
 
-    def add_scan(self, repo, branch, commit, findings, sbom, decision, actor, scanned_engines=None, stats=None, refresh=()):
+    def add_scan(self, repo, branch, commit, findings, sbom, decision, actor, scanned_engines=None, stats=None, refresh=(), reconcile_engines=None):
         """Store a scan. Within this repository and the engines that ran, open findings that are no longer reported
-        become `fixed`, and fixed findings that come back are reopened (regressions). Suppressed / risk-accepted /
+        become `fixed`. A fixed finding that is observed again is reopened even with partial coverage. Suppressed / risk-accepted /
         false-positive decisions stay attached to the fingerprint across scans."""
         sid = "scan-" + uuid.uuid4().hex[:10]
         seen = {f["fingerprint"] for f in findings}
         engines = set(scanned_engines) if scanned_engines is not None else {f["engine"] for f in findings}
+        reconcile = engines if reconcile_engines is None else set(reconcile_engines)
         now = datetime.now(timezone.utc)
         with self._tx() as s:
             known = set(s.scalars(select(Finding.fingerprint)))
@@ -746,10 +806,11 @@ class PgStore:
             for f in new:
                 f.setdefault("introduced_in", (commit or "")[:12] or None)
             fixed, reopened = [], []
-            if engines:
-                for r in s.scalars(select(Finding).where(Finding.repo == repo, Finding.engine.in_(engines),
+            observed_engines = {f["engine"] for f in findings}
+            if reconcile or observed_engines:
+                for r in s.scalars(select(Finding).where(Finding.repo == repo, Finding.engine.in_(reconcile | observed_engines),
                                                          Finding.status.in_(("open", "fixed")))):
-                    if r.fingerprint not in seen and r.status == "open":
+                    if r.engine in reconcile and r.fingerprint not in seen and r.status == "open":
                         r.status, r.updated_at = "fixed", now
                         r.data = {**r.data, "status": "fixed", "fixed_at": now.isoformat(), "fixed_in": commit[:12] or None}
                         fixed.append(self._finding(r))

@@ -348,3 +348,11 @@ def test_nvd_record_preserves_ssvc_and_affected_product_evidence(monkeypatch):
     assert record["ssvc"] == payload["vulnerabilities"][0]["cve"]["metrics"]["ssvcMetricV203"]
     assert record["affected_products"][0]["product"] == "sample"
     assert record["reference_types"]["exploit"] == ["https://example.test/exploit"]
+
+
+def test_osv_truncated_batch_is_reported(monkeypatch):
+    monkeypatch.setattr(vulndb, "_http_json", lambda *a, **kw: {"results": []})
+    with vulndb.scan_intelligence():
+        assert vulndb._osv([{"ecosystem": "pypi", "name": "pyyaml", "version": "6.0"}]) is None
+        assert "OSV query batch returned missing or incomplete results" in vulndb.scan_status()["errors"]
+    assert "OSV query batch returned missing or incomplete results" not in vulndb.scan_status()["errors"]

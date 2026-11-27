@@ -89,7 +89,11 @@ def print_report(res, decision):
             c = cov[k]
             tools = ", ".join(t["name"] + (f" {t['version']}" if t.get("version") else "") + (" (FAILED)" if t.get("error") else "")
                               for t in c.get("tools") or [])
-            print(f"    {k:<8} {c.get('examined', '')[:52]:<52} {tools}")
+            state = " (partial)" if c.get("status") == "partial" else ""
+            print(f"    {k:<8} {c.get('examined', '')[:52]:<52} {tools}{state}")
+            if state:
+                for note in [*c.get("limitations", []), *c.get("errors", [])]:
+                    print(f"             {note}")
         skipped = [f"{k} ({c.get('reason')})" for k, c in cov.items() if not c.get("assessed")]
         if skipped:
             print("  Not assessed: " + "; ".join(skipped))
@@ -115,19 +119,31 @@ def print_report(res, decision):
 
 
 def cmd_scan(a):
+    from . import coverage
     engines = a.engines.split(",") if a.engines else None
     if a.image:
+        if a.report:
+            print("--report is available for repository scans.", file=sys.stderr)
+            return 2
         res = orchestrator.scan_image(a.image)
         decision = policy.evaluate(res["findings"], policy.load(a.policy))
         print_report(res, decision)
         if a.json:
             json.dump({**res, "decision": decision}, open(a.json, "w"), indent=2)
         return 1 if decision["decision"] == "block" and a.fail_on != "never" else 0
+    if not os.path.isdir(a.path):
+        print(f"Repository folder does not exist: {a.path}", file=sys.stderr)
+        return 2
     res = orchestrator.scan(a.path, repo=a.repo or os.path.basename(os.path.abspath(a.path)), engines=engines,
                             use_external=not a.builtin_only)
     pol = policy.load(a.policy)
     decision = policy.evaluate(res["findings"], pol)
     print_report(res, decision)
+    if a.report:
+        from . import report_enterprise
+        with open(a.report, "w", encoding="utf-8") as report_file:
+            report_file.write(report_enterprise.render({**res, "decision": decision}))
+        print(f"  Report written to {a.report}")
     if a.json:
         json.dump({**res, "decision": decision}, open(a.json, "w"), indent=2)
     if a.sarif:
@@ -139,7 +155,8 @@ def cmd_scan(a):
         try:
             r = upload(server, os.getenv("MYELIN_API_KEY"), {"repo": res["repo"], "branch": os.getenv("GITHUB_REF_NAME") or os.getenv("CI_COMMIT_REF_NAME") or os.getenv("BUILD_SOURCEBRANCHNAME") or "local",
                                                              "commit": os.getenv("GITHUB_SHA") or os.getenv("CI_COMMIT_SHA") or "", "findings": res["findings"], "sbom": res["sbom"],
-                                                             "engines": engines or list(orchestrator.DEFAULT_ENGINES),
+                                                             "engines": coverage.completed(res["coverage"]),
+                                                             "reconcile_engines": coverage.reconciled(res["coverage"], engines or orchestrator.DEFAULT_ENGINES),
                                                              "stats": res.get("stats")})
             print(f"  Uploaded → {server}  scan_id={r.get('scan_id')}  server decision={r.get('decision', {}).get('decision')}")
         except Exception as e:
@@ -447,6 +464,7 @@ def main():
     s.add_argument("--image", help="scan a container image (requires trivy or grype on PATH)")
     s.add_argument("--repo"); s.add_argument("--engines"); s.add_argument("--policy"); s.add_argument("--server")
     s.add_argument("--sarif"); s.add_argument("--sbom"); s.add_argument("--json")
+    s.add_argument("--report", help="write a self-contained HTML assessment report for a repository")
     s.add_argument("--fail-on", choices=["block", "warn", "never"], default="block")
     s.add_argument("--builtin-only", action="store_true", help="skip third-party scanners even if installed")
     d = sub.add_parser("dast", help="test a running web API (read-only by default)")

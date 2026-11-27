@@ -9,6 +9,7 @@ import subprocess
 import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
 
 from . import coverage, vulndb, remediation
 from . import (ai_security, builtin_rules, cd_posture, cicd_posture, crypto_inventory, iac_checks, normalize, repo_posture, sbom,
@@ -31,14 +32,20 @@ SAST_EXCLUDES = ["tests", "test", "__tests__", "spec", "testdata", "fixtures", "
                  ".venv", "venv", "*.min.js", "*.bundle.js", "*.map"]
 
 
-def _trivy_argv(p):
-    scanners = "vuln,misconfig,secret"
+def _trivy_domains(engines):
+    domains = {"sca", "iac", "secrets"} & set(engines)
+    if vulndb.offline() and not os.path.exists(os.path.join(TRIVY_CACHE, "db", "trivy.db")):
+        domains.discard("sca")
+    return sorted(domains)
+
+
+def _trivy_argv(p, domains=None):
+    domains = _trivy_domains(DEFAULT_ENGINES) if domains is None else domains
+    scanners = ",".join({"sca": "vuln", "iac": "misconfig", "secrets": "secret"}[d] for d in domains)
     argv = ["trivy", "fs", "--quiet", "--format", "json", "--cache-dir", TRIVY_CACHE,
             "--timeout", "15m", "--skip-dirs", "**/node_modules", "--skip-dirs", "**/.git"]
     if vulndb.offline():
         argv += ["--skip-db-update", "--skip-java-db-update", "--offline-scan", "--skip-check-update"]
-        if not os.path.exists(os.path.join(TRIVY_CACHE, "db", "trivy.db")):
-            scanners = "misconfig,secret"          # air-gapped without a mirrored database: OSV/bundled data covers SCA
     return argv + ["--scanners", scanners, p]
 
 
@@ -102,7 +109,7 @@ def _applies(tool, inv, engines):
     if tool == "grype":
         return "sca" in engines and bool(inv.get("manifests"))
     if tool == "trivy":
-        return bool({"sca", "secrets", "iac"} & set(engines))
+        return bool(_trivy_domains(engines))
     return True
 
 
@@ -115,11 +122,20 @@ def rule_count() -> int:
     return n
 
 
-def _run_external(tool, path, repo, timeout=1800):
+# A syntactically valid JSON object is not necessarily a scanner report.
+_RESULT_ARRAY = {"opengrep": "results", "semgrep": "results", "bandit": "results", "grype": "matches"}
+
+
+def _scanner_error(tool, repo, message):
+    return {"engine": "meta", "rule_id": f"tool-error:{tool}", "title": f"{tool} failed: {message}",
+            "severity": "high", "scanner_status": "required_error", "required": True, "repo": repo}
+
+
+def _run_external(tool, path, repo, timeout=1800, *, run_info=None):
     argv, norm = EXTERNAL[tool]
     report = None
     try:
-        built = argv(path)
+        built = _trivy_argv(path, run_info["domains"]) if tool == "trivy" and run_info and "domains" in run_info else argv(path)
         if isinstance(built, tuple):                     # (argv, report file) for tools that write a report file
             built, report = built
         cp = subprocess.run(built, capture_output=True, text=True, timeout=timeout, env=_tool_env())
@@ -131,12 +147,36 @@ def _run_external(tool, path, repo, timeout=1800):
         document = json.loads(text)
         if document is None:
             raise ValueError("scanner returned JSON null instead of a result document")
-        return norm(document, repo)
+        array = _RESULT_ARRAY.get(tool)
+        if array and (not isinstance(document, dict) or not isinstance(document.get(array), list)):
+            raise ValueError(f"scanner report has no {array} array")
+        if tool == "trivy" and (not isinstance(document, dict) or "SchemaVersion" not in document):
+            raise ValueError("scanner report has no Trivy schema version")
+        if tool == "gitleaks" and not isinstance(document, list):
+            raise ValueError("scanner report is not a Gitleaks findings array")
+        findings = norm(document, repo)
+        if tool in ("bandit", "opengrep", "semgrep"):
+            errors = document.get("errors") or []
+            if errors:
+                findings.append(_scanner_error(tool, repo, f"{len(errors)} errors reported while analyzing files"))
+            if run_info is not None and tool in ("opengrep", "semgrep"):
+                paths = document.get("paths") or {}
+                if isinstance(paths.get("scanned"), list):
+                    run_info["scanned_files"] = len(paths["scanned"])
+        if tool == "semgrep":
+            for f in findings:
+                if f.get("source_tool") == "opengrep":
+                    f["source_tool"] = tool
+        # Bandit and Checkov use exit 1 for findings. The other configured
+        # scanners use zero even when they find issues.
+        if (tool in _RESULT_ARRAY or tool in ("trivy", "gitleaks", "checkov")) and cp.returncode not in (
+            (0, 1) if tool in ("bandit", "checkov") else (0,)
+        ):
+            findings.append(_scanner_error(tool, repo, f"scanner exited with code {cp.returncode}"))
+        return findings
     except Exception as e:  # noqa: BLE001
         # A scanner error is a first-class gate input. It must not look like a clean scan.
-        return [{"engine": "meta", "rule_id": f"tool-error:{tool}",
-                 "title": f"{tool} failed: {type(e).__name__}: {e}", "severity": "high",
-                 "scanner_status": "required_error", "required": True, "repo": repo}]
+        return [_scanner_error(tool, repo, f"{type(e).__name__}: {e}")]
     finally:
         if report:
             shutil.rmtree(os.path.dirname(report), ignore_errors=True)
@@ -146,13 +186,20 @@ DEFAULT_ENGINES = ("sca", "license", "sast", "secrets", "iac", "cicd", "aibom", 
 
 
 def scan(path: str, repo: str = "local", engines: list[str] | None = None, use_external: bool = True,
-         criticality: float = 1.0) -> dict:
+         criticality: float = 1.0, *, advisory_lookup=None) -> dict:
+    with vulndb.scan_intelligence():
+        return _scan(path, repo, engines, use_external, criticality, advisory_lookup)
+
+
+def _scan(path, repo, engines, use_external, criticality, advisory_lookup):
     t0 = time.time()
+    started = datetime.now(timezone.utc)
     engines = engines or list(DEFAULT_ENGINES)
     comps = sbom.inventory(path) if {"sca", "license"} & set(engines) else sbom.parse_manifests(path)
     inv = coverage.inventory(path)
     findings: list[dict] = []
     jobs = []
+    run_info = {}
     with ThreadPoolExecutor(max_workers=6) as ex:
         if "secrets" in engines:
             jobs.append(ex.submit(secrets.scan_path, path, repo))
@@ -172,14 +219,18 @@ def scan(path: str, repo: str = "local", engines: list[str] | None = None, use_e
             for tool in EXTERNAL:
                 if shutil.which(tool) and _applies(tool, inv, engines):
                     tools_used.append(tool)
-                    jobs.append(ex.submit(_run_external, tool, path, repo))
+                    run_info[tool] = {"domains": _trivy_domains(engines)} if tool == "trivy" else {}
+                    jobs.append(ex.submit(_run_external, tool, path, repo, run_info=run_info[tool]))
         for j in jobs:
             findings += j.result()
     if {"sca", "license"} & set(engines):
         # reachability hint: packages imported in first-party code
-        findings += sbom.match_advisories(comps, repo, reachable_hint=_imported_packages(path, comps))
+        findings += sbom.match_advisories(comps, repo, reachable_hint=_imported_packages(path, comps),
+                                           advisory_lookup=advisory_lookup if "sca" in engines else None)
     findings = [f for f in findings if f.get("engine") in engines or f.get("engine") == "meta"]
     raw_count = sum(1 for f in findings if f.get("engine") != "meta")
+    # Capture coverage evidence before deduplication or suppressions can hide it.
+    detected = findings
     findings = _merge_duplicates(path, findings)
     merged_count = sum(1 for f in findings if f.get("engine") != "meta")
     findings, ignored = suppress.apply(path, findings)      # .myelinignore + governed inline suppressions
@@ -198,11 +249,14 @@ def scan(path: str, repo: str = "local", engines: list[str] | None = None, use_e
         {"name": "myelin:posture", "value": json.dumps({"score": posture["score"], "grade": posture["grade"]})},
     ]
     inv["git_history"] = "gitleaks" in tools_used and os.path.isdir(os.path.join(path, ".git"))
-    intel = {"offline": vulndb.offline(), "sources": sorted(vulndb.STATUS["sources"]) or ["bundled advisory pack"],
-             "errors": sorted(vulndb.STATUS["errors"])[:10]}
+    intel_status = vulndb.scan_status()
+    intel = {"offline": vulndb.offline(), "sources": sorted(intel_status["sources"] | (
+        {"bundled advisory pack"} if "sca" in engines and comps else set())), "errors": sorted(intel_status["errors"])}
     cov = coverage.build(inv, engines, tools_used, uniq, len(comps), intel,
-                         deep_rules=rule_count() if {"opengrep", "semgrep"} & set(tools_used) else 0)
-    return {"repo": repo, "path": path, "duration_s": round(time.time() - t0, 2), "tools": tools_used,
+                         deep_rules=rule_count() if {"opengrep", "semgrep"} & set(tools_used) else 0,
+                         run_info=run_info, detected=detected, use_external=use_external)
+    return {"repo": repo, "path": path, "started_at": started.isoformat(timespec="seconds"),
+            "duration_s": round(time.time() - t0, 2), "tools": tools_used,
             "coverage": cov, "engines": coverage.assessed(cov),
             "tool_versions": {t: coverage.tool_version(t) for t in tools_used if t != "myelin-builtin"},
             "components": len(comps), "ignored_by_path": ignored,
@@ -254,27 +308,24 @@ def _merge_duplicates(path, findings):
     root = os.path.abspath(path)
     for f in findings:
         fp = f.get("file") or ""
-        if fp and os.path.isabs(fp) and os.path.abspath(fp).startswith(root):
+        if fp and os.path.isabs(fp) and os.path.normcase(os.path.abspath(fp)).startswith(os.path.normcase(root.rstrip(os.sep) + os.sep)):
             f["file"] = os.path.relpath(fp, root)
         elif fp.startswith(path.rstrip("/") + "/"):
             f["file"] = fp[len(path.rstrip("/")) + 1:]
     for f in findings:
-        if f.get("file", "").startswith("/") and not os.path.exists(f["file"]):     # checkov: "/backend/Dockerfile"
+        if (f.get("file") or "").startswith("/") and not os.path.exists(f["file"]):     # checkov: "/backend/Dockerfile"
             f["file"] = f["file"].lstrip("/")
     own_rules = {(f.get("file"), f.get("rule_id")) for f in findings if f.get("engine") == "iac"}
     findings = [f for f in findings if not str(f.get("rule_id", "")).startswith("CKV_SECRET")
                 and not any((f.get("file"), r) in own_rules for r in CHECKOV_EQUIVALENT.get(f.get("rule_id"), ()))]
     own = {(f.get("file"), f.get("line"), f.get("cwe")) for f in findings
-           if f.get("engine") == "sast" and not f.get("source_tool")}
-    own_lines = {(f.get("file"), f.get("line")) for f in findings
-                 if f.get("engine") in ("sast", "aibom", "secrets") and not f.get("source_tool")}
+           if f.get("engine") == "sast" and not f.get("source_tool") and f.get("cwe")}
     # Deep (taint) SAST results replace a pattern match for the same weakness on the same line; the pattern rule id is
     # kept as an alias so existing suppressions still apply
     deep = {}
     for f in findings:
-        if f.get("source_tool") == "opengrep":
+        if f.get("source_tool") in ("opengrep", "semgrep") and f.get("cwe"):
             deep.setdefault((f.get("file"), f.get("line"), f.get("cwe")), f)
-    deep_lines = {(k[0], k[1]) for k in deep}
     out = []
     for f in findings:
         key = (f.get("file"), f.get("line"), f.get("cwe"))
@@ -284,8 +335,7 @@ def _merge_duplicates(path, findings):
             if f.get("autofix") and not d.get("autofix"):
                 d["autofix"] = f["autofix"]
             continue
-        if f.get("source_tool") == "bandit" and (key in own or (f.get("file"), f.get("line")) in own_lines
-                                                  or key in deep or (f.get("file"), f.get("line")) in deep_lines):
+        if f.get("source_tool") == "bandit" and (key in own or key in deep):
             continue
         out.append(f)
     # Secrets: one finding per line; NERvvE's own rule carries validation and the rotation workflow
@@ -329,9 +379,6 @@ def _merge_duplicates(path, findings):
             match["scanner_sources"] = sorted(sources)
             duplicate_ids.add(id(finding))
     out = [f for f in out if id(f) not in duplicate_ids]
-    # IaC: Trivy misconfiguration on a line another IaC engine already reports
-    iac_lines = {(f.get("file"), f.get("line")) for f in out if f.get("engine") == "iac" and f.get("source_tool") != "trivy"}
-    out = [f for f in out if not (f.get("engine") == "iac" and f.get("source_tool") == "trivy" and (f.get("file"), f.get("line")) in iac_lines)]
     # an AI-specific rule explains the same line better than the generic SAST rule (the input is model output);
     # a secret in an MCP config is reported once, by the secrets engine (rotation workflow, validation)
     ai_lines = {(f.get("file"), f.get("line")) for f in out if f.get("engine") == "aibom" and f.get("rule_id") != "NM-AI-024"}

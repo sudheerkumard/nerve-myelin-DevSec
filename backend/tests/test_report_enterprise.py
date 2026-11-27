@@ -71,3 +71,13 @@ def test_dast_report():
     h = R.render(json.loads(json.dumps(res)), issuer="Globex", kind="dast")
     assert "OWASP API Security Top 10" in h and "API1:2023" in h and 'id="sbom"' not in h
     assert "Live application" in h and "61 requests" in h
+
+
+def test_dast_report_only_claims_recorded_checks_and_marks_partial_zap():
+    res = {"target": "https://api.example.com", "requests": 5, "tools": ["myelin-dast", "zap"],
+           "stats": {"zap": {"complete": False, "urls": 3, "mode": "passive"}}, "findings": []}
+    html = R.render(res, kind="dast")
+    assert "ZAP did not complete" in html and "Undetermined" in html
+    assert "Multi-user checks with the configured test identities" not in html
+    assert "API specification</th>" not in html and "Testing ran only after" not in html
+    assert "✓ No open findings" not in html

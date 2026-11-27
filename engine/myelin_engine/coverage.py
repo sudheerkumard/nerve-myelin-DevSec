@@ -120,25 +120,18 @@ def tool_version(tool: str) -> str:
     return m.group(1) if m else "installed"
 
 
-DOMAIN_TOOLS = {
-    "sast": ("NERvvE pattern rules", "opengrep", "semgrep", "bandit"),
-    "sca": ("OSV", "trivy", "grype"),
-    "license": ("NERvvE licence policy",),
-    "secrets": ("NERvvE secret rules", "gitleaks", "trivy"),
-    "iac": ("NERvvE IaC rules", "checkov", "trivy"),
-    "cicd": ("NERvvE pipeline rules",),
-    "aibom": ("NERvvE AI-BOM rules",),
-    "supply": ("NERvvE supply-chain rules",),
-}
-
-
 def build(inv: dict, engines: list[str], tools_used: list[str], findings: list[dict], components: int,
-          intel: dict | None = None, deep_rules: int = 0) -> dict:
+          intel: dict | None = None, deep_rules: int = 0, *, run_info: dict | None = None,
+          detected: list[dict] | None = None, use_external: bool = True) -> dict:
     """Per-domain record: assessed or not, why, what was examined, which tools ran, and errors."""
+    detected = findings if detected is None else detected
+    run_info = run_info or {}
+    intel = intel or {}
     errors = {}
-    for f in findings:
+    for f in detected:
         if f.get("engine") == "meta" and str(f.get("rule_id", "")).startswith("tool-error:"):
             errors[f["rule_id"].split(":", 1)[1]] = f.get("title", "")
+    found_domains = {f.get("engine") for f in detected}
     counts = {}
     for f in findings:
         if f.get("engine") != "meta":
@@ -147,45 +140,49 @@ def build(inv: dict, engines: list[str], tools_used: list[str], findings: list[d
     deep_langs = sorted(lang for lang in langs if lang in DEEP_SAST)
     pattern_langs = sorted(lang for lang in langs if lang in PATTERN_SAST)
 
-    def tools_for(domain, applicable_tools):
+    def tools_for(applicable_tools):
         names = []
         for t in applicable_tools:
             if t.startswith(("NERvvE", "OSV")):
                 names.append({"name": t, "version": ""})
             elif t in tools_used:
-                names.append({"name": t, "version": tool_version(t), "error": errors.get(t)})
+                names.append({"name": t, "version": tool_version(t), "error": errors.get(t), **run_info.get(t, {})})
         return names
 
     cov = {}
     # SAST
-    sast_tools = ["NERvvE pattern rules"] if pattern_langs else []
-    if deep_langs and ("opengrep" in tools_used or "semgrep" in tools_used):
-        sast_tools += [t for t in ("opengrep", "semgrep") if t in tools_used]
+    deep_tools = [t for t in ("opengrep", "semgrep") if t in tools_used]
+    deep_ran = [t for t in deep_tools if t not in errors and run_info.get(t, {}).get("scanned_files") != 0]
+    sast_tools = (["NERvvE pattern rules"] if pattern_langs else []) + deep_tools
     if "Python" in langs and "bandit" in tools_used:
         sast_tools.append("bandit")
     unsupported = sorted(lang for lang in langs if lang not in PATTERN_SAST and lang not in DEEP_SAST)
-    cov["sast"] = {"applicable": bool(langs), "assessed": "sast" in engines and bool(sast_tools),
-                   "examined": f"{sum(langs.values())} source files: " + ", ".join(f"{k} ({v})" for k, v in sorted(langs.items(), key=lambda x: -x[1])) if langs else "",
-                   "depth": ("Data-flow (taint) analysis for " + ", ".join(deep_langs) + "; " if deep_langs and len(sast_tools) > 1 else "")
-                   + ("pattern rules for " + ", ".join(pattern_langs) if pattern_langs else ""),
-                   "not_covered": unsupported, "rules": deep_rules, "tools": tools_for("sast", sast_tools)}
-    # SCA and licences
+    depth = ["Pattern rules for " + ", ".join(pattern_langs)] if pattern_langs else []
+    for tool in deep_ran:
+        files = run_info.get(tool, {}).get("scanned_files")
+        depth.append(f"Data-flow (taint) analysis with {tool}" + (f" on {files} file{'s' if files != 1 else ''}" if files is not None else ""))
+    limitations = []
+    if deep_langs and not deep_ran:
+        why = ("external scanners disabled" if not use_external else "check the scanner errors or exclusions" if deep_tools
+               else "Opengrep or Semgrep was not available")
+        limitations.append(f"Data-flow analysis did not complete: {why}.")
+    if unsupported:
+        limitations.append("Bundled rules do not cover: " + ", ".join(unsupported) + ".")
+    cov["sast"] = {"applicable": bool(langs), "assessed": "sast" in engines and bool(pattern_langs or deep_ran),
+                   "examined": f"{sum(langs.values())} source files detected: " + ", ".join(f"{k} ({v})" for k, v in sorted(langs.items())) if langs else "",
+                   "depth": "; ".join(depth), "not_covered": unsupported,
+                   "limitations": limitations, "rules": deep_rules if deep_ran else 0, "tools": tools_for(sast_tools)}
+    # An advisory engine may find dependencies outside the built-in manifest inventory.
     has_deps = components > 0
+    sca_tools = (["NERvvE bundled advisories"] if has_deps else [])
+    sca_tools.extend(t for t in ("OSV", "OSV offline export") if t in intel.get("sources", []))
+    sca_tools += [t for t in ("trivy", "grype") if t in tools_used
+                                               and (t != "trivy" or "sca" in run_info.get(t, {}).get("domains", ["sca"]))]
     cov["sca"] = {"applicable": has_deps, "assessed": "sca" in engines and has_deps,
-                  "examined": f"{components} components from {len(inv.get('manifests') or [])} manifest/lock files" if has_deps else "",
-                  "depth": "Known vulnerabilities (CVE/GHSA/OSV) with CVSS, EPSS, CISA KEV and import reachability"
-                           + (" — offline: bundled advisory data only" if (intel or {}).get("offline") else ""),
-                  "tools": tools_for("sca", ["OSV"] + [t for t in ("trivy", "grype") if t in tools_used]),
-                  "errors": (intel or {}).get("errors") or []}
-    sca_tool_errors = [f.get("title", "scanner failed") for f in findings
-                       if f.get("engine") == "meta" and str(f.get("rule_id", "")).startswith(("tool-error:trivy", "tool-error:grype"))]
-    sca_errors = list(cov["sca"]["errors"]) + sca_tool_errors
-    cov["sca"]["complete"] = not bool(sca_errors)
-    cov["sca"]["status"] = "complete" if not sca_errors else "partial"
-    cov["sca"]["errors"] = sca_errors
-    cov["sca"]["limitations"] = ["Only dependencies discovered in supported manifests, lockfiles, SBOMs or scanned artifacts can be assessed.",
-                                  "A dependency inventory does not prove runtime reachability; unknown reachability remains unknown.",
-                                  "A partial advisory feed or scanner failure must not be interpreted as a clean result."]
+                  "examined": f"{components} components inventoried from {len(inv.get('manifests') or [])} manifest/lock files" if has_deps else "",
+                  "depth": "Known vulnerabilities (CVE/GHSA/OSV) with available CVSS, EPSS, CISA KEV and import reachability",
+                  "tools": tools_for(sca_tools), "errors": intel.get("errors") or [],
+                  "limitations": ["Coverage is limited to discovered dependencies and available advisory sources."]}
     cov["license"] = {"applicable": components > 0, "assessed": "license" in engines and components > 0,
                       "examined": f"{components} components" if components else "", "depth": "Licence of every component against the policy",
                       "tools": [{"name": "NERvvE licence policy", "version": ""}]}
@@ -194,15 +191,17 @@ def build(inv: dict, engines: list[str], tools_used: list[str], findings: list[d
                      "depth": "Known-malicious and typosquatted packages, install scripts, dependency confusion",
                      "tools": [{"name": "NERvvE supply-chain rules", "version": ""}]}
     # Secrets: every repository has files
-    sec_tools = ["NERvvE secret rules"] + [t for t in ("gitleaks", "trivy") if t in tools_used]
+    sec_tools = ["NERvvE secret rules"] + [t for t in ("gitleaks", "trivy") if t in tools_used
+                                                 and (t != "trivy" or "secrets" in run_info.get(t, {}).get("domains", ["secrets"]))]
     cov["secrets"] = {"applicable": inv.get("files", 0) > 0, "assessed": "secrets" in engines and inv.get("files", 0) > 0,
-                      "examined": f"{inv.get('files', 0)} files" + (" and git history" if inv.get("git_history") else ""),
+                      "examined": f"{inv.get('files', 0)} files" + (" and git history" if inv.get("git_history") and not errors.get("gitleaks") else ""),
                       "depth": "Credentials, keys and tokens, with high-entropy and provider-format detection",
-                      "tools": tools_for("secrets", sec_tools)}
-    iac_tools = ["NERvvE IaC rules"] + [t for t in ("checkov", "trivy") if t in tools_used]
+                      "tools": tools_for(sec_tools)}
+    iac_tools = ["NERvvE IaC rules"] + [t for t in ("checkov", "trivy") if t in tools_used
+                                               and (t != "trivy" or "iac" in run_info.get(t, {}).get("domains", ["iac"]))]
     cov["iac"] = {"applicable": bool(inv.get("iac")), "assessed": "iac" in engines and bool(inv.get("iac")),
                   "examined": f"{len(inv.get('iac') or [])} files (Dockerfile, Kubernetes, Helm, Terraform, Bicep, Compose)" if inv.get("iac") else "",
-                  "depth": "Misconfiguration against CIS and cloud-provider baselines", "tools": tools_for("iac", iac_tools)}
+                  "depth": "Misconfiguration against CIS and cloud-provider baselines", "tools": tools_for(iac_tools)}
     cov["cicd"] = {"applicable": bool(inv.get("pipelines")), "assessed": "cicd" in engines and bool(inv.get("pipelines")),
                    "examined": f"{len(inv.get('pipelines') or [])} pipeline definitions" if inv.get("pipelines") else "",
                    "depth": "OWASP Top 10 CI/CD Security Risks", "tools": [{"name": "NERvvE pipeline rules", "version": ""}]}
@@ -210,10 +209,12 @@ def build(inv: dict, engines: list[str], tools_used: list[str], findings: list[d
                     "examined": f"{len(inv.get('ai') or [])} files using models, agents or MCP" if inv.get("ai") else "",
                     "depth": "OWASP Top 10 for LLM Applications", "tools": [{"name": "NERvvE AI-BOM rules", "version": ""}]}
     for k, c in cov.items():
-        if counts.get(k) and k in engines:         # an engine found something, so the domain was examined
+        if k in found_domains and k in engines:         # an engine found something, so the domain was examined
             c["applicable"] = c["assessed"] = True
             c.pop("reason", None)
             c["examined"] = c.get("examined") or "files with matching content"
+        if k in ("sca", "license", "supply"):
+            c["unresolved_inputs"] = bool(inv.get("manifests") and not components)
         c["findings"] = counts.get(k, 0) if c["assessed"] else 0
         if not c["applicable"]:
             c["reason"] = {"sast": "no source code",
@@ -223,9 +224,25 @@ def build(inv: dict, engines: list[str], tools_used: list[str], findings: list[d
                            "cicd": "no pipeline definitions", "aibom": "no AI models, agents or MCP servers",
                            "secrets": "empty repository"}.get(k, "not applicable")
         elif not c["assessed"]:
-            c["reason"] = "engine not selected for this scan"
+            c["reason"] = "no applicable source language rules" if k == "sast" and k in engines else "engine not selected for this scan"
+        tool_errors = [t["error"] for t in c["tools"] if t.get("error")]
+        c["errors"] = sorted(set(c.get("errors", []) + tool_errors))
+        partial = bool(c["errors"] or (k == "sast" and c.get("limitations")))
+        c["complete"] = c["assessed"] and not partial
+        c["status"] = ("partial" if partial else "complete") if c["assessed"] else "not_assessed"
     return cov
 
 
 def assessed(cov: dict | None) -> list[str]:
     return [k for k, c in (cov or {}).items() if c.get("assessed")]
+
+
+def completed(cov: dict) -> list[str]:
+    return [k for k, c in cov.items() if c.get("complete")]
+
+
+def reconciled(cov: dict, selected: list[str] | tuple[str, ...]) -> list[str]:
+    """Areas where an absent finding can be retired. A removed input can also retire old findings."""
+    return [k for k in selected if (c := cov.get(k)) and (c.get("complete") or (
+        not c.get("applicable") and not c.get("errors") and not (
+            k in ("sca", "license", "supply") and c.get("unresolved_inputs"))))]

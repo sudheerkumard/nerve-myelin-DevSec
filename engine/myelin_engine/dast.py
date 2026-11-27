@@ -408,6 +408,7 @@ def zap_scan(target, spec=None, headers=None, active=False, timeout=3600):
 
 
 def normalize_zap(doc):
+    from .zap_api import affected_endpoints
     sev = {"3": "high", "2": "medium", "1": "low", "0": "info"}
     out = []
     for site in doc.get("site", []):
@@ -418,5 +419,6 @@ def normalize_zap(doc):
                    url, "API8", re.sub("<[^>]+>", "", a.get("solution", ""))[:400], inst.get("evidence", ""),
                    f"CWE-{a['cweid']}" if a.get("cweid") not in (None, "", "-1", "0") else None, inst.get("method", "GET"))
             f["source_tool"], f["instances"] = "zap", len(a.get("instances") or [])
+            f["affected_endpoints"] = affected_endpoints(a.get("instances") or [], url_key="uri")
             out.append(f)
     return out

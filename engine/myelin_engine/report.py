@@ -46,6 +46,7 @@ def render(result, customer="", assessor="", classification="Confidential"):
     <tr><th>ID / rule</th><td>{_e(f["id"])} · {_e(f["rule_id"])}</td></tr>
     <tr><th>Priority / risk score</th><td>{_e(f["priority"])} · MRS {_e(f["mrs"])} / 100 · fix within {_e(f.get("sla_days"))} days</td></tr>
     <tr><th>Location</th><td><code>{_e(f.get("file"))}</code></td></tr>
+    {f'<tr><th>Affected endpoints</th><td><code>{_e(", ".join(f["affected_endpoints"]))}</code></td></tr>' if f.get("affected_endpoints") else ""}
     <tr><th>Classification</th><td>{_e(f.get("owasp_api"))}{" · " + _e(f["cwe"]) if f.get("cwe") else ""}</td></tr>
     <tr><th>What it means</th><td>{_e(WHAT.get((f.get("owasp_api") or "").split(":")[0], ""))}</td></tr>
     <tr><th>Evidence</th><td><code>{_e(f.get("evidence"))}</code></td></tr>
@@ -56,6 +57,21 @@ def render(result, customer="", assessor="", classification="Confidential"):
     by_owasp = "".join(f"<tr><td>{_e(k)}</td><td>{_e(WHAT.get(k, ''))}</td><td>{v}</td></tr>" for k, v in sorted(owasp.items()))
     tiles = "".join(f'<div class="tile"><b style="color:{COL[s]}">{counts.get(s, 0)}</b><span>{s}</span></div>' for s in SEV)
     stats = result.get("stats", {})
+    tools = result.get("tools") or []
+    zap = stats.get("zap") or {}
+    checks = []
+    if "myelin-dast" in tools:
+        checks.append("Baseline transport and response checks")
+    if stats.get("baseline_auth_checks"):
+        checks.append(f'Baseline authentication checks: {stats["baseline_auth_checks"]}')
+    if "myelin-authz" in tools:
+        checks.append(f'Multi-user authorisation: {stats.get("object_checks", 0)} object and {stats.get("function_checks", 0)} function checks')
+    if "myelin-crawler" in tools:
+        checks.append(f'Crawler: {stats.get("crawled_endpoints", 0)} endpoints discovered')
+    if "myelin-active" in tools:
+        checks.append("Built-in active checks were enabled")
+    if zap.get("complete") is False:
+        verdict = ("Incomplete coverage: OWASP ZAP did not finish", "#b7791f")
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>API security assessment — {_e(result["repo"])}</title>
 <style>
@@ -89,12 +105,11 @@ code{{font-family:Consolas,"Courier New",monospace;font-size:12px;word-break:bre
 <h2>2. Scope and method</h2>
 <table class="kv">
 <tr><th>Target</th><td><code>{_e(result["target"])}</code></td></tr>
-<tr><th>API specification</th><td>{_e(result.get("spec") or "provided as file" if result.get("spec_operations") else "not provided")} · {result.get("spec_operations", 0)} GET operations</td></tr>
-<tr><th>Test identities</th><td>{_e(", ".join(result.get("identities") or []) or "single identity / anonymous")}</td></tr>
-<tr><th>Checks</th><td>Transport and TLS, security headers, CORS, cookies, error handling, API inventory;
-  {"object-level (" + str(stats.get("object_checks", 0)) + " objects) and function-level (" + str(stats.get("function_checks", 0)) + " calls) authorisation across users; sensitive data exposure" if result.get("identities") else "authentication enforcement from the specification"}</td></tr>
-<tr><th>Mode and safety</th><td>{_e(result.get("mode"))}. {"Read-only: GET, HEAD and OPTIONS requests only; no data was created, changed or deleted." if "safe" in (result.get("mode") or "") else "Includes OWASP ZAP; active mode sends attack payloads."}
-  {result.get("requests", 0)} requests in {result.get("duration_s")} s, locked to the target host.</td></tr>
+{f'<tr><th>API specification</th><td>{_e(result["spec_operations"])} operations</td></tr>' if result.get("spec_operations") else ""}
+{f'<tr><th>Test identities</th><td>{_e(", ".join(result["identities"]))}</td></tr>' if result.get("identities") else ""}
+{f'<tr><th>Checks</th><td>{_e("; ".join(checks))}</td></tr>' if checks else ""}
+<tr><th>Mode and scope</th><td>{_e(result.get("mode"))}. Built-in scanner: {result.get("requests", 0)} requests.
+  Total duration: {_e(result.get("duration_s"))} s.</td></tr>
 <tr><th>Tools</th><td>{_e(", ".join(result.get("tools", [])))} · NERvvE DevSecOps {_e(result.get("scanner_version"))}</td></tr>
 <tr><th>Limitations</th><td>Automated testing does not replace manual penetration testing of business logic, chained attacks or write operations.</td></tr>
 </table>
