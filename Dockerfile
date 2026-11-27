@@ -21,11 +21,18 @@ FROM ${GRYPE_IMAGE} AS grype
 FROM golang:1.27-alpine AS gitleaks
 ARG GITLEAKS_VERSION=8.30.1
 COPY config/certs/ /tmp/extra-ca/
+# Trust the configured roots before apk contacts an HTTPS mirror. The base image already includes the CA bundle;
+# update-ca-certificates is installed by apk, so bootstrap trust by appending PEM files to the existing bundle.
+RUN for cert in /tmp/extra-ca/*.crt; do \
+      [ -f "$cert" ] || continue; \
+      printf '\n' >> /etc/ssl/certs/ca-certificates.crt; \
+      cat "$cert" >> /etc/ssl/certs/ca-certificates.crt; \
+    done
 # build-only stage (nothing from apk reaches the final image); the Go toolchain image is pinned by tag
 # hadolint ignore=DL3018
 RUN apk add --no-cache git ca-certificates \
- && if ls /tmp/extra-ca/*.crt >/dev/null 2>&1; then cp /tmp/extra-ca/*.crt /usr/local/share/ca-certificates/ && update-ca-certificates; fi \
- && git clone --depth 1 --branch "v${GITLEAKS_VERSION}" https://github.com/gitleaks/gitleaks /src
+ && if ls /tmp/extra-ca/*.crt >/dev/null 2>&1; then cp /tmp/extra-ca/*.crt /usr/local/share/ca-certificates/ && update-ca-certificates; fi
+RUN git clone --depth 1 --branch "v${GITLEAKS_VERSION}" https://github.com/gitleaks/gitleaks /src
 WORKDIR /src
 RUN go get golang.org/x/crypto@latest golang.org/x/text@latest golang.org/x/net@latest golang.org/x/sys@latest \
       github.com/klauspost/compress@latest \
