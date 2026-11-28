@@ -6,6 +6,59 @@ MAJOR for breaking changes, MINOR for new features, PATCH for fixes. Each sectio
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-11-28
+
+### Highlights
+- **Every layer of software is scanned, online and offline**: operating systems, native libraries and executables,
+  firmware, device drivers, mobile packages, and the databases, middleware and platforms declared in infrastructure
+  code, in addition to application dependencies. See `docs/WHAT-WE-SCAN.md` for the full coverage table.
+- **The offline advisory pack covers all of it**: Debian, Ubuntu, Alpine, Wolfi, Chainguard, AlmaLinux, Rocky Linux
+  (also used for RHEL, CentOS and Oracle Linux) and Amazon Linux package advisories; every NVD CVE with its CPE ranges
+  (about 414,000 CVEs across 97,000 products); and the LOLDrivers list of vulnerable and malicious Windows drivers.
+
+### Added
+- **Operating-system packages (NM-OS-001, NM-OS-002).** dpkg (including distroless), apk, RPM (SQLite database) and
+  opkg databases are read from container images, root filesystems, VM and device images. Matching uses OSV online and
+  the pack offline, with each distribution's own version ordering. Findings are grouped the way they are fixed: one
+  per source package and fixed version, listing every CVE the update fixes; vulnerabilities without a released fix
+  are grouped per package. Distribution releases and kernels past end of life are reported.
+- **Built-in container image scanning without Docker or Trivy**: `myelin scan --image image.tar` reads `docker save`,
+  `podman save` and OCI archives or layout directories, applies the layers with whiteouts and scans the result.
+- **Native libraries and executables (NM-BIN-002).** Version strings of OpenSSL, zlib, curl, SQLite, libpng, expat,
+  glibc, OpenSSH, Dropbear, BusyBox, nginx, Apache httpd, PostgreSQL, U-Boot, the Linux kernel and about 20 more are
+  read from ELF, PE and Mach-O files and matched by CPE. Go executables give their modules and Go toolchain version;
+  Rust executables built with cargo-auditable give their crates.
+- **Executable hardening (NM-BIN-001)**: dynamically linked ELF executables without NX, PIE, RELRO or stack protector.
+- **Firmware.** Raw images, uImage and TRX files are searched inside their compressed sections (gzip, xz, LZMA,
+  zlib); root filesystems are unpacked with unblob, sasquatch or unsquashfs when installed (the images ship
+  squashfs-tools) and scanned for packages, binaries, secrets, accounts with empty or weak password hashes
+  (NM-FW-001) and telnet at boot (NM-FW-002). When a filesystem cannot be unpacked, the report says so.
+- **Drivers**: Windows drivers matched against known vulnerable (NM-DRV-001) and malicious (NM-DRV-002) drivers;
+  Linux kernel modules report the kernel they were built for.
+- **Mobile packages**: AndroidX/Jetpack versions and native libraries inside .apk, .aab, .aar and .ipa files.
+- **Databases, middleware and platforms in infrastructure code**: end of life of managed databases (RDS, Aurora,
+  ElastiCache, MemoryDB, Azure Database, Cloud SQL), Kubernetes control planes (EKS, AKS, GKE), function and app
+  runtimes (Lambda, Azure Functions and App Service, Cloud Functions), MSK, OpenSearch and Amazon MQ in Terraform,
+  CloudFormation and Bicep; known vulnerabilities of database and middleware versions in image tags in Kubernetes,
+  Helm, Kustomize, Compose, Terraform and Dockerfiles (NM-IMG-001); Kubernetes API versions that were removed
+  (NM-K8S-001).
+- **SBOM analysis** reads operating-system packages (`pkg:deb`, `pkg:rpm`, `pkg:apk`) and components identified only
+  by CPE (firmware, devices, operating systems), which were skipped before.
+- Lifecycle data now covers about 490 products, including managed cloud services.
+- `scripts/build_offline_pack.sh` builds the complete pack in one step; `docs/WHAT-WE-SCAN.md` lists every component
+  type and its data sources.
+
+### Changed
+- The dependency engine is reported as "Software components (SCA)".
+- AWS Lambda runtimes are end of life when standard support ends (security patches stop), and the suggested upgrade
+  stays in the same language.
+
+### Upgrade notes
+- The offline advisory pack in the images grows to about 190 MB. `--build-arg PLATFORM_PACK=0` builds the previous,
+  application-only pack (about 110 MB); building the full pack needs about 6 GB of temporary disk for the NVD mirror.
+- Scans of container images, root filesystems, firmware and infrastructure code report more findings. Application
+  repositories without these see no change.
+
 ## [1.7.0] - 2026-11-28
 
 ### Highlights

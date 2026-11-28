@@ -72,10 +72,12 @@ def _spdx_components(doc: dict) -> list[dict]:
             continue
         purl = next((str(x.get("referenceLocator")) for x in pkg.get("externalRefs") or []
                      if isinstance(x, dict) and str(x.get("referenceType", "")).lower() == "purl"), "")
+        cpe23 = next((str(x.get("referenceLocator")) for x in pkg.get("externalRefs") or []
+                      if isinstance(x, dict) and str(x.get("referenceType", "")).lower().startswith("cpe")), "")
         lic = next((x for x in (pkg.get("licenseConcluded"), pkg.get("licenseDeclared"))
                     if x and str(x).upper() not in ("NOASSERTION", "NONE")), None)
         comps.append({"type": "library", "bom-ref": pkg.get("SPDXID"), "name": pkg.get("name"),
-                      "version": pkg.get("versionInfo"), "purl": purl,
+                      "version": pkg.get("versionInfo"), "purl": purl, "cpe": cpe23,
                       "licenses": [{"expression": lic}] if lic else []})
     return comps
 
@@ -99,7 +101,7 @@ def _xml_components(data: bytes) -> list[dict]:
         if not lic:
             lic = (c.findtext(f"{p}licenses/{p}expression") or "").strip() or None
         comps.append({"type": c.get("type") or "library", "bom-ref": c.get("bom-ref"), "name": c.findtext(f"{p}name"),
-                      "version": c.findtext(f"{p}version"), "purl": purl,
+                      "version": c.findtext(f"{p}version"), "purl": purl, "cpe": (c.findtext(f"{p}cpe") or "").strip(),
                       "licenses": [{"license": {"id": lic}}] if lic else []})
     return comps
 
@@ -110,6 +112,70 @@ def _flatten(items: list) -> list:
         if isinstance(c, dict):
             out.append(c)
             out.extend(_flatten(c.get("components")))
+    return out
+
+
+OS_PURL = re.compile(r"^pkg:(deb|rpm|apk)/([^/]+)/([^@?#]+)@([^?#]+)(?:\?([^#]*))?")
+
+
+def platform_components(raw: list, sbom_name: str) -> list[dict]:
+    """Operating-system packages (pkg:deb, pkg:rpm, pkg:apk) and components identified only by CPE (firmware,
+    devices, operating systems, native libraries), in the shape the platform matchers use."""
+    from urllib.parse import parse_qs, unquote
+    out = []
+    for c in raw:
+        if not isinstance(c, dict):
+            continue
+        purl = str(c.get("purl") or "")
+        m = OS_PURL.match(purl)
+        if m:
+            kind, ns, name, ver, q = m.groups()
+            qs = {k: v[0] for k, v in parse_qs(q or "").items()}
+            distro = qs.get("distro") or ns
+            if re.match(r"^\d", distro):                     # distro=3.20.3 (Syft for Alpine): the namespace names it
+                distro = f"{ns}-{distro}"
+            out.append({"ecosystem": "os", "kind": kind, "namespace": ns, "distro": unquote(distro), "name": unquote(name),
+                        "version": unquote(ver), "source": qs.get("upstream", unquote(name)).split("@")[0],
+                        "purl": purl, "source_sbom": sbom_name, "license": None, "scope": "os"})
+            continue
+        cpe23 = str(c.get("cpe") or "")
+        if not purl and cpe23.startswith("cpe:2.3:"):
+            parts = cpe23.split(":")
+            if len(parts) >= 6:
+                ver = parts[5] if parts[5] not in ("*", "-", "") else str(c.get("version") or "")
+                if ver:
+                    out.append({"ecosystem": "cpe", "name": c.get("name") or parts[4], "version": ver,
+                                "cpe": [f"{parts[2]}:{parts[3]}:{parts[4]}"], "source_sbom": sbom_name,
+                                "purl": f"pkg:generic/{parts[4]}@{ver}",
+                                "license": None, "scope": "embedded", "component_type": c.get("type")})
+    return out
+
+
+def platform_vulnerabilities(comps: list[dict], project: str) -> list[dict]:
+    """Findings for the OS packages and CPE-identified components of an uploaded SBOM."""
+    from . import ospkg, platform_scan
+    repo = f"sbom:{project}"
+    out = []
+    by_distro = {}
+    for c in comps:
+        if c.get("ecosystem") == "os":
+            by_distro.setdefault(c["distro"], []).append(c)
+    for distro, pkgs in by_distro.items():
+        m = re.match(r"^([a-z]+)[-:]?(\d[\w.]*)?$", distro.lower())
+        did = {"redhat": "rhel", "amazon": "amzn", "oracle": "ol", "suse": "sles", "opensuse": "opensuse-leap"}.get(
+            m.group(1), m.group(1)) if m else distro.lower()
+        ver = (m.group(2) if m and m.group(2) else "") or {"bookworm": "12", "bullseye": "11", "buster": "10",
+                                                          "trixie": "13"}.get(distro.lower(), "")
+        d = {"id": did, "version": ver, "codename": "", "name": f"{did} {ver}".strip(), "family": ospkg.FAMILY.get(did)}
+        inv = {"distro": d, "root": "", "kernel": [], "unsupported": [],
+               "packages": [{"name": p["name"], "version": p["version"], "source": p["source"], "source_version": p["version"],
+                             "arch": None, "file": p["source_sbom"], "kind": p["kind"], "license": None} for p in pkgs]}
+        _, fs = platform_scan.os_findings(inv, repo)
+        out += fs
+    cpe_comps = [{"ecosystem": "binary", "name": c["name"], "version": c["version"], "file": c["source_sbom"],
+                  "cpe": c["cpe"], "eol": None, "detection": f"CPE in the SBOM ({c.get('component_type') or 'component'})"}
+                 for c in comps if c.get("ecosystem") == "cpe"]
+    out += platform_scan.native_findings(cpe_comps, repo)
     return out
 
 
@@ -134,9 +200,9 @@ def parse(name: str, data: bytes) -> tuple[list[dict], str]:
             doc = {"components": _spdx_components(doc)}
         else:
             raise SbomError(f"{name}: not a CycloneDX or SPDX JSON document")
-    comps = resolve._cdx_components(doc, name)
+    comps = resolve._cdx_components(doc, name) + platform_components(doc.get("components") or [], name)
     without_purl = sum(1 for c in doc.get("components") or [] if isinstance(c, dict) and not c.get("purl")
-                       and c.get("type") not in ("application", "operating-system", "file"))
+                       and not c.get("cpe") and c.get("type") not in ("application", "operating-system", "file"))
     for c in comps:
         c["source_sbom"] = name
         if str(c.get("license") or "").lower() in ("unknown", "noassertion", "none", ""):
@@ -198,16 +264,20 @@ def analyse(project: str, files: list[tuple[str, bytes]], policy: dict | None = 
         raise SbomError("the SBOM files contain no components with package URLs; " +
                         "; ".join(f"{p['file']}: {p.get('error') or 'no components'}" for p in parsed)[:600])
     resolved = _resolve_licences(comps)
+    platform = [c for c in comps if c.get("ecosystem") in ("os", "cpe")]
+    comps_lang = [c for c in comps if c.get("ecosystem") not in ("os", "cpe")]
     with vulndb.scan_intelligence():
-        vulns = sbom.match_advisories(comps, repo=f"sbom:{project}") if vulnerabilities else []
+        vulns = sbom.match_advisories(comps_lang, repo=f"sbom:{project}") if vulnerabilities else []
+        if vulnerabilities and platform:
+            vulns += platform_vulnerabilities(platform, project)
         from . import eol
         lifecycle = eol.scan(None, f"sbom:{project}", comps)      # end-of-life frameworks and libraries
         status = vulndb.scan_status()
         intel = {"sources": sorted(status["sources"]), "errors": sorted(status["errors"])[:10], "offline": vulndb.offline()}
     lic_rows = license_policy.evaluate_components(
         [{"name": c["name"], "version": c["version"], "purl": c.get("purl"), "license": c.get("license") or "unknown"}
-         for c in comps], policy)
-    for row, c in zip(lic_rows, comps):
+         for c in comps_lang], policy)
+    for row, c in zip(lic_rows, comps_lang):
         row.update(ecosystem=c["ecosystem"], sources=c.get("sources"), license_source=c.get("license_source") or "SBOM"
                    if c.get("license") else None, scope=c.get("scope"))
     sev = {}

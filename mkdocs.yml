@@ -102,6 +102,7 @@ nav:
       - Code & pipelines:
           - Add to your pipeline: CI-INTEGRATION.md
           - Scan a repository: SCAN-A-REPOSITORY.md
+          - What we scan: WHAT-WE-SCAN.md
           - Import repositories: IMPORT-REPOSITORIES.md
           - Source providers: SOURCE-PROVIDERS.md
           - CD pipelines & deployment gate: CD-PIPELINE-SECURITY.md

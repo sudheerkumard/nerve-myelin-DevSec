@@ -28,7 +28,9 @@ STATUS = {  # framework control evidence status
 }
 ENGINES = [
     ("sast", "Source code analysis (SAST)", "Flaws in first-party code: injection, weak cryptography, unsafe deserialisation, disabled verification."),
-    ("sca", "Open-source dependencies (SCA)", "Known vulnerabilities (CVE) in direct and transitive third-party packages, with reachability."),
+    ("sca", "Software components (SCA)", "Known vulnerabilities (CVE) and end of life in third-party packages (direct and transitive, "
+            "with reachability), operating-system packages, native binaries, firmware, drivers, and the databases, middleware "
+            "and platforms declared in infrastructure code."),
     ("secrets", "Secrets exposure", "Credentials, keys and tokens committed to the repository."),
     ("iac", "Infrastructure as Code", "Misconfiguration in Dockerfiles, Kubernetes, Helm, Terraform, Bicep, Compose and cloud templates."),
     ("cicd", "CI/CD pipeline & deployment", "Build pipelines and continuous delivery: script injection, unpinned actions, token scope, "
@@ -613,6 +615,8 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
             method_rows.append(("Vulnerability intelligence", f'{srcs}{" — offline mode" if intel.get("offline") else ""}. CVSS v3 base scores; '
                                                              f'EPSS exploit probability; CISA KEV catalogue.'
                                                              + (f' Unavailable during this scan: {", ".join(intel["errors"])}.' if intel.get("errors") else "")))
+        if intel.get("notes"):
+            method_rows.append(("Unpacking and inventory notes", "; ".join(intel["notes"][:12]) + "."))
         if intel.get("resolution"):
             method_rows.append(("Dependency resolution", "Lock files and manifests, plus: " + ", ".join(intel["resolution"])
                                 + ". Transitive dependencies are resolved to the versions a build would install."))

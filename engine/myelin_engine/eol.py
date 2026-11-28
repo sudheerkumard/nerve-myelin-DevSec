@@ -107,9 +107,14 @@ def cycle_for(product: str, version: str):
     return best
 
 
-def status(release: dict) -> tuple[str, str | None]:
+# Products whose security patches stop at the end of standard support (endoflife.date "eoas"), not at "eol"
+# (for AWS Lambda, "eol" is the end of the deprecated phase in which functions can still be updated).
+SECURITY_ENDS_AT_EOAS = {"aws-lambda"}
+
+
+def status(release: dict, product: str | None = None) -> tuple[str, str | None]:
     """('eol' | 'soon' | 'supported', date)."""
-    eol = release.get("eol")
+    eol = release.get("eoas") if product in SECURITY_ENDS_AT_EOAS and release.get("eoas") else release.get("eol")
     if eol is True:
         return "eol", None
     if not eol:
@@ -125,9 +130,13 @@ def status(release: dict) -> tuple[str, str | None]:
     return "supported", d.isoformat()
 
 
-def upgrade_target(product: str) -> str | None:
-    """The newest supported cycle, preferring a long-term-support one."""
-    rel = [r for r in load().get(product, {}).get("releases") or [] if status(r)[0] == "supported"]
+def upgrade_target(product: str, current: str | None = None) -> str | None:
+    """The newest supported cycle, preferring a long-term-support one (same family for runtime lists such as
+    Lambda's python3.x / nodejs20.x)."""
+    rel = [r for r in load().get(product, {}).get("releases") or [] if status(r, product)[0] == "supported"]
+    fam = re.match(r"^([a-z]+)", str(current or "")) if product in SECURITY_ENDS_AT_EOAS else None
+    if fam:
+        rel = [r for r in rel if str(r["releaseCycle"]).startswith(fam.group(1))] or rel
     lts = [r for r in rel if r.get("lts")]
     pick = (lts or rel)[:1]
     if not pick:
@@ -141,13 +150,13 @@ def finding(product: str, version: str, where: str, line: int | None, repo: str,
     rel = cycle_for(product, version)
     if not rel:
         return None
-    st, date = status(rel)
+    st, date = status(rel, product)
     if st == "supported":
         return None
     p = load()[product]
     title = p.get("title") or product
     cyc = rel["releaseCycle"]
-    target = upgrade_target(product)
+    target = upgrade_target(product, cyc)
     library = p.get("category") not in RUNTIME_CATEGORIES or how.startswith(("dependency", "library copied"))
     if st == "eol":
         sev = "medium" if library else "high"

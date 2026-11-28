@@ -213,6 +213,61 @@ SECRET_PROVIDER = [
 
 # --------------------------------------------------------------------------- by rule family
 RULE = [
+    (re.compile(r"^NM-OS-001"), (
+        ["Update the operating-system packages named in the finding to the fixed version (apt-get install --only-upgrade, "
+         "apk upgrade, dnf/yum update) or, for container images, rebuild on the current base image tag and redeploy.",
+         "Rebuild images regularly (for example weekly) so security updates from the distribution are picked up even "
+         "when the application does not change.",
+         "One update usually fixes every CVE listed in the finding; re-scan to confirm."],
+        "Re-scan the image or host; the package reports the fixed version.",
+        "https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html")),
+    (re.compile(r"^NM-OS-002"), (
+        ["The distribution has not released a fix for this release yet.",
+         "Remove the package if nothing needs it (smaller or distroless base images avoid most of these), or mitigate "
+         "through configuration; check the advisory for the affected feature.",
+         "If the release is near end of life, move to the current release, which usually has the fix.",
+         "Keep scanning: the finding changes to a fix-available finding when the update ships."],
+        "Re-scan after the distribution publishes the update.", "https://www.cve.org/")),
+    (re.compile(r"^NM-BIN-002"), (
+        ["The vulnerable library is compiled into, or shipped next to, the binary named in the finding.",
+         "For your own builds: update the library (or the SDK that bundles it) and rebuild; static linking needs a "
+         "rebuild, a shared library needs the fixed version installed.",
+         "For third-party software, firmware and devices: apply the vendor's newest release or firmware image; ask the "
+         "vendor for an SBOM and their fix timeline if none is available.",
+         "Until fixed, reduce exposure: disable the affected service or protocol and restrict network access to the device."],
+        "Re-scan the rebuilt binary or the new firmware image.", "https://nvd.nist.gov/products/cpe")),
+    (re.compile(r"^NM-BIN-001"), (
+        ["Rebuild with the standard hardening flags: -fstack-protector-strong -D_FORTIFY_SOURCE=2 -fPIE -pie "
+         "-Wl,-z,relro,-z,now -Wl,-z,noexecstack.",
+         "Check the build system does not override the distribution's hardened defaults."],
+        "Re-scan the rebuilt executable.", "https://wiki.debian.org/Hardening")),
+    (re.compile(r"^NM-IMG-001"), (
+        ["Move the image to the patched release shown (same major version where possible) and redeploy.",
+         "Pin images by digest and let a dependency bot propose tag updates, so patch releases are not missed."],
+        "Re-scan the manifest after the change.", "https://kubernetes.io/docs/concepts/containers/images/")),
+    (re.compile(r"^NM-K8S-001"), (
+        ["Change apiVersion to the current version for the kind (for example networking.k8s.io/v1 for Ingress, batch/v1 "
+         "for CronJob, policy/v1 for PodDisruptionBudget) and adjust fields that changed.",
+         "Run the manifests against the target cluster version in CI (kubeconform, or a server-side dry run)."],
+        "Re-scan; apply to a test cluster on the target version.",
+        "https://kubernetes.io/docs/reference/using-api/deprecation-guide/")),
+    (re.compile(r"^NM-FW-001"), (
+        ["Do not ship devices or images with a shared, empty or weakly hashed password.",
+         "Lock the account in the image and set a unique credential per device at provisioning or first boot; use "
+         "SHA-512 crypt or yescrypt.",
+         "Rotate the password on devices already deployed."],
+        "Re-scan the rebuilt firmware or image.", "https://www.etsi.org/technologies/consumer-iot-security")),
+    (re.compile(r"^NM-FW-002"), (
+        ["Remove telnetd from the image and its start-up scripts; use SSH with keys if remote access is needed.",
+         "Block TCP/23 on deployed devices until the update is installed."],
+        "Re-scan the rebuilt firmware.", "https://owasp.org/www-project-internet-of-things/")),
+    (re.compile(r"^NM-DRV-00[12]"), (
+        ["Remove the driver from the machines and images that carry it.",
+         "Enable the Microsoft vulnerable driver blocklist (memory integrity / HVCI, or a WDAC policy) so it cannot be "
+         "loaded again.",
+         "For a malicious driver, treat the machines as compromised: isolate, investigate and rebuild."],
+        "Re-scan; confirm the blocklist is enforced.",
+        "https://learn.microsoft.com/windows/security/application-security/application-control/app-control-for-business/design/microsoft-recommended-driver-block-rules")),
     (re.compile(r"^NM-EOL-00[12]"), (
         ["Move to the supported release shown as the fix (the newest supported cycle, LTS where there is one).",
          "Runtimes and base images: change the version in the file reported (Dockerfile FROM, .nvmrc, "

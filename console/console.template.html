@@ -1961,7 +1961,7 @@ VIEWS.why = async () => {
     ["VEX and evidence for customers", "OpenVEX and CycloneDX VEX built from your triage decisions, corporate reports mapped to OWASP, PCI DSS, ISO 27001, NIST SSDF and SOC 2, and a signed audit trail your auditors can verify."]];
   const ST = ["IDE", "Pull request", "Pipeline", "Registry", "Cluster"];
   const M = [["Open-source dependencies (SCA) + reachability", [1, 1, 1, 1, 1]], ["Code analysis (SAST)", [1, 1, 1, 0, 0]], ["Secrets in code, history and pipelines", [1, 1, 1, 1, 0]],
-    ["Infrastructure as Code", [1, 1, 1, 0, 1]], ["Container images", [0, 0, 1, 1, 1]], ["Pipeline posture (OWASP CI/CD Top 10)", [0, 1, 1, 0, 1]], ["Licence compliance", [0, 1, 1, 0, 0]],
+    ["Infrastructure as Code", [1, 1, 1, 0, 1]], ["Container images", [0, 0, 1, 1, 1]], ["OS packages, binaries, firmware, drivers", [0, 1, 1, 1, 1]], ["Databases, middleware, platforms in IaC", [1, 1, 1, 0, 1]], ["Pipeline posture (OWASP CI/CD Top 10)", [0, 1, 1, 0, 1]], ["Licence compliance", [0, 1, 1, 0, 0]],
     ["AI-BOM: models, prompts, agents, MCP", [1, 1, 1, 0, 0]], ["Signing, SLSA provenance, SBOM attestation", [0, 0, 1, 1, 1]], ["Deploy-time policy gate", [0, 0, 1, 0, 1]], ["Policy as code (YAML / OPA)", [1, 1, 1, 1, 1]]];
   $("#view").innerHTML = `<div class="hero"><h2>Secure the code, the pipeline that builds it, and the artifact that ships.</h2><div class="muted">Software supply-chain attacks increasingly target the build system as well as dependencies. RAT Flea DevSec treats the pipeline as a first-class attack surface and enforces one policy at every stage from commit to cluster.</div></div>
   <div class="grid g4 diff" style="margin-top:14px">${D.map(([h, p]) => `<div class="t"><h5>${h}</h5><p>${p}</p></div>`).join("")}</div>

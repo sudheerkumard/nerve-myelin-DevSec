@@ -97,6 +97,13 @@ redistributed by RAT Flea DevSec.
 | GitHub Advisory Database, reviewed advisories (trimmed to matching fields) | offline advisory pack in the platform and CLI images (`/opt/myelin/advisories`) | CC BY 4.0 — © GitHub, Inc. and contributors, https://github.com/github/advisory-database |
 | OpenSSF Malicious Packages (MAL- records) | offline advisory pack | Apache-2.0 — © OpenSSF contributors, https://github.com/ossf/malicious-packages |
 | endoflife.date product lifecycle data | `engine/myelin_engine/data/eol.json.gz` | MIT — © endoflife.date contributors, https://github.com/endoflife-date/endoflife.date |
+| CISA Known Exploited Vulnerabilities catalog | offline advisory pack (`kev.json.gz`) | CC0 1.0 — https://github.com/cisagov/kev-data |
+| NVD CVE records and CPE configurations | offline advisory pack (`cpe.pack`) | U.S. Government work (public domain); this product uses NVD data but is not endorsed or certified by the NVD |
+| Debian security tracker data | offline advisory pack (`os-debian.json.gz`) | Debian security tracker, https://security-tracker.debian.org (mirrored by github.com/aquasecurity/vuln-list-debian) |
+| Ubuntu security notices (OSV) | offline advisory pack (`os-ubuntu.json.gz`) | CC BY-SA 4.0 — © Canonical Ltd., https://github.com/canonical/ubuntu-security-notices; the converted data is shared under the same licence |
+| Alpine secdb, Wolfi and Chainguard advisories | offline advisory pack (`os-alpine`, `os-wolfi`, `os-chainguard`) | as published at secdb.alpinelinux.org, packages.wolfi.dev and packages.cgr.dev (mirrored by github.com/aquasecurity/vuln-list) |
+| AlmaLinux and Rocky Linux errata, Amazon Linux security bulletins | offline advisory pack (`os-almalinux`, `os-rocky`, `os-amzn`) | as published by AlmaLinux OS Foundation, Rocky Enterprise Software Foundation and Amazon Web Services (mirrored by github.com/aquasecurity/vuln-list) |
+| LOLDrivers vulnerable and malicious driver list | offline advisory pack (`drivers.json.gz`) | Apache-2.0 — https://github.com/magicsword-io/LOLDrivers |
 
 The records are reformatted (fields trimmed, one archive per ecosystem); their content is unchanged and each
 finding links to the original record.

@@ -36,8 +36,8 @@ def main(src):
         meta = yaml.safe_load(text.split("---", 2)[1]) or {}
         purls = [i["purl"] for i in meta.get("identifiers") or [] if isinstance(i, dict) and "purl" in i
                  and i["purl"].split(":", 1)[1].split("/", 1)[0] in KEEP_TYPES]
-        if not purls and meta.get("category") not in KEEP_CATEGORIES:
-            continue
+        # every product is kept: services (managed databases, Kubernetes, Lambda runtimes), devices and firmware
+        # have no package URL but are matched by the infrastructure and binary scanners
         rel = []
         for r in meta.get("releases") or []:
             rel.append({k: _d(r[k]) for k in ("releaseCycle", "releaseDate", "eol", "eoas", "eoes", "lts", "latest")

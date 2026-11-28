@@ -94,7 +94,7 @@ def test_scan_records_coverage_and_report_lists_only_assessed_areas(tmp_path):
     assert res["engines"] == ["sast", "secrets"] and res["coverage"]["sast"]["assessed"]
     html = R.render(res, issuer="Org", source_url="https://example.com/small")
     assert re.findall(r'<h3 id="d-(\w+)">', html) == ["sast", "secrets"]
-    for absent in ("Open-source dependencies (SCA)", "Infrastructure as Code", "Vulnerability register", "Software bill of materials",
+    for absent in ("Software components (SCA)", "Infrastructure as Code", "Vulnerability register", "Software bill of materials",
                    "Not assessed", "Not in scope"):
         assert absent not in html, absent
     assert re.findall(r'<span class="no">(\w+)</span>Methodology', html) == ["9"]

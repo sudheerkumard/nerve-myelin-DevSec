@@ -216,7 +216,7 @@ def findings(root: str, repo: str, components: list[dict] | None = None, inv: di
                     "remediation": f"These files are under {tag}, unlike the project ({proj or 'no licence file'}). Confirm "
                                    "they are meant to be, or replace them; copyleft terms extend to the work they are part of."})
     seen = set()
-    for c in components or []:
+    for c in [x for x in components or [] if x.get("scope") != "os" and x.get("ecosystem") != "binary"]:  # OS packages are not linked into the project
         lic = str(c.get("license") or "")
         if not lic or lic.lower() in ("unknown", "noassertion"):
             continue

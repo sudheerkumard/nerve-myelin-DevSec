@@ -3,10 +3,10 @@
 # RAT Flea DevSec Platform API + console — hardened multi-stage image, with the deep-scanning toolchain
 # (Opengrep + RAT Flea rule pack, Trivy, Gitleaks, Checkov, Bandit) so repository scans run every engine.
 #
-#   docker build -t ghcr.io/sudheerkumard/nerve-myelin:1.7.0 .
-#   docker run ... ghcr.io/sudheerkumard/nerve-myelin:1.7.0            # API (default)
-#   docker run ... ghcr.io/sudheerkumard/nerve-myelin:1.7.0 migrate    # apply database migrations, then exit
-#   docker run ... ghcr.io/sudheerkumard/nerve-myelin:1.7.0 admin tenants
+#   docker build -t ghcr.io/sudheerkumard/nerve-myelin:1.8.0 .
+#   docker run ... ghcr.io/sudheerkumard/nerve-myelin:1.8.0            # API (default)
+#   docker run ... ghcr.io/sudheerkumard/nerve-myelin:1.8.0 migrate    # apply database migrations, then exit
+#   docker run ... ghcr.io/sudheerkumard/nerve-myelin:1.8.0 admin tenants
 #
 # Release builds pin the base image by digest (ARG PY_BASE=python:3.12-slim@sha256:...) and are signed with cosign.
 ARG PY_BASE=python:3.12-slim
@@ -65,22 +65,19 @@ RUN python -m venv /opt/checkov && /opt/checkov/bin/pip install "checkov==${CHEC
  && /opt/checkov/bin/pip uninstall -y pip setuptools wheel \
  && find /opt/checkov -name '__pycache__' -prune -exec rm -rf {} +
 
-# ---------- advisory pack: reviewed GitHub advisories, known malicious packages and CISA KEV, for offline scans ----------
-# Build with --build-arg ADVISORY_PACK=0 to leave it out (about 110 MB); refresh it later with docs/OFFLINE-ADVISORY-PACK.md.
+# ---------- advisory pack: offline vulnerability data for every component type (see docs/OFFLINE-ADVISORY-PACK.md) ----------
+# --build-arg ADVISORY_PACK=0 leaves it out; PLATFORM_PACK=0 keeps only application ecosystems (no OS, NVD, drivers)
 FROM ${PY_BASE} AS advisories
 ARG ADVISORY_PACK=1
+ARG PLATFORM_PACK=1
 COPY config/certs/ /tmp/extra-ca/
-COPY scripts/build_advisory_pack.py /tmp/build_advisory_pack.py
+COPY scripts/build_offline_pack.sh scripts/build_advisory_pack.py scripts/build_os_pack.py scripts/build_cpe_pack.py scripts/build_driver_pack.py /tmp/pack/
+COPY engine/myelin_engine/ospkg.py /tmp/engine/myelin_engine/ospkg.py
 RUN mkdir -p /out && if [ "$ADVISORY_PACK" = "1" ]; then \
       if ls /tmp/extra-ca/*.crt >/dev/null 2>&1; then cp /tmp/extra-ca/*.crt /usr/local/share/ca-certificates/ && update-ca-certificates; fi; \
       apt-get update && apt-get install -y --no-install-recommends git ca-certificates \
-   && git clone -q --depth 1 --filter=blob:none --sparse https://github.com/github/advisory-database /tmp/ghsa \
-   && git -C /tmp/ghsa sparse-checkout set advisories/github-reviewed \
-   && git clone -q --depth 1 --filter=blob:none --sparse https://github.com/ossf/malicious-packages /tmp/malp \
-   && git -C /tmp/malp sparse-checkout set osv/malicious \
-   && git clone -q --depth 1 https://github.com/cisagov/kev-data /tmp/kev \
-   && python /tmp/build_advisory_pack.py /tmp/ghsa /out /tmp/malp /tmp/kev/known_exploited_vulnerabilities.json \
-   && rm -rf /tmp/ghsa /tmp/malp /tmp/kev /var/lib/apt/lists/*; fi
+   && WORK=/tmp/work PLATFORM="$PLATFORM_PACK" sh /tmp/pack/build_offline_pack.sh /out \
+   && rm -rf /tmp/work /var/lib/apt/lists/*; fi
 
 # ---------- build stage: compilers and pip live here only ----------
 FROM ${PY_BASE} AS build
@@ -107,7 +104,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PATH=/venv/bin:$PATH \
     MYELIN_MODE=enterprise MYELIN_CACHE_DIR=/var/lib/myelin/cache \
     SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
 # git: fetch repositories hosted on AWS CodeCommit, Google Cloud and self-hosted Git servers (run hardened, see scm.py)
-RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends git ca-certificates && rm -rf /var/lib/apt/lists/* \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends git ca-certificates squashfs-tools && rm -rf /var/lib/apt/lists/* \
  && pip uninstall -y pip setuptools wheel 2>/dev/null; \
     groupadd -g 10001 myelin && useradd -u 10001 -g 10001 -M -s /usr/sbin/nologin myelin
 COPY --from=build /usr/local/share/ca-certificates/ /usr/local/share/ca-certificates/

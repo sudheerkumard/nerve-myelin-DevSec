@@ -11,7 +11,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
-from . import coverage, eol, licence_scan, precision, vulndb, remediation
+from . import coverage, eol, licence_scan, platform_scan, precision, vulndb, remediation
 from . import (ai_security, builtin_rules, cd_posture, cicd_posture, crypto_inventory, iac_checks, normalize, repo_posture, sbom,
                secrets, suppress, supply_chain)
 from .scoring import enrich
@@ -232,8 +232,16 @@ def _scan(path, repo, engines, use_external, criticality, advisory_lookup):
         findings += sbom.match_advisories(comps, repo, reachable_hint=_imported_packages(path, comps),
                                            advisory_lookup=advisory_lookup if "sca" in engines else None)
     licensing = None
+    platform_notes = []
     if "sca" in engines:
         findings += eol.scan(path, repo, comps)                      # end-of-life runtimes, images and frameworks
+        # operating-system packages, native binaries, firmware, drivers, databases and middleware in IaC
+        plat = platform_scan.scan(path, repo)
+        findings += plat["findings"]
+        if plat["language_components"]:                              # Go/Rust/Android components inside binaries
+            findings += sbom.match_advisories(plat["language_components"], repo)
+        comps = comps + plat["language_components"] + plat["components"]
+        platform_notes = plat["notes"]
     if "license" in engines:
         licensing = licence_scan.inventory(path)                     # licence texts, SPDX headers, project licence
         lic_found = licence_scan.findings(path, repo, comps, licensing)
@@ -265,7 +273,7 @@ def _scan(path, repo, engines, use_external, criticality, advisory_lookup):
     intel_status = vulndb.scan_status()
     intel = {"offline": vulndb.offline(), "sources": sorted(intel_status["sources"] | (
         {"bundled advisory pack"} if "sca" in engines and comps else set())), "errors": sorted(intel_status["errors"]),
-             "resolution": sorted(intel_status.get("resolution") or [])}
+             "resolution": sorted(intel_status.get("resolution") or []), "notes": platform_notes}
     cov = coverage.build(inv, engines, tools_used, uniq, len(comps), intel,
                          deep_rules=rule_count() if {"opengrep", "semgrep"} & set(tools_used) else 0,
                          run_info=run_info, detected=detected, use_external=use_external)
@@ -365,8 +373,9 @@ def _merge_duplicates(path, findings):
     # Correlate OSV, Trivy and Grype by package identity, exact version and advisory aliases.
     # Keep the richest RAT Flea/OSV record, while retaining all contributing scanner names.
     def _ids(f):
+        # advisory identities only: RAT Flea rule ids (NM-OS-001, NM-EOL-001, ...) name a check, not an advisory
         return {str(x).upper() for x in [f.get("cve"), f.get("rule_id"), f.get("advisory"),
-                                         *(f.get("aliases") or [])] if x}
+                                         *(f.get("aliases") or [])] if x and not str(x).startswith("NM-")}
 
     def _package_key(f):
         purl = str(f.get("purl") or "").lower().split("?", 1)[0]
@@ -509,9 +518,37 @@ def _imported_packages(path, comps):
             unknown.add(name)
     return hit, unknown
 
-def scan_image(image: str, criticality: float = 1.0) -> dict:
-    """Container image scan (OS + language packages, and embedded secrets with Trivy) via Trivy or Grype, normalised and scored."""
+def scan_image_archive(archive: str, criticality: float = 1.0) -> dict:
+    """Built-in image scan without Docker or Trivy: unpack a docker-save/OCI archive (or OCI layout directory) and scan
+    its root filesystem (OS packages, language packages, binaries, secrets), offline or online."""
+    import tempfile
+
+    from . import image_tar
     t0 = time.time()
+    tmp = tempfile.mkdtemp(prefix="myelin-image-")
+    try:
+        meta = image_tar.unpack(archive, tmp)
+        name = next((t for t in meta.get("repo_tags") or [] if t), os.path.basename(archive.rstrip("/")))
+        res = scan(tmp, repo=name, engines=["sca", "secrets", "supply", "iac"], use_external=False, criticality=criticality)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    for f in res["findings"]:
+        if f.get("engine") == "sca":
+            f["engine"] = "container"
+        f["image"] = name
+    res.update(path=archive, duration_s=round(time.time() - t0, 2), image_layers=meta.get("layers"),
+               tools=["myelin-builtin (image archive)"])
+    res["engines"] = sorted({f["engine"] for f in res["findings"] if f.get("engine")} | {"container"})
+    return res
+
+
+def scan_image(image: str, criticality: float = 1.0) -> dict:
+    """Container image scan (OS + language packages, and embedded secrets with Trivy) via Trivy or Grype, normalised and scored.
+    An image archive file or OCI layout directory is scanned with the built-in scanners when neither tool is installed
+    (or when MYELIN_IMAGE_BUILTIN=1)."""
+    t0 = time.time()
+    if os.path.exists(image) and (os.environ.get("MYELIN_IMAGE_BUILTIN") == "1" or not (shutil.which("trivy") or shutil.which("grype"))):
+        return scan_image_archive(image, criticality)
     if shutil.which("trivy"):
         tool = "trivy"
         cp = subprocess.run(["trivy", "image", "--quiet", "--format", "json", "--scanners", "vuln,secret", image],
@@ -522,7 +559,8 @@ def scan_image(image: str, criticality: float = 1.0) -> dict:
         cp = subprocess.run(["grype", image, "-o", "json", "-q"], capture_output=True, text=True, timeout=900)
         fs = normalize.grype(json.loads(cp.stdout or "{}"), image)
     else:
-        raise SystemExit("neither trivy nor grype found on PATH — install one of them to scan container images")
+        raise SystemExit("neither trivy nor grype found on PATH: install one of them to scan images from a registry, or scan "
+                         "an image archive (docker save -o image.tar IMAGE) with the built-in scanner")
     for f in fs:
         f["engine"] = "container" if f["engine"] == "sca" else f["engine"]
         f["image"] = image

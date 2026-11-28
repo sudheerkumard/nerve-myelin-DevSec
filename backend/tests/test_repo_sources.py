@@ -104,7 +104,7 @@ def test_console_flow_scan_report_sbom_delete(fake_provider):
     assert any(x["name"] == "payments-web" for x in c.get("/api/repos", headers=H).json())
     rep = c.get(f"/api/v1/repos/sources/{s['id']}/report", headers=H)
     assert rep.status_code == 200
-    for section in ("Source code analysis (SAST)", "Open-source dependencies (SCA)", "Secrets exposure", "Infrastructure as Code",
+    for section in ("Source code analysis (SAST)", "Software components (SCA)", "Secrets exposure", "Infrastructure as Code",
                     "CI/CD pipeline &amp; deployment", "Software bill of materials", "Executive summary", "Overall risk rating",
                     "OWASP Top 10", "PCI DSS", "ISO/IEC 27001:2022", "NIST SSDF", "Remediation roadmap", "Attestation"):
         assert section in rep.text, section

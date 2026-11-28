@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nerve-myelin"
-version = "1.7.0"
+version = "1.8.0"
 description = "RAT Flea DevSec scan engine and pipeline gate CLI"
 requires-python = ">=3.10"
 license = {text = "AGPL-3.0-only"}
