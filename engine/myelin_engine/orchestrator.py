@@ -11,7 +11,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
-from . import coverage, precision, vulndb, remediation
+from . import coverage, eol, licence_scan, precision, vulndb, remediation
 from . import (ai_security, builtin_rules, cd_posture, cicd_posture, crypto_inventory, iac_checks, normalize, repo_posture, sbom,
                secrets, suppress, supply_chain)
 from .scoring import enrich
@@ -231,6 +231,15 @@ def _scan(path, repo, engines, use_external, criticality, advisory_lookup):
         # reachability hint: packages imported in first-party code
         findings += sbom.match_advisories(comps, repo, reachable_hint=_imported_packages(path, comps),
                                            advisory_lookup=advisory_lookup if "sca" in engines else None)
+    licensing = None
+    if "sca" in engines:
+        findings += eol.scan(path, repo, comps)                      # end-of-life runtimes, images and frameworks
+    if "license" in engines:
+        licensing = licence_scan.inventory(path)                     # licence texts, SPDX headers, project licence
+        lic_found = licence_scan.findings(path, repo, comps, licensing)
+        conflicted = {f.get("package") for f in lic_found if f["rule_id"] == "NM-LIC-103"}
+        findings = [f for f in findings if not (f.get("rule_id") == "NM-LIC-001" and f.get("package") in conflicted)]
+        findings += lic_found
     findings = [f for f in findings if f.get("engine") in engines or f.get("engine") == "meta"]
     raw_count = sum(1 for f in findings if f.get("engine") != "meta")
     # Capture coverage evidence before deduplication or suppressions can hide it.
@@ -266,7 +275,7 @@ def _scan(path, repo, engines, use_external, criticality, advisory_lookup):
             "tool_versions": {t: coverage.tool_version(t) for t in tools_used if t != "myelin-builtin"},
             "components": len(comps), "ignored_by_path": ignored,
             "stats": {"raw": raw_count, "after_dedup": merged_count, "reported": sum(1 for f in uniq if f.get("engine") != "meta")},
-            "sbom": attach_extensions(bom, posture, crypto), "findings": uniq, "posture": posture, "crypto": crypto,
+            "sbom": attach_extensions(bom, posture, crypto), "findings": uniq, "posture": posture, "crypto": crypto, "licensing": licensing,
             "intelligence": intel}
 
 

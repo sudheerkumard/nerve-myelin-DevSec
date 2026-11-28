@@ -21,6 +21,23 @@ RUN go get golang.org/x/crypto@latest golang.org/x/text@latest golang.org/x/net@
       -o /usr/bin/gitleaks . \
  && /usr/bin/gitleaks version
 FROM gcr.io/projectsigstore/cosign:v2.4.1 AS cosign
+# ---------- advisory pack: reviewed GitHub advisories, known malicious packages and CISA KEV, for offline scans ----------
+# Build with --build-arg ADVISORY_PACK=0 to leave it out (about 110 MB); refresh it later with docs/OFFLINE-ADVISORY-PACK.md.
+FROM python:3.12-slim AS advisories
+ARG ADVISORY_PACK=1
+COPY config/certs/ /tmp/extra-ca/
+COPY scripts/build_advisory_pack.py /tmp/build_advisory_pack.py
+RUN mkdir -p /out && if [ "$ADVISORY_PACK" = "1" ]; then \
+      if ls /tmp/extra-ca/*.crt >/dev/null 2>&1; then cp /tmp/extra-ca/*.crt /usr/local/share/ca-certificates/ && update-ca-certificates; fi; \
+      apt-get update && apt-get install -y --no-install-recommends git ca-certificates \
+   && git clone -q --depth 1 --filter=blob:none --sparse https://github.com/github/advisory-database /tmp/ghsa \
+   && git -C /tmp/ghsa sparse-checkout set advisories/github-reviewed \
+   && git clone -q --depth 1 --filter=blob:none --sparse https://github.com/ossf/malicious-packages /tmp/malp \
+   && git -C /tmp/malp sparse-checkout set osv/malicious \
+   && git clone -q --depth 1 https://github.com/cisagov/kev-data /tmp/kev \
+   && python /tmp/build_advisory_pack.py /tmp/ghsa /out /tmp/malp /tmp/kev/known_exploited_vulnerabilities.json \
+   && rm -rf /tmp/ghsa /tmp/malp /tmp/kev /var/lib/apt/lists/*; fi
+
 # myelin:ignore[NM-IAC-011] -- batch CLI image: runs one scan and exits, there is no long-running service to health-check
 FROM python:3.12-slim
 ARG TARGETARCH
@@ -48,6 +65,7 @@ COPY --from=cosign /ko-app/cosign /usr/local/bin/cosign
 WORKDIR /opt/myelin
 COPY pyproject.toml .
 COPY engine engine
+COPY --from=advisories /out /opt/myelin/advisories
 COPY LICENSE THIRD-PARTY-NOTICES.md /usr/share/doc/nerve-myelin/
 COPY docs/legal /usr/share/doc/nerve-myelin/legal
 RUN pip install --no-cache-dir . && rm -rf /root/.cache

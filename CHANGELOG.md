@@ -6,6 +6,58 @@ MAJOR for breaking changes, MINOR for new features, PATCH for fixes. Each sectio
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-11-28
+
+### Highlights
+- **Offline scanning is now as complete as online scanning.** The platform and CLI images include an offline advisory
+  pack: every reviewed GitHub advisory for ten ecosystems, the OpenSSF list of known malicious packages and the CISA
+  Known Exploited Vulnerabilities catalog, checksum-verified. Air-gapped scans, and online scans where OSV cannot be
+  reached, match every component against the same data. On six public test applications scanned offline, dependency
+  advisories found went from 9 to 672.
+- **Every report carries the RAT Flea DevSec logo**: the assessment report cover, the API/live-application report,
+  the remediation plan and the SBOM report.
+
+### Added
+- **End-of-life detection (NM-EOL-001, NM-EOL-002).** Runtimes, base images and frameworks past end of support, or
+  within 180 days of it: Dockerfile and Compose images (including Debian/Ubuntu codenames and Alpine), `.nvmrc`,
+  `.python-version`, `global.json`, `TargetFramework`, `go.mod`, `engines`, `setup-*` actions, and libraries such as
+  AngularJS, Django, Spring Boot, Vue 2 and log4j 1. Each finding names the supported release to move to. Lifecycle
+  data for about 390 products is bundled and refreshed from endoflife.date when online. Uploaded SBOMs get the same
+  check.
+- **Components copied into the repository** are found and checked like declared dependencies: minified scripts by
+  banner or version constant (jQuery, Bootstrap, AngularJS, lodash, Vue, React and about 30 more), jar/war/ear files
+  by their Maven metadata (nested libraries included), NuGet and wheel archives, committed `node_modules`,
+  `bower_components`, Composer and Go `vendor` folders. The SBOM lists them with CycloneDX evidence.
+- **Repository licensing.** Licence texts, SPDX headers and copyright notices in the repository are read. New
+  findings: copyleft code copied into the tree (NM-LIC-101), copyleft SPDX headers (NM-LIC-102), dependency licences
+  that conflict with the project licence (NM-LIC-103, for example GPL-3.0 in an MIT project or Apache-2.0 in a
+  GPL-2.0-only one) and source-available or restricted licences (NM-LIC-104). The report lists the project licence,
+  the licence files and the copyright notices for the attribution file.
+- **Build files read without Trivy**: .NET projects (`PackageReference`, central package management with
+  `Directory.Packages.props`, `$(Property)` versions), Maven `${property}` versions and dependencyManagement, Gradle
+  and version catalogs, `pyproject.toml` (PEP 621 and Poetry), `Pipfile`, `Cargo.toml`, `composer.json` and
+  `Gemfile`.
+- Mitigation steps for end-of-life, licence and copied-component findings in every report and in the remediation
+  plan.
+- `docs/OFFLINE-ADVISORY-PACK.md`: what is used online and offline, and how to refresh the pack on an air-gapped
+  network.
+
+### Changed
+- The offline advisory index loads only the ecosystems present in the scanned project (a Python and Java project:
+  1.5 s and 170 MB instead of loading everything).
+- Maven plugins are no longer listed as dependencies; test and provided scopes are marked optional.
+- A dependency whose licence conflicts with the project licence is reported once, as a conflict, instead of also as a
+  generic copyleft finding.
+
+### Fixed
+- The enterprise Compose file used Alpine 3.20 and OpenBao 2.6, both past end of life; they are now 3.24 and 2.7.3.
+
+### Upgrade notes
+- Images are about 110 MB larger because of the advisory pack. Build with `--build-arg ADVISORY_PACK=0` to leave it
+  out; set `MYELIN_OSV_EXPORT_DIR` to use a pack mounted from elsewhere.
+- Expect more findings after upgrading, mainly dependency advisories in projects without lock files, copied libraries
+  and end-of-life runtimes. They are real issues that earlier versions did not see.
+
 ## [1.6.1] - 2026-11-28
 
 ### Added

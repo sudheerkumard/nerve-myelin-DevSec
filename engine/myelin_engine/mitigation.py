@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import re
 
+from .brand import HEADER_CSS, report_footer, report_header
+
 OWASP_CS = "https://cheatsheetseries.owasp.org/cheatsheets/"
 
 # --------------------------------------------------------------------------- by weakness (CWE)
@@ -209,6 +211,45 @@ SECRET_PROVIDER = [
         "missing instead of falling back to a default."]),
 ]
 
+# --------------------------------------------------------------------------- by rule family
+RULE = [
+    (re.compile(r"^NM-EOL-00[12]"), (
+        ["Move to the supported release shown as the fix (the newest supported cycle, LTS where there is one).",
+         "Runtimes and base images: change the version in the file reported (Dockerfile FROM, .nvmrc, "
+         ".python-version, global.json, TargetFramework, go.mod, setup-* action), rebuild and run the full test suite.",
+         "Libraries: upgrade to the supported major version and follow its migration guide; check for removed APIs.",
+         "If the upgrade cannot happen before the end-of-life date, record an exception with an owner and date and buy "
+         "extended support from the vendor; no new security fixes are published after end of life."],
+        "Re-run the scan; the component no longer reports an end-of-life release.",
+        "https://endoflife.date/")),
+    (re.compile(r"^NM-LIC-101"), (
+        ["This is third-party code copied into the repository under a copyleft licence; it is not declared in any manifest.",
+         "Prefer replacing the copy with a declared dependency (package manager), so it is tracked, updated and "
+         "attributed; or replace it with a permissively licensed alternative.",
+         "If you keep it, meet the licence: keep its licence and copyright notice, publish the source of modified "
+         "files when you distribute, and add it to the third-party notices."],
+        "Re-run the scan; the copied file is gone or is covered by an approved exception.",
+        "https://www.gnu.org/licenses/gpl-faq.html")),
+    (re.compile(r"^NM-LIC-102"), (
+        ["Files in this repository declare a copyleft licence in their SPDX header.",
+         "Check whether the header is correct (copied code or a template default) and fix it, or confirm with your "
+         "open-source office that distributing these files under that licence is intended."],
+        "Re-run the scan.", "https://spdx.dev/learn/handling-license-info/")),
+    (re.compile(r"^NM-LIC-103"), (
+        ["The dependency's licence conflicts with the project's licence: the combined work cannot be distributed under "
+         "both sets of terms.",
+         "Replace the dependency with one under a compatible licence, or isolate it (separate process, no linking) "
+         "after legal review.",
+         "If the project licence is wrong, fix the LICENSE file and the manifest licence field."],
+        "Re-run the scan; the conflict is gone.", "https://www.gnu.org/licenses/license-compatibility.html")),
+    (re.compile(r"^NM-LIC-104"), (
+        ["The component is under a licence with use restrictions (source-available, non-commercial or field-of-use "
+         "terms); it is not open source.",
+         "Check the terms against how you use and distribute the product, or replace the component."],
+        "Re-run the scan.", "https://opensource.org/licenses")),
+]
+
+
 # --------------------------------------------------------------------------- by engine
 ENGINE = {
     "sca": (["Upgrade the package to the fixed version shown (or the newest release) in the manifest, then refresh the "
@@ -277,6 +318,21 @@ def guidance(f: dict) -> dict:
                 "steps": steps,
                 "verify": "Re-run the scan (including git history) and confirm the old credential is rejected by the provider.",
                 "reference": OWASP_CS + "Secrets_Management_Cheat_Sheet.html"}
+    for rx, (steps, verify, ref) in RULE:
+        if rx.search(rule):
+            steps = list(steps)
+            if rule.startswith("NM-EOL") and f.get("fixed_version"):
+                steps.insert(0, f"Upgrade {f.get('package')} {f.get('version') or ''} to {f['fixed_version']}.".replace("  ", " "))
+            return {"summary": summary or steps[0], "steps": steps, "verify": verify, "reference": ref}
+    if f.get("detection") or f.get("scope") == "embedded":
+        steps, verify, ref = ENGINE["sca"]
+        steps = ["This component was found as a file committed to the repository (" + str(f.get("detection") or "embedded")
+                 + "), not through a package manager, so it is easy to miss when upgrading."] + list(steps)
+        steps.insert(2, "Replace the copied file with a declared dependency (npm, NuGet, Maven, pip) or a pinned CDN "
+                        "reference with Subresource Integrity, so future upgrades are tracked.")
+        if f.get("fixed_version"):
+            steps[1] = f"Replace {f.get('file') or 'the copied file'} with {f.get('package')} {f['fixed_version']} or later."
+        return {"summary": summary or steps[1], "steps": steps, "verify": verify, "reference": ref}
     if eng in ("sca", "container") and f.get("fixed_version"):
         summary = summary or f"Upgrade {f.get('package')} to {f['fixed_version']} or later."
     hit = CWE.get(str(f.get("cwe") or "")) if eng in ("sast", "dast", "aibom", "iac") or not ENGINE.get(eng) else None
@@ -335,9 +391,9 @@ body{{font:13px/1.5 system-ui,Segoe UI,Arial,sans-serif;color:#0f172a;margin:28p
 .chip{{display:inline-block;padding:0 8px;border-radius:10px;font-size:11px;border:1px solid #cbd5e1;text-transform:uppercase}}
 .critical,.high{{background:#fef2f2;color:#b91c1c}}.medium{{background:#fffbeb;color:#b45309}}.low,.info{{background:#f1f5f9}}
 .kpis{{display:flex;gap:10px;margin:12px 0}}.kpis div{{border:1px solid #e2e8f0;border-radius:8px;padding:8px 14px}}.kpis b{{font-size:20px;display:block}}
-</style></head><body><h1>Remediation plan</h1><div class=meta>{e(organisation)} · {e(scope)} · generated {gen} ·
+{HEADER_CSS}</style></head><body>{report_header('Remediation plan', organisation or '')}<div class=meta>{e(organisation)} · {e(scope)} · generated {gen} ·
 {len(fs)} findings grouped into {len(groups)} fix items</div>
 <div class=kpis><div><b>{counts['P0']}</b>P0 · fix today</div><div><b>{counts['P1']}</b>P1 · 7 days</div><div><b>{counts['P2']}</b>P2 · 30 days</div>
 <div><b>{counts['P3']}</b>P3 · 90 days</div></div>{''.join(items) or '<p>No findings match.</p>'}
-<p class=meta>RAT Flea DevSec Product designed and developed by Sudheer Kumar — https://github.com/sudheerkumard/nervve-devsecops</p>
+{report_footer()}
 </body></html>"""

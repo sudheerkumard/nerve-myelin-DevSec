@@ -3,10 +3,10 @@
 # RAT Flea DevSec Platform API + console — hardened multi-stage image, with the deep-scanning toolchain
 # (Opengrep + RAT Flea rule pack, Trivy, Gitleaks, Checkov, Bandit) so repository scans run every engine.
 #
-#   docker build -t ghcr.io/sudheerkumard/nerve-myelin:1.6.1 .
-#   docker run ... ghcr.io/sudheerkumard/nerve-myelin:1.6.1            # API (default)
-#   docker run ... ghcr.io/sudheerkumard/nerve-myelin:1.6.1 migrate    # apply database migrations, then exit
-#   docker run ... ghcr.io/sudheerkumard/nerve-myelin:1.6.1 admin tenants
+#   docker build -t ghcr.io/sudheerkumard/nerve-myelin:1.7.0 .
+#   docker run ... ghcr.io/sudheerkumard/nerve-myelin:1.7.0            # API (default)
+#   docker run ... ghcr.io/sudheerkumard/nerve-myelin:1.7.0 migrate    # apply database migrations, then exit
+#   docker run ... ghcr.io/sudheerkumard/nerve-myelin:1.7.0 admin tenants
 #
 # Release builds pin the base image by digest (ARG PY_BASE=python:3.12-slim@sha256:...) and are signed with cosign.
 ARG PY_BASE=python:3.12-slim
@@ -65,6 +65,23 @@ RUN python -m venv /opt/checkov && /opt/checkov/bin/pip install "checkov==${CHEC
  && /opt/checkov/bin/pip uninstall -y pip setuptools wheel \
  && find /opt/checkov -name '__pycache__' -prune -exec rm -rf {} +
 
+# ---------- advisory pack: reviewed GitHub advisories, known malicious packages and CISA KEV, for offline scans ----------
+# Build with --build-arg ADVISORY_PACK=0 to leave it out (about 110 MB); refresh it later with docs/OFFLINE-ADVISORY-PACK.md.
+FROM ${PY_BASE} AS advisories
+ARG ADVISORY_PACK=1
+COPY config/certs/ /tmp/extra-ca/
+COPY scripts/build_advisory_pack.py /tmp/build_advisory_pack.py
+RUN mkdir -p /out && if [ "$ADVISORY_PACK" = "1" ]; then \
+      if ls /tmp/extra-ca/*.crt >/dev/null 2>&1; then cp /tmp/extra-ca/*.crt /usr/local/share/ca-certificates/ && update-ca-certificates; fi; \
+      apt-get update && apt-get install -y --no-install-recommends git ca-certificates \
+   && git clone -q --depth 1 --filter=blob:none --sparse https://github.com/github/advisory-database /tmp/ghsa \
+   && git -C /tmp/ghsa sparse-checkout set advisories/github-reviewed \
+   && git clone -q --depth 1 --filter=blob:none --sparse https://github.com/ossf/malicious-packages /tmp/malp \
+   && git -C /tmp/malp sparse-checkout set osv/malicious \
+   && git clone -q --depth 1 https://github.com/cisagov/kev-data /tmp/kev \
+   && python /tmp/build_advisory_pack.py /tmp/ghsa /out /tmp/malp /tmp/kev/known_exploited_vulnerabilities.json \
+   && rm -rf /tmp/ghsa /tmp/malp /tmp/kev /var/lib/apt/lists/*; fi
+
 # ---------- build stage: compilers and pip live here only ----------
 FROM ${PY_BASE} AS build
 ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_CERT=/etc/ssl/certs/ca-certificates.crt
@@ -109,6 +126,7 @@ COPY --chown=root:root backend backend
 COPY --chown=root:root console console
 COPY --chown=root:root policies policies
 COPY --chown=root:root config config
+COPY --chown=root:root --from=advisories /out advisories
 COPY --chown=root:root LICENSE THIRD-PARTY-NOTICES.md /usr/share/doc/nerve-myelin/
 COPY --chown=root:root docs/legal /usr/share/doc/nerve-myelin/legal
 COPY --chown=root:root scripts/build_enterprise_console.py scripts/build_enterprise_console.py

@@ -95,9 +95,8 @@ def _stack(parts, total):
     return f'<div class="stack">{segs}</div>'
 
 
-PRODUCT = "RAT Flea DevSec"
-VENDOR = "RAT Flea DevSec"                       # "Prepared by"
-REPO_URL = "https://github.com/sudheerkumard/nervve-devsecops"
+from .brand import PRODUCT, REPO_URL, logo_svg  # noqa: E402
+VENDOR = PRODUCT                                 # "Prepared by"
 SITE = REPO_URL.split("://", 1)[1]
 
 
@@ -516,6 +515,42 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
                      f'<table><thead><tr><th>Component</th><th>Version</th><th>Licence</th><th>Type</th><th>Vulnerabilities</th></tr></thead><tbody>{sbom_rows}</tbody></table>')
     else:
         sbom_body = '<p class="muted">No dependency manifests were found in the repository.</p>'
+    # End-of-life software, components found outside package manifests, and the repository's own licensing.
+    eol_fs = [f for f in fs if f.get("category") == "eol"]
+    if eol_fs:
+        rows = "".join(f'<tr><td>{_e(f.get("severity"))}</td><td class="mono">{_e(f.get("package"))} {_e(f.get("version"))}</td>'
+                       f'<td style="white-space:nowrap">{_e(f.get("eol_date") or "—")}</td><td class="mono" style="word-break:break-all">{_e(f.get("file"))}</td>'
+                       f'<td>{_e(f.get("fixed_version") or "—")}</td></tr>' for f in eol_fs[:200])
+        sbom_body += (f'<h3>End-of-life software ({len(eol_fs)})</h3><p class="muted">Runtimes, base images, frameworks and '
+                      f'libraries whose release line no longer receives security fixes, or will stop within 180 days. Product '
+                      f'lifecycle data from endoflife.date.</p><table style="table-layout:fixed"><colgroup><col style="width:11%">'
+                      f'<col style="width:19%"><col style="width:15%"><col><col style="width:16%"></colgroup><thead><tr><th>Severity</th><th>Product and release</th>'
+                      f'<th>End of support</th><th>Found in</th><th>Move to</th></tr></thead><tbody>{rows}</tbody></table>')
+    def _prop(c, k):
+        return next((p.get("value") for p in c.get("properties") or [] if p.get("name") == k), None)
+    emb = [dict(c, detection=_prop(c, "myelin:detection"), file=_prop(c, "myelin:manifest"))
+           for c in comps if _prop(c, "myelin:detection")]
+    if emb:
+        vuln_by = Counter(f.get("package") for f in fs if f.get("engine") == "sca" and f.get("detection"))
+        rows = "".join(f'<tr><td class="mono">{_e(c.get("name"))}</td><td>{_e(c.get("version"))}</td>'
+                       f'<td>{_e(c.get("detection"))}</td><td class="mono" style="word-break:break-all">{_e(c.get("file"))}</td>'
+                       f'<td class="num">{vuln_by.get(c.get("name"), 0)}</td></tr>' for c in emb[:200])
+        sbom_body += (f'<h3>Components found outside package manifests ({len(emb)})</h3><p class="muted">Libraries copied into '
+                      f'the repository (minified scripts, bundled archives, vendored folders). They are identified from '
+                      f'their own banners and metadata and checked for vulnerabilities like declared dependencies.</p>'
+                      f'<table style="table-layout:fixed"><colgroup><col style="width:22%"><col style="width:11%">'
+                      f'<col style="width:24%"><col><col style="width:13%"></colgroup><thead><tr><th>Component</th><th>Version</th><th>Identified by</th><th>File</th>'
+                      f'<th>Vulns</th></tr></thead><tbody>{rows}</tbody></table>')
+    lic = result.get("licensing") or {}
+    if lic.get("licence_files") or lic.get("copyrights"):
+        files = "".join(f'<tr><td class="mono">{_e(x.get("file"))}</td><td>{_e(x.get("licence") or "not identified")}</td></tr>'
+                        for x in (lic.get("licence_files") or [])[:60])
+        cps = "".join(f'<li>{_e(c)}</li>' for c in (lic.get("copyrights") or [])[:80])
+        sbom_body += (f'<h3>Repository licensing</h3><p>Project licence: <b>{_e(lic.get("project_licence") or "not declared")}</b>. '
+                      f'{len(lic.get("spdx_tags") or {})} distinct SPDX licence identifiers are declared in source file headers.</p>'
+                      + (f'<table><thead><tr><th>Licence file</th><th>Identified licence</th></tr></thead><tbody>{files}</tbody></table>' if files else "")
+                      + (f'<details><summary>Copyright notices for the attribution file ({len(lic.get("copyrights") or [])})</summary>'
+                         f'<ul class="mono">{cps}</ul></details>' if cps else ""))
     sbom_section = "" if not has_sbom else (
         f'<section id="sbom" class="pb"><h2><span class="no">{no_sbom}</span>Software bill of materials</h2>'
         f'<p class="lede">{len(comps)} third-party components were inventoried, including transitive dependencies. '
@@ -644,7 +679,8 @@ body{{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;col
 .cover .by{{font-weight:500;letter-spacing:.08em;font-size:11px;color:#9ec5f4;margin-top:2px}}
 .cover .cust{{display:block;font-size:20px;font-weight:600;color:#cde2fb;margin-bottom:4px}}
 a.ext{{color:#1c5cab;text-decoration:underline;text-underline-offset:2px}}
-.cover .mark{{width:38px;height:38px;border-radius:9px;background:#fff;color:var(--brand);display:grid;place-items:center;font-weight:800;font-size:15px;letter-spacing:0}}
+.cover .product-mark{{flex:none}}.endmark .product-mark{{vertical-align:middle;margin-right:6px}}
+.cover .wm{{position:absolute;right:48px;bottom:120px;opacity:.07}}
 .cover .kind{{margin-top:170px;color:#9ec5f4;letter-spacing:.2em;font-size:12px;font-weight:700;text-transform:uppercase}}
 .cover h1{{font-size:38px;line-height:1.15;margin:10px 0 12px;font-weight:700}}
 .cover .sub{{font-size:18px;color:#cde2fb;margin:0}}
@@ -752,7 +788,7 @@ a{{color:#1c5cab}}
 <div class="bar-print"><span>{_e(aud)}</span><button onclick="window.print()">Download PDF / print</button></div>
 
 <div class="cover">
-  <div class="brand"><span class="mark">RF</span><div><div>{_e(PRODUCT)}</div><div class="by">{SITE}</div></div></div>
+  <div class="brand">{logo_svg(56)}<div><div>{_e(PRODUCT)}</div><div class="by">{SITE}</div></div></div>
   <div class="rating"><i>Overall risk rating</i><span style="background:{rcol};color:{rink}">{risk}</span></div>
   <div class="kind">{_e(title)}</div>
   <h1>{f'<span class="cust">{_e(customer)}</span>' if customer else ""}{_e(repo)}</h1>
@@ -765,6 +801,7 @@ a{{color:#1c5cab}}
     <div><i>{target_label}</i><b>{_e(src)}</b></div>
     {f'<div><i>{snap_label}</i><b>{_e(snap_value)}</b></div>' if snap_value else ""}
   </div>
+  <div class="wm" aria-hidden="true">{logo_svg(300, cls="wm-mark")}</div>
   <div class="cls"><span>{footer_class} · {_e("External edition" if external else "Internal edition")}</span><span>{_e(PRODUCT)} · {SITE}</span></div>
 </div>
 
@@ -880,7 +917,7 @@ bears on a control; they do not constitute a certification or an auditor's opini
 team as part of the standard delivery process. That team validates each finding in the context of its environment, prioritises remediation
 according to the targets in section 7 and records accepted risks or false positives in RAT Flea DevSec, where every decision is audited.
 Product information: <a class="ext" href="{REPO_URL}" target="_blank" rel="noopener">{SITE}</a>.</p></div>
-<div class="endmark"><div><b>{_e(PRODUCT)}</b> · product designed and developed by Sudheer Kumar</div><div><a class="ext" href="{REPO_URL}" target="_blank" rel="noopener">{SITE}</a></div>
+<div class="endmark"><div>{logo_svg(26, fg="#0b2a4a", eye="#18a689")}<b>{_e(PRODUCT)}</b> · product designed and developed by Sudheer Kumar</div><div><a class="ext" href="{REPO_URL}" target="_blank" rel="noopener">{SITE}</a></div>
 <div class="muted">{footer_class} · {rid}</div></div>
 </section>
 </div></body></html>"""

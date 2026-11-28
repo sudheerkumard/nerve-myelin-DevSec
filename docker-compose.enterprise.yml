@@ -57,7 +57,7 @@ services:
     networks: [data, edge]
 
   vault:   # OpenBao (MPL-2.0, Vault-compatible API): holds live-scan test-account tokens; initialised/unsealed by start-enterprise.ps1
-    image: openbao/openbao:2.6.3
+    image: openbao/openbao:2.7.3
     user: "0:0"
     entrypoint: ["bao", "server", "-config=/openbao/myelin.hcl"]
     environment:
@@ -74,7 +74,7 @@ services:
 
   migrate:
     build: .
-    image: ghcr.io/sudheerkumard/nerve-myelin:1.6.1
+    image: ghcr.io/sudheerkumard/nerve-myelin:1.7.0
     command: ["migrate"]
     environment:
       MYELIN_MIGRATIONS_DATABASE_URL: postgresql+psycopg://myelin_owner:${MYELIN_DB_OWNER_PASSWORD}@postgres:5432/myelin
@@ -88,7 +88,7 @@ services:
 
   myelin-worker:
     build: .
-    image: ghcr.io/sudheerkumard/nerve-myelin:1.6.1
+    image: ghcr.io/sudheerkumard/nerve-myelin:1.7.0
     command: ["worker"]
     profiles: ["worker"]       # enable after MYELIN_WORKER_TENANT_IDS is populated with provisioned tenant UUIDs
     environment:
@@ -108,7 +108,7 @@ services:
 
   myelin-api:
     build: .
-    image: ghcr.io/sudheerkumard/nerve-myelin:1.6.1
+    image: ghcr.io/sudheerkumard/nerve-myelin:1.7.0
     command: ["api"]
     environment:
       MYELIN_MODE: enterprise
@@ -171,7 +171,7 @@ services:
     networks: [edge]          # reaches the targets; no published port
 
   edge-ca:   # one-shot: system roots + local Caddy CA (IdP over TLS) + company root certificates in config/certs (HTTPS inspection)
-    image: alpine:3.20
+    image: alpine:3.24
     command: ["sh", "-c", "cat /etc/ssl/certs/ca-certificates.crt /caddy/caddy/pki/authorities/local/root.crt > /out/bundle.pem && for c in /extra/*.crt; do [ -f \"$$c\" ] && { cat \"$$c\"; echo; } >> /out/bundle.pem; done; chmod 444 /out/bundle.pem"]
     volumes: ["caddy_data:/caddy:ro", "cabundle:/out", "./config/certs:/extra:ro"]
     depends_on: { edge: { condition: service_healthy } }

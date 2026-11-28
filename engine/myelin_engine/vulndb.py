@@ -703,12 +703,25 @@ def _pypi_vulns(c):
 OSV_EXPORT_BASE = "https://osv-vulnerabilities.storage.googleapis.com"
 OSV_EXPORT_MANIFEST = "manifest.json"
 OSV_EXPORT_SCHEMA = 1
-_EXPORT = {"signature": None, "index": None}
+_EXPORT = {"signature": None, "index": None, "loaded": set()}
 
 
-def _export_index():
-    """Load only archives declared in a checksum-verified OSV export manifest."""
+BUNDLED_EXPORT = os.environ.get("MYELIN_ADVISORY_PACK", "/opt/myelin/advisories")
+
+
+def export_dir() -> str | None:
+    """The OSV export to use offline: MYELIN_OSV_EXPORT_DIR, else the advisory pack bundled in the image."""
     d = os.environ.get("MYELIN_OSV_EXPORT_DIR")
+    if d:
+        return d
+    if os.path.isfile(os.path.join(BUNDLED_EXPORT, OSV_EXPORT_MANIFEST)):
+        return BUNDLED_EXPORT
+    return None
+
+
+def _export_index(ecosystems=None):
+    """Load only archives declared in a checksum-verified OSV export manifest (only the requested ecosystems)."""
+    d = export_dir()
     if not d:
         return None
     import zipfile
@@ -772,12 +785,16 @@ def _export_index():
         signature = hashlib.sha256((os.path.realpath(d) + json.dumps(sorted(rows))).encode()).hexdigest()
         sources = {"OSV offline export", "OSV export manifest verified", "OSV export generated: " + generated,
                    "OSV export ecosystems: " + ", ".join(sorted({e["ecosystem"] for e in entries}))}
-        cached = _EXPORT.copy()
-        if cached["signature"] == signature and cached["index"] is not None:
-            scan_status()["sources"].update(sources)
-            return cached["index"]
-        idx = {}
+        if d == BUNDLED_EXPORT and not os.environ.get("MYELIN_OSV_EXPORT_DIR"):
+            sources.add("bundled advisory pack: " + str(manifest.get("source") or "")[:120])
+        if _EXPORT.get("signature") != signature:
+            _EXPORT.update(signature=signature, index={}, loaded=set())
+        idx, loaded = _EXPORT["index"], _EXPORT["loaded"]
+        want = None if ecosystems is None else {OSV_ECO.get(e, e) for e in ecosystems}
         for entry in entries:
+            if entry["file"] in loaded or (want is not None and entry["ecosystem"] not in want):
+                continue
+            loaded.add(entry["file"])
             with zipfile.ZipFile(os.path.join(d, entry["file"])) as archive:
                 bad = archive.testzip()
                 if bad:
@@ -792,11 +809,10 @@ def _export_index():
                         if eco:
                             idx.setdefault((eco, norm_name(eco, pkg.get("name", ""))), []).append(doc)
         scan_status()["sources"].update(sources)
-        _EXPORT.update(signature=signature, index=idx)
         return idx
     except (OSError, ValueError, TypeError, KeyError, zipfile.BadZipFile, json.JSONDecodeError) as exc:
         scan_status()["errors"].add("offline OSV export invalid: " + str(exc)[:180])
-        _EXPORT.update(signature=None, index=None)
+        _EXPORT.update(signature=None, index=None, loaded=set())
         return None
 
 
@@ -843,7 +859,7 @@ def affected(doc: dict, eco: str, name: str, version: str) -> bool:
 
 
 def _offline_osv(comps):
-    idx = _export_index()
+    idx = _export_index({c.get("ecosystem") for c in comps})
     if idx is None:
         return None
     scan_status()["sources"].add("OSV offline export")
@@ -917,6 +933,11 @@ def vulnerabilities(comps: list[dict]) -> list[tuple[dict, dict]]:
 
     found = _osv(comps)
     pairs = []
+    if found is None and export_dir():
+        # OSV unreachable (proxy, outage): the offline advisory pack gives the same matching from local data.
+        found = _offline_osv(comps)
+        if found is not None:
+            scan_status()["errors"].add("OSV unavailable; matched against the offline advisory pack instead")
     if found is not None:
         for i, docs in found.items():
             pairs.extend((comps[i], v) for v in docs)
@@ -1046,6 +1067,29 @@ def _enrich_nvd(pairs, cves):
     return enriched
 
 
+def _pack_kev():
+    """CISA KEV catalog from the offline advisory pack (checksum-verified), when the live feed is unreachable."""
+    d = export_dir()
+    if not d:
+        return None
+    try:
+        with open(os.path.join(d, OSV_EXPORT_MANIFEST), encoding="utf-8") as fh:
+            entry = (json.load(fh) or {}).get("kev")
+        if not entry or os.path.basename(entry.get("file", "")) != entry.get("file"):
+            return None
+        path = os.path.join(d, entry["file"])
+        raw = open(path, "rb").read()
+        if hashlib.sha256(raw).hexdigest() != entry.get("sha256"):
+            scan_status()["errors"].add("offline KEV catalog checksum mismatch; ignored")
+            return None
+        import gzip
+        data = json.loads(gzip.decompress(raw))
+        scan_status()["sources"].add("CISA KEV (offline advisory pack)")
+        return data
+    except (OSError, ValueError, KeyError):
+        return None
+
+
 def _enrich_threat_intel(pairs):
     """Enrich CVE-backed findings with EPSS, CISA KEV and NVD evidence.
 
@@ -1075,6 +1119,9 @@ def _enrich_threat_intel(pairs):
     if not kev_available:
         try:
             data = _http_json(CISA_KEV_URL, ttl=6 * 3600)
+            live = data is not None
+            if data is None:
+                data = _pack_kev()
             if data is None:
                 raise RuntimeError("CISA KEV feed unavailable")
             kev_records = {str(row.get("cveID")): {k: row.get(k) for k in (
@@ -1083,7 +1130,8 @@ def _enrich_threat_intel(pairs):
                 for row in data.get("vulnerabilities") or [] if row.get("cveID")}
             _THREAT_INTEL["kev"] = kev_records
             kev_available = True
-            scan_status()["sources"].add("CISA KEV")
+            if live:
+                scan_status()["sources"].add("CISA KEV")
         except Exception as exc:
             scan_status()["errors"].add(f"CISA KEV enrichment unavailable: {type(exc).__name__}")
             kev_records = {}

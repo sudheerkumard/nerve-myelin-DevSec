@@ -76,7 +76,7 @@ def test_01_scan_reports_every_engine(world):
     rules = {f["rule_id"] for f in c.get("/api/findings", headers=H, params={"repo": REPO, "limit": 1000}).json()["items"]}
     for rid in ("NM-CD-001", "NM-CD-002", "NM-CD-006", "NM-CD-009", "NM-CD-010",   # CD / GitOps
                 "NM-AI-008", "NM-AI-011", "NM-AI-013", "NM-AI-016", "NM-AI-023", "NM-AI-026", "NM-AI-027",   # AI app + MCP
-                "NM-SEC-012", "NM-SEC-002", "NM-LIC-001", "CVE-2020-14343", "CVE-2021-44228",
+                "NM-SEC-012", "NM-SEC-002", "NM-LIC-103", "CVE-2020-14343", "CVE-2021-44228",
                 "NM-SUP-002", "NM-SUP-004", "NM-SUP-005", "NM-SUP-006", "NM-SUP-008", "NM-SUP-009",   # supply-chain defence
                 "NM-CICD-014", "NM-CICD-015", "NM-CICD-021",                                         # CI token-theft hardening
                 "NM-AI-028", "NM-AI-029", "NM-AI-030", "NM-AI-031"):                                 # AI coding agents

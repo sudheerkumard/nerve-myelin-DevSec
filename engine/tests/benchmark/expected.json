@@ -237,6 +237,11 @@
    "line": null
   },
   {
+   "rule": "NM-EOL-001",
+   "file": "app/requirements.txt",
+   "line": null
+  },
+  {
    "rule": "NM-SAST-001",
    "file": "app/service.py",
    "line": 8

@@ -32,16 +32,19 @@ results from CI pipelines and live-app tests.
 
 | Engine | How it works |
 |---|---|
-| Open-source dependencies (SCA) | Every component from the manifests **and its transitive dependencies** (lockfiles: package-lock, yarn.lock, poetry.lock, Pipfile.lock; Python requirements are resolved from PyPI). Vulnerabilities come live from **OSV** (all major ecosystems, with CVSS severity and fixed versions), with the PyPI advisory database as fallback and the bundled pack offline. Each finding says whether the package is direct or comes in through another one. |
-| Licences | Licence of every component from the package registries. Strong copyleft (GPL, AGPL, SSPL) is flagged high; weak copyleft (LGPL, MPL, EPL) is listed as information. |
+| Open-source dependencies (SCA) | Every component from the manifests and build files (package.json, requirements, pyproject, Pipfile, pom.xml with `${property}` versions, Gradle and version catalogs, .csproj/.fsproj with central package management, Cargo.toml, composer.json, Gemfile, go.mod) **and its transitive dependencies** from the lock files. Vulnerabilities come live from **OSV** (CVSS severity, fixed versions, EPSS, CISA KEV), and from the offline advisory pack when offline or when OSV cannot be reached. Each finding says whether the package is direct or comes in through another one. |
+| Components copied into the repository | Libraries that no manifest declares: minified scripts identified by their banner or version constant (jQuery, Bootstrap, AngularJS, lodash, Vue, React and about 30 more), jar/war files by their Maven metadata, NuGet and wheel archives, committed `node_modules`, `bower_components`, Composer and Go `vendor` folders. They are checked for vulnerabilities like declared dependencies and listed in the SBOM with CycloneDX evidence. |
+| End of life | Runtimes, base images and frameworks past (or within 180 days of) end of support: Dockerfile and Compose images, `.nvmrc`, `.python-version`, `global.json`, `TargetFramework`, `go.mod`, `engines`, `setup-*` actions, and libraries such as AngularJS, Django, Spring Boot or log4j 1. Each finding names the supported release to move to. Lifecycle data from endoflife.date. |
+| Licences | Licence of every component from the manifests and package registries, evaluated against the licence policy. The repository's own licence files, SPDX headers and copyright notices are read too: copyleft code copied into the tree, copyleft SPDX headers, and dependency licences that **conflict with the project licence** (for example GPL-3.0 in an MIT project, or Apache-2.0 in a GPL-2.0-only one) are reported with the obligations. |
 | Code analysis (SAST) | RAT Flea DevSec rules (injection, SSRF and `file://` URL access, disabled TLS/JWT verification, unsafe deserialisation, weak crypto, predictable tokens, XXE, DOM XSS, command injection) plus **Bandit** for Python. |
 | Secrets | Cloud keys, tokens, private keys, credential assignments, and **default/demo passwords written in code, config, docs or login pages**. Test folders are skipped. |
 | Infrastructure as Code | Dockerfiles (root user, health check, unpinned base, TLS-off installs, `curl | sh`, secrets in ENV/ARG), Docker Compose (privileged, Docker socket, host namespaces, dangerous capabilities, published database ports, hard-coded secrets) and Kubernetes (privileged, host namespaces, root, privilege escalation, capabilities, limits, image pinning, service-account tokens, secrets in env); Terraform/Bicep patterns. |
 | Pipeline posture, AI components | GitHub Actions / GitLab / Azure Pipelines risks; models, prompts and agent tools. |
 
 The report's **Vulnerability data** line shows which sources were reachable during the scan.
-**Air-gapped installations:** set `MYELIN_OFFLINE=1` (bundled advisory pack only) or point to internal mirrors with
-`MYELIN_OSV_URL`, `MYELIN_PYPI_URL`, `MYELIN_NPM_URL`.
+**Air-gapped installations:** set `MYELIN_OFFLINE=1` to scan from the offline advisory pack and lifecycle snapshot
+bundled in the images (see [Offline and air-gapped scanning](OFFLINE-ADVISORY-PACK.md)), or point to internal mirrors with
+`MYELIN_OSV_URL`, `MYELIN_PYPI_URL`, `MYELIN_NPM_URL`, `MYELIN_EOL_URL`.
 
 ## What happens to the code
 

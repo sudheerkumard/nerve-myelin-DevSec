@@ -16,6 +16,7 @@ import xml.etree.ElementTree as ET  # noqa: S405 - parsed with entity expansion 
 import zipfile
 
 from . import license_policy, resolve, sbom, vulndb
+from .brand import HEADER_CSS, report_footer, report_header
 
 MAX_FILES = 500
 MAX_FILE_BYTES = 50 * 1024 * 1024
@@ -199,6 +200,8 @@ def analyse(project: str, files: list[tuple[str, bytes]], policy: dict | None = 
     resolved = _resolve_licences(comps)
     with vulndb.scan_intelligence():
         vulns = sbom.match_advisories(comps, repo=f"sbom:{project}") if vulnerabilities else []
+        from . import eol
+        lifecycle = eol.scan(None, f"sbom:{project}", comps)      # end-of-life frameworks and libraries
         status = vulndb.scan_status()
         intel = {"sources": sorted(status["sources"]), "errors": sorted(status["errors"])[:10], "offline": vulndb.offline()}
     lic_rows = license_policy.evaluate_components(
@@ -217,11 +220,22 @@ def analyse(project: str, files: list[tuple[str, bytes]], policy: dict | None = 
     return {
         "name": project, "files": parsed, "components": len(comps),
         "summary": {"licence_decisions": counts, "licence_categories": by_cat, "licences_resolved_online": resolved,
-                    "vulnerabilities": len(vulns), "vulnerability_severity": sev,
+                    "vulnerabilities": len(vulns), "vulnerability_severity": sev, "end_of_life": len(lifecycle),
                     "ecosystems": sorted({c["ecosystem"] for c in comps})},
-        "licences": lic_rows, "vulnerabilities": vulns, "intelligence": intel,
+        "licences": lic_rows, "vulnerabilities": vulns, "end_of_life": lifecycle, "intelligence": intel,
         "sbom": sbom.cyclonedx(comps, project),
     }
+
+
+def _eol_section(rec) -> str:
+    rows = rec.get("end_of_life") or []
+    if not rows:
+        return ""
+    body = "".join(f"<tr><td>{_e(f.get('severity'))}</td><td class=mono>{_e(f.get('package'))} {_e(f.get('version'))}</td>"
+                   f"<td>{_e(f.get('eol_date') or '')}</td><td>{_e(f.get('fixed_version') or '—')}</td></tr>" for f in rows)
+    return ("<h2>End-of-life components</h2><p class=muted>Frameworks and libraries whose release line no longer receives "
+            "security fixes (or stops within 180 days). Lifecycle data from endoflife.date.</p><table><tr><th>Severity</th>"
+            f"<th>Component</th><th>End of support</th><th>Move to</th></tr>{body}</table>")
 
 
 def _e(x) -> str:
@@ -272,8 +286,9 @@ vertical-align:top;word-break:break-word}}th{{background:#f8fafc;font-size:11px;
 .ok{{background:#ecfdf5;color:#047857}}.warn{{background:#fffbeb;color:#b45309}}.bad{{background:#fef2f2;color:#b91c1c}}
 .bad-t{{color:#b91c1c}}.kpis{{display:flex;gap:12px;flex-wrap:wrap;margin:14px 0}}.kpi{{border:1px solid #e2e8f0;border-radius:8px;
 padding:10px 14px;min-width:150px}}.kpi b{{font-size:22px;display:block}}ol{{margin:0;padding-left:18px}}
+{HEADER_CSS}
 @media print{{body{{margin:10mm}}tr{{break-inside:avoid}}}}</style></head><body>
-<h1>SBOM licence and vulnerability report — {_e(rec.get('name'))}</h1>
+{report_header('SBOM licence and vulnerability report', rec.get('name') or '')}
 <div class=muted>{_e(organisation)} · generated {gen} · RAT Flea DevSec {__version__} · {rec.get('components', 0)} components ·
 ecosystems {_e(', '.join(s.get('ecosystems') or []))}</div>
 <div class=kpis><div class=kpi><b>{d.get('deny', 0)}</b>licences denied</div><div class=kpi><b>{d.get('review', 0)}</b>licences to review</div>
@@ -287,9 +302,10 @@ SBOM were looked up in the package registry where possible. This is triage guida
 <tr><th>Package</th><th>Version</th><th>Licence</th><th>Decision</th><th>Category</th><th>Reason, obligations and action</th></tr>{lic_rows}</table>
 <h2>Known vulnerabilities</h2>{'' if vul_rows else '<p>No known vulnerabilities were found for these component versions in the advisory sources used.</p>'}
 {'<table><colgroup><col style="width:7%"><col style="width:17%"><col style="width:12%"><col style="width:22%"><col style="width:9%"><col></colgroup><tr><th>Severity</th><th>Component</th><th>Advisory</th><th>Title</th><th>Fixed in</th><th>Mitigation steps</th></tr>' + ''.join(vul_rows) + '</table>' if vul_rows else ''}
+{_eol_section(rec)}
 <p class=muted>Advisory sources: {_e(', '.join((rec.get('intelligence') or {}).get('sources') or []) or 'none reachable')}.
 {_e('; '.join((rec.get('intelligence') or {}).get('errors') or []))}</p>
-<p class=muted>RAT Flea DevSec Product designed and developed by Sudheer Kumar — https://github.com/sudheerkumard/nervve-devsecops</p>
+{report_footer()}
 </body></html>"""
 
 
@@ -305,5 +321,9 @@ def to_csv(rec: dict) -> str:
     for v in rec.get("vulnerabilities") or []:
         lines.append(",".join(q(x) for x in ["vulnerability", v.get("package"), v.get("version"), "", "", "",
                                              v.get("severity"), v.get("cve") or v.get("advisory"), v.get("fixed_version"),
+                                             v.get("title"), "", mitigation.as_text(v), ""]))
+    for v in rec.get("end_of_life") or []:
+        lines.append(",".join(q(x) for x in ["end-of-life", v.get("package"), v.get("version"), "", "", "",
+                                             v.get("severity"), v.get("rule_id"), v.get("fixed_version"),
                                              v.get("title"), "", mitigation.as_text(v), ""]))
     return "\r\n".join(lines)

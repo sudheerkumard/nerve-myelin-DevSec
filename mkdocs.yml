@@ -130,6 +130,7 @@ nav:
       - Connectors: enterprise/CONNECTORS.md
       - Operations: enterprise/OPERATIONS.md
       - Advisory feed operations: SPDX-ADVISORY-FEED-OPERATIONS.md
+      - Offline and air-gapped scanning: OFFLINE-ADVISORY-PACK.md
   - Security:
       - Security architecture: security/architecture.md
   - Reference:

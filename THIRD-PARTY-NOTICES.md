@@ -90,6 +90,17 @@ redistributed by RAT Flea DevSec.
 | EPSS — Exploit Prediction Scoring System | FIRST.org usage agreement; see EPSS at https://www.first.org/epss |
 | PyPI and npm registry metadata | Public registry APIs, used within their terms of use |
 
+### Data bundled with the product (offline scanning)
+
+| Data | Where | Terms |
+|---|---|---|
+| GitHub Advisory Database, reviewed advisories (trimmed to matching fields) | offline advisory pack in the platform and CLI images (`/opt/myelin/advisories`) | CC BY 4.0 — © GitHub, Inc. and contributors, https://github.com/github/advisory-database |
+| OpenSSF Malicious Packages (MAL- records) | offline advisory pack | Apache-2.0 — © OpenSSF contributors, https://github.com/ossf/malicious-packages |
+| endoflife.date product lifecycle data | `engine/myelin_engine/data/eol.json.gz` | MIT — © endoflife.date contributors, https://github.com/endoflife-date/endoflife.date |
+
+The records are reformatted (fields trimmed, one archive per ecosystem); their content is unchanged and each
+finding links to the original record.
+
 Advisory text is shown to users with a link to the original record; RAT Flea DevSec does not claim ownership of it.
 
 ## 7. Standards and frameworks referenced

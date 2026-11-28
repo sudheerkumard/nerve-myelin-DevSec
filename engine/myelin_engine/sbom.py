@@ -90,9 +90,8 @@ def parse_manifests(root: str) -> list[dict]:
             elif fn == "go.mod":
                 for m in re.finditer(r"^\s*([\w./\-]+)\s+v([\w.\-+]+)", text, re.M):
                     comps.append({"ecosystem": "go", "name": m.group(1), "version": m.group(2), "file": rel, "scope": "required"})
-            elif fn == "pom.xml":
-                for m in re.finditer(r"<groupId>([^<]+)</groupId>\s*<artifactId>([^<]+)</artifactId>\s*<version>([^<$]+)</version>", text):
-                    comps.append({"ecosystem": "maven", "name": f"{m.group(1)}:{m.group(2)}", "version": m.group(3), "file": rel, "scope": "required"})
+    from . import manifests
+    comps += manifests.declared(root)       # .NET, Maven, Gradle, pyproject/Pipfile, Cargo, composer, Gemfile
     for c in comps:
         c["license"] = KNOWN_LICENSES.get(c["name"], "unknown")
         c["purl"] = f"pkg:{c['ecosystem']}/{c['name'].replace(':', '/')}@{c['version']}"
@@ -171,8 +170,10 @@ def inventory(root: str, external: bool = True) -> list[dict]:
         pick["scope"] = c["scope"]                     # the declared dependency, at its installed version
         pick.setdefault("declared", c.get("version"))
     direct = kept
+    from . import discovery
+    embedded = discovery.embedded_components(root)   # copied libraries, archives and committed vendor folders
     comps, seen = [], {}
-    for c in direct + locked + trans + extra:
+    for c in direct + locked + trans + extra + embedded:
         k = (c["ecosystem"], c["name"].lower() if c["ecosystem"] in ("nuget", "maven") else c["name"], c["version"])
         if k not in seen:
             seen[k] = c
@@ -198,7 +199,7 @@ def _reach(pkg, hint):
 
 
 def _dep_type(c):
-    return {"required": "direct", "optional": "dev", "dev": "dev", "transitive": "transitive"}.get(c.get("scope"), "direct")
+    return {"required": "direct", "optional": "dev", "dev": "dev", "transitive": "transitive", "embedded": "embedded"}.get(c.get("scope"), "direct")
 
 
 def match_advisories(comps: list[dict], repo: str = "local", reachable_hint: set | None = None, *, advisory_lookup=None) -> list[dict]:
@@ -240,8 +241,9 @@ def match_advisories(comps: list[dict], repo: str = "local", reachable_hint: set
             "nvd_intelligence": v.get("nvd"), "advisory_sources": v.get("advisory_sources", []),
             "references": v.get("references", []), "package": c["name"], "version": c["version"],
             "fixed_version": v["fixed"], "file": c["file"], "repo": repo, "ecosystem": c["ecosystem"], "purl": c["purl"],
-            "reachable": _reach(c["via"] or c["name"], reachable_hint), "exposure": "internet",
-            "dependency_type": _dep_type(c), "introduced_by": c.get("via"), "autofix": bool(v["fixed"]),
+            "reachable": _reach(c.get("via") or c["name"], reachable_hint), "exposure": "internet",
+            "dependency_type": _dep_type(c), "introduced_by": c.get("via"), "autofix": bool(v["fixed"]) and not c.get("detection"),
+            "detection": c.get("detection"), "scope": c.get("scope"),
             "evidence": f"{c['name']} {c['version']}{via} · advisory {v['id']}" + ("" if v["severity_known"] else " · severity not published; severity unknown"),
             "remediation": (f"Upgrade {c['name']} to {v['fixed']} or later" + (f" (it comes in through {c['via']}: upgrade {c['via']} to a release that allows it)" if c.get("via") else "") + ".")
             if v["fixed"] else f"No fixed release published for {c['name']}; assess exposure, apply the advisory's workaround or replace the component.",
@@ -298,7 +300,15 @@ def cyclonedx(comps: list[dict], name: str = "application") -> dict:
             "properties": [
                 {"name": "myelin:dependency", "value": _dep_type(c)},
                 {"name": "myelin:manifest", "value": c.get("file", "")},
-            ] + ([{"name": "myelin:introduced-by", "value": c["via"]}] if c.get("via") else []),
+            ] + ([{"name": "myelin:introduced-by", "value": c["via"]}] if c.get("via") else [])
+              + ([{"name": "myelin:detection", "value": c["detection"]}] if c.get("detection") else []),
+            **({"evidence": {"identity": {"field": "purl", "confidence": 0.8 if "banner" in c["detection"] or "constant" in c["detection"]
+                                                                     else 0.6 if "file name" in c["detection"] else 1.0,
+                                          "methods": [{"technique": "binary-analysis" if re.search(r"\.(jar|war|ear|nupkg|whl)", c.get("file", ""))
+                                                       else "filename" if "file name" in c["detection"] else "manifest-analysis"
+                                                       if "committed" in c["detection"] else "source-code-analysis",
+                                                       "confidence": 0.8, "value": c["detection"]}]},
+                             "occurrences": [{"location": c.get("file", "")}]}} if c.get("detection") else {}),
         })
 
     edges = {app_ref: set()}
