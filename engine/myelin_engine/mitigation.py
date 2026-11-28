@@ -351,6 +351,89 @@ ENGINE = {
 }
 
 
+# Grouped guidance for weakness families the domain checks (cloud IaC, configuration files, images, memory-unsafe
+# languages) report. Each finding's own remediation is placed first; these steps are what to do around it.
+_FAMILY = {
+    "exposure": (["Remove the public or 0.0.0.0/0 exposure: restrict the rule to known address ranges, a private "
+                  "endpoint or a bastion/VPN, and close administrative ports (SSH, RDP, database ports) to the internet.",
+                  "Put internet-facing services behind a load balancer or gateway with a WAF, and keep data stores on "
+                  "private subnets only.",
+                  "Make the change in the infrastructure source and apply it through the pipeline so it is not undone."],
+                 "Re-run the scan; from outside the network confirm the port or endpoint no longer answers.",
+                 "https://www.cisecurity.org/cis-benchmarks"),
+    "transport": (["Require TLS 1.2 or later for every listener and client, redirect or refuse plain HTTP, and use "
+                   "certificates from a trusted CA.",
+                   "Do not disable certificate or host-name validation; pin or trust a private CA explicitly instead.",
+                   "Use strong key sizes and current algorithms (RSA 2048+/ECDSA P-256+, AES-GCM, SHA-256+)."],
+                  "Re-run the scan and test the endpoint with a TLS checker (for example testssl.sh).",
+                  OWASP_CS + "Transport_Layer_Security_Cheat_Sheet.html"),
+    "at_rest": (["Turn on encryption at rest for the resource, preferably with a customer-managed key in KMS/Key Vault "
+                 "with rotation enabled.",
+                 "Enable backups, versioning or deletion protection where the service offers it, and block public "
+                 "read access to the data.",
+                 "Do not store credentials or personal data in plain-text configuration, logs or images."],
+                "Re-run the scan and confirm the deployed resource reports encryption enabled.",
+                OWASP_CS + "Cryptographic_Storage_Cheat_Sheet.html"),
+    "privilege": (["Grant the narrowest role that works: name specific actions and resources instead of * , and drop "
+                   "admin, cluster-admin, escalate, bind or impersonate rights that the workload does not use.",
+                   "Run workloads as a non-root user with a read-only root file system and no added capabilities.",
+                   "Review who and what is bound to the role, and remove anonymous or unauthenticated access."],
+                  "Re-run the scan; check effective permissions with the cloud's access analyser or kubectl auth can-i.",
+                  OWASP_CS + "Authorization_Cheat_Sheet.html"),
+    "logging": (["Enable the audit, access or flow logs for the resource and send them to a central, protected "
+                 "log store with a retention period that meets your policy.",
+                 "Alert on the security events those logs capture (failed sign-ins, policy changes, deletions)."],
+                "Re-run the scan and confirm events from the resource arrive in the log store.",
+                OWASP_CS + "Logging_Cheat_Sheet.html"),
+    "hardening": (["Change the setting in the configuration file to the secure value the finding names, for every "
+                   "environment that ships this file (production profiles included).",
+                   "Turn off debug output, stack traces, directory listing, version banners and sample content in "
+                   "production.",
+                   "Keep secure defaults in a shared base configuration so new services start hardened."],
+                  "Re-run the scan; for web servers also re-run the DAST scan against the deployed site.",
+                  "https://www.cisecurity.org/cis-benchmarks"),
+    "memory": (["Replace the unsafe call with a bounded alternative (fgets instead of gets, snprintf instead of "
+                "sprintf, strlcpy/strncpy with explicit size, memcpy only with checked lengths).",
+                "Never pass user input as a format string: use printf(\"%s\", value).",
+                "Compile with stack protection, FORTIFY_SOURCE, PIE and full RELRO, and run the tests under "
+                "AddressSanitizer."],
+               "Re-run the scan and fuzz or ASan-test the changed function.",
+               "https://wiki.sei.cmu.edu/confluence/display/c/SEI+CERT+C+Coding+Standard"),
+    "credential": (["Remove the credential from the file and load it at run time from a secrets manager or the "
+                    "platform's secret store.",
+                    "Rotate the value if it was ever real, because it remains in version history.",
+                    "Use strong, unique passwords or keys and avoid defaults."],
+                   "Re-run the scan, including history, and confirm the old value no longer works.",
+                   OWASP_CS + "Secrets_Management_Cheat_Sheet.html"),
+    "integrity": (["Verify what you download or deserialize: check signatures or digests, pin versions, and fetch "
+                   "only over HTTPS from trusted sources.",
+                   "Do not evaluate or include code chosen by user input."],
+                  "Re-run the scan.", OWASP_CS + "Software_Supply_Chain_Security_Cheat_Sheet.html"),
+}
+_FAMILY_OF = {}
+for _fam, _cwes in {
+        "exposure": "200 284 668 1188 749 605 1021 693 548 538 527 530 214 209",
+        "transport": "319 326 295 297 523 644 444 1327 757",
+        "at_rest": "311 312 313 320 922 916",
+        "privilege": "250 269 732 266 271 284x 287 306x 926 1286",
+        "logging": "778 223 117x",
+        "hardening": "16 1104 489x 400 377 697 350",
+        "memory": "120 121 122 134 242 676 787 190",
+        "credential": "798 258 259 521 521x 522",
+        "integrity": "345 347 494 95 98 1321 1427 829"}.items():
+    for _c in _cwes.split():
+        if not _c.endswith("x"):
+            _FAMILY_OF.setdefault("CWE-" + _c, _fam)
+
+
+def _with_own_fix(own: str, steps: list) -> list:
+    """Put the rule's own remediation first, unless a step already says the same thing."""
+    own = (own or "").strip()
+    if own and not any(own[:40].lower() in s.lower() for s in steps):
+        return [own] + steps
+    return steps
+
+
 def guidance(f: dict) -> dict:
     """{'summary', 'steps': [...], 'verify', 'reference'} for one finding."""
     eng = f.get("engine") or "sast"
@@ -390,11 +473,19 @@ def guidance(f: dict) -> dict:
         return {"summary": summary or steps[1], "steps": steps, "verify": verify, "reference": ref}
     if eng in ("sca", "container") and f.get("fixed_version"):
         summary = summary or f"Upgrade {f.get('package')} to {f['fixed_version']} or later."
-    hit = CWE.get(str(f.get("cwe") or "")) if eng in ("sast", "dast", "aibom", "iac") or not ENGINE.get(eng) else None
+    cwe = str(f.get("cwe") or "")
+    m = re.match(r"CWE-\d+", cwe)
+    cwe = m.group(0) if m else cwe
+    hit = CWE.get(cwe) if eng in ("sast", "dast", "aibom", "iac") or not ENGINE.get(eng) else None
+    if not hit and _FAMILY_OF.get(cwe) and not (eng in ("sca", "container") and f.get("fixed_version")):
+        hit = _FAMILY[_FAMILY_OF[cwe]]
     steps, verify, ref = hit or ENGINE.get(eng) or ENGINE["sast"]
     steps = list(steps)
     if eng in ("sca", "container") and f.get("fixed_version"):
         steps[0] = f"Upgrade {f.get('package')} from {f.get('version')} to {f['fixed_version']} or later, then refresh the lock file."
+    elif f.get("remediation"):
+        steps = _with_own_fix(f["remediation"], steps)
+    ref = f.get("reference") if str(f.get("reference") or "").startswith("http") and not hit else ref
     return {"summary": summary or steps[0], "steps": steps, "verify": verify, "reference": ref}
 
 

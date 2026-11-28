@@ -646,6 +646,20 @@ def render(result, *, issuer="", prepared_for="", source_url="", classification=
         terms.append(("Data flow", "The finding was confirmed by following untrusted input from where it enters the application to the "
                                    "dangerous operation (taint analysis); the evidence shows the path."))
     terms_html = "".join(f"<tr><th>{_e(a)}</th><td>{_e(b)}</td></tr>" for a, b in terms)
+    from . import domains as _dom
+    dm = _dom.matrix(fs, engines_run)
+    tests = [t for t in dm["tests"] if t[2]]
+    if fs and tests:
+        head = "".join(f'<th class="num">{_e(lab)}</th>' for _, lab, _ in tests)
+        body_rows = "".join(
+            f'<tr><td>{_e(label)}</td>' + "".join(f'<td class="num">{row[t] or "·"}</td>' for t, _, _ in tests)
+            + f'<td class="num"><b>{sum(row.values()) or "·"}</b></td></tr>' for _, label, row in dm["rows"])
+        domain_html = (f'<h3 style="margin-top:18px">Findings by security domain and testing type</h3><p class="muted">Every finding '
+                       f'is placed in one security domain. Columns are the testing types that ran; a dot means the test ran and '
+                       f'found nothing in that domain.</p><table style="table-layout:fixed"><thead><tr><th style="width:24%">Domain</th>'
+                       f'{head}<th class="num">Total</th></tr></thead><tbody>{body_rows}</tbody></table>')
+    else:
+        domain_html = ""
     method_section = (f'<section id="method"><h2><span class="no">{no_method}</span>Methodology</h2><table class="kv">'
                       + "".join(f"<tr><th>{_e(a)}</th><td>{_e(b)}</td></tr>" for a, b in method_rows) + "</table></section>")
     toc = [t for t in toc if (t[2] != "cve" or has_cve) and (t[2] != "sbom" or has_sbom)]
@@ -865,6 +879,7 @@ a{{color:#1c5cab}}
 {"".join(f'<tr><td><a href="#d-{k}">{_e(n)}</a></td>' + "".join(f'<td class="num">{sum(1 for f in fs if f.get("engine") == k and f.get("severity") == s) or "·"}</td>' for s in ["critical", "high", "medium", "low"]) + f'<td class="num"><b>{by_eng[k]}</b></td></tr>' for k, n, _ in ENGINES if k in engines_run or by_eng[k])}
 <tr><td><b>Total</b></td>{"".join(f'<td class="num"><b>{sev[s]}</b></td>' for s in ["critical", "high", "medium", "low"])}<td class="num"><b>{len(fs)}</b></td></tr>
 </tbody></table>
+{domain_html}
 </section>
 
 <section id="fw" class="pb"><h2><span class="no">6</span>Framework &amp; compliance alignment</h2>

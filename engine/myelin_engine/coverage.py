@@ -21,10 +21,11 @@ LANG_EXT = {
     "Python": (".py",), "JavaScript": (".js", ".jsx", ".mjs", ".cjs"), "TypeScript": (".ts", ".tsx"),
     "Java": (".java",), "Kotlin": (".kt", ".kts"), "Go": (".go",), "C#": (".cs",), "PHP": (".php",),
     "Ruby": (".rb",), "Scala": (".scala",), "Rust": (".rs",), "C/C++": (".c", ".cc", ".cpp", ".h", ".hpp"),
-    "Swift": (".swift",),
+    "Swift": (".swift",), "Shell": (".sh", ".bash"),
 }
 # languages the bundled RAT Flea taint rule pack covers (engine/myelin_engine/rules/sast)
-DEEP_SAST = {"Python", "JavaScript", "TypeScript", "Java", "Go", "C#", "PHP", "Ruby"}
+DEEP_SAST = {"Python", "JavaScript", "TypeScript", "Java", "Go", "C#", "PHP", "Ruby", "Kotlin", "Swift", "Scala", "Rust",
+             "C/C++", "Shell"}
 # languages the built-in pattern rules cover
 PATTERN_SAST = {"Python", "JavaScript", "TypeScript", "Java", "Kotlin", "Go", "C#", "PHP", "Ruby"}
 

@@ -1,0 +1,50 @@
+# Copyright (c) 2026 Sudheer Kumar.
+# SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
+# RAT Flea DevSec SAST rules for Scala (Play, Akka HTTP, Spark jobs). Original work: not derived from the semgrep-rules registry.
+rules:
+  - id: nervve.scala.sql-injection
+    languages: [scala]
+    severity: ERROR
+    message: SQL built by concatenation or s"" interpolation. Use bind parameters (Anorm {param}, Slick sql"", JDBC ?).
+    metadata: {cwe: "CWE-89", owasp: "A03:2021", confidence: medium, category: injection}
+    pattern-either:
+      - pattern: $S.executeQuery("..." + $X)
+      - pattern: $S.executeUpdate("..." + $X)
+      - pattern: $S.execute("..." + $X)
+      - pattern: $C.prepareStatement("..." + $X)
+      - pattern: SQL("..." + $X)
+      - pattern-regex: '\b(executeQuery|executeUpdate|prepareStatement|SQL|sqlContext\.sql|spark\.sql)\(\s*s"[^"\n]*(SELECT|INSERT|UPDATE|DELETE|FROM|WHERE)[^"\n]*\$'
+  - id: nervve.scala.command-injection
+    languages: [scala]
+    severity: ERROR
+    message: A shell command is built from a string at run time. Pass a Seq of arguments to Process with a fixed program.
+    metadata: {cwe: "CWE-78", owasp: "A03:2021", confidence: medium, category: injection}
+    pattern-either:
+      - pattern: Runtime.getRuntime.exec($X + $Y)
+      - pattern: Runtime.getRuntime().exec($X + $Y)
+      - pattern-regex: '\bs"[^"\n]*\$[{\w][^"\n]*"\.!{1,2}|Process\(\s*s"[^"\n]*\$[{\w]'
+  - id: nervve.scala.weak-crypto
+    languages: [scala]
+    severity: WARNING
+    message: A broken algorithm or mode (MD5, SHA-1, DES, RC4, ECB) is used. Use SHA-256 and AES/GCM/NoPadding.
+    metadata: {cwe: "CWE-327", owasp: "A02:2021", confidence: high, category: crypto}
+    patterns:
+      - pattern-either:
+          - pattern: Cipher.getInstance("$ALG")
+          - pattern: MessageDigest.getInstance("$ALG")
+      - metavariable-regex: {metavariable: $ALG, regex: '(?i)^(md5|md4|sha-?1|des|desede|rc4|aes|.*/ecb/.*|des/.*)$'}
+  - id: nervve.scala.open-redirect
+    languages: [scala]
+    severity: WARNING
+    message: The redirect target comes from the request; attackers can send users to a phishing site. Allow-list targets.
+    metadata: {cwe: "CWE-601", owasp: "A01:2021", confidence: medium, category: redirect}
+    pattern-either:
+      - pattern: Redirect($REQ.getQueryString(...))
+      - pattern: Redirect($REQ.getQueryString(...).get)
+      - pattern: Redirect($REQ.queryString(...))
+  - id: nervve.scala.tls-trust-all
+    languages: [scala]
+    severity: ERROR
+    message: Certificate or host name checks are disabled, so connections can be intercepted.
+    metadata: {cwe: "CWE-295", owasp: "A02:2021", confidence: medium, category: crypto}
+    pattern-regex: 'def\s+checkServerTrusted\([^)]*\)\s*(:\s*Unit)?\s*=\s*(\{\s*\}|\(\))|acceptAnyCertificate\s*=\s*true|disableHostnameVerification\s*=\s*true'

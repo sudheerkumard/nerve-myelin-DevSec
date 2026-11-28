@@ -1,0 +1,56 @@
+# Copyright (c) 2026 Sudheer Kumar.
+# SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
+# RAT Flea DevSec SAST rules for Rust. Original work: not derived from the semgrep-rules registry.
+rules:
+  - id: nervve.rust.sql-injection
+    languages: [rust]
+    severity: ERROR
+    message: SQL built with format!. Use bind parameters (sqlx::query("... $1").bind(x), diesel's DSL, rusqlite params![]).
+    metadata: {cwe: "CWE-89", owasp: "A03:2021", confidence: medium, category: injection}
+    pattern-either:
+      - pattern: sqlx::query(&format!(...))
+      - pattern: sqlx::query(format!(...).as_str())
+      - pattern: sqlx::query_as::<$T>(&format!(...))
+      - pattern: diesel::sql_query(format!(...))
+      - pattern: $C.execute(&format!(...), ...)
+      - pattern: $C.query(&format!(...), ...)
+      - pattern: $C.prepare(&format!(...))
+  - id: nervve.rust.command-injection
+    languages: [rust]
+    severity: ERROR
+    message: A shell is started with a command line built at run time. Run the program directly with .arg() values.
+    metadata: {cwe: "CWE-78", owasp: "A03:2021", confidence: medium, category: injection}
+    pattern-either:
+      - pattern: Command::new("sh").arg("-c").arg(format!(...))
+      - pattern: Command::new("bash").arg("-c").arg(format!(...))
+      - pattern: Command::new("sh").args(["-c", $X])
+      - pattern: Command::new("cmd").args(["/C", $X])
+  - id: nervve.rust.tls-verification-disabled
+    languages: [rust]
+    severity: ERROR
+    message: Certificate or host name verification is turned off, so connections can be intercepted.
+    metadata: {cwe: "CWE-295", owasp: "A02:2021", confidence: high, category: crypto}
+    pattern-either:
+      - pattern: $B.danger_accept_invalid_certs(true)
+      - pattern: $B.danger_accept_invalid_hostnames(true)
+      - pattern: $C.set_verify(SslVerifyMode::NONE)
+      - pattern: $C.dangerous().set_certificate_verifier(...)
+  - id: nervve.rust.weak-crypto
+    languages: [rust]
+    severity: WARNING
+    message: MD5, SHA-1, DES or RC4 is used. Use SHA-256 (sha2) and an AEAD cipher (aes-gcm, chacha20poly1305).
+    metadata: {cwe: "CWE-327", owasp: "A02:2021", confidence: high, category: crypto}
+    pattern-either:
+      - pattern: md5::compute(...)
+      - pattern: Md5::new()
+      - pattern: Sha1::new()
+      - pattern: sha1::Sha1::new()
+      - pattern-regex: '\buse\s+(des|rc4|md5|md-5|sha1)(::|;)'
+  - id: nervve.rust.insecure-random
+    languages: [rust]
+    severity: INFO
+    message: A non-cryptographic generator seeded with a fixed or time-based value is predictable. Use rand::rngs::OsRng.
+    metadata: {cwe: "CWE-338", owasp: "A02:2021", confidence: low, category: crypto}
+    pattern-either:
+      - pattern: StdRng::seed_from_u64(...)
+      - pattern: SmallRng::seed_from_u64(...)

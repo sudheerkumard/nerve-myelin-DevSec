@@ -1,6 +1,6 @@
 # RAT Flea DevSec — CD gate for Azure Pipelines. Approvals and checks live on the 'production' environment.
 # MYELIN_CLI_PACKAGE: the RAT Flea DevSec CLI to install, e.g.
-# git+https://github.com/sudheerkumard/nervve-devsecops@v1.8.0 or a wheel on your internal package index
+# git+https://github.com/sudheerkumard/nervve-devsecops@v1.9.0 or a wheel on your internal package index
 stages:
   - stage: deploy_production
     jobs:

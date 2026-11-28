@@ -1,0 +1,49 @@
+# Copyright (c) 2026 Sudheer Kumar.
+# SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
+# RAT Flea DevSec SAST rules for Go: platform hardening. Original work: not derived from the semgrep-rules
+# registry.
+rules:
+  - id: nervve.go.jwt-unverified
+    languages: [go]
+    severity: ERROR
+    message: The JWT is parsed without verifying its signature; anyone can forge its claims. Use Parse with a key function.
+    metadata: {cwe: "CWE-347", owasp: "A07:2021", confidence: high, category: authentication}
+    pattern-either:
+      - pattern: $P.ParseUnverified(...)
+      - pattern: jwt.ParseUnverified(...)
+  - id: nervve.go.insecure-tls-version
+    languages: [go]
+    severity: WARNING
+    message: TLS 1.0/1.1 is allowed. Set MinVersion to tls.VersionTLS12 or higher.
+    metadata: {cwe: "CWE-326", owasp: "A02:2021", confidence: high, category: crypto}
+    pattern-either:
+      - pattern: 'tls.Config{..., MinVersion: tls.VersionTLS10, ...}'
+      - pattern: 'tls.Config{..., MinVersion: tls.VersionTLS11, ...}'
+      - pattern: 'tls.Config{..., MinVersion: tls.VersionSSL30, ...}'
+  - id: nervve.go.zip-slip
+    languages: [go]
+    severity: WARNING
+    message: An archive entry name is joined to the target path without checking it stays inside it (zip slip).
+    metadata: {cwe: "CWE-22", owasp: "A01:2021", confidence: medium, category: file}
+    patterns:
+      - pattern-either:
+          - pattern: filepath.Join($DIR, $F.Name)
+          - pattern: filepath.Join($DIR, $H.Name)
+          - pattern: path.Join($DIR, $F.Name)
+      - pattern-not-inside: |
+          if !strings.HasPrefix(...) { ... }
+          ...
+  - id: nervve.go.insecure-cookie
+    languages: [go]
+    severity: WARNING
+    message: The cookie is sent over plain HTTP or readable by scripts. Set Secure and HttpOnly.
+    metadata: {cwe: "CWE-614", owasp: "A05:2021", confidence: high, category: configuration}
+    pattern-either:
+      - pattern: 'http.Cookie{..., Secure: false, ...}'
+      - pattern: 'http.Cookie{..., HttpOnly: false, ...}'
+  - id: nervve.go.server-without-timeouts
+    languages: [go]
+    severity: INFO
+    message: http.ListenAndServe has no read or header timeouts, so slow clients can exhaust connections (Slowloris).
+    metadata: {cwe: "CWE-400", owasp: "A04:2021", confidence: medium, category: dos}
+    pattern: http.ListenAndServe(...)

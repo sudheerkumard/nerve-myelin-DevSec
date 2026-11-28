@@ -3,10 +3,10 @@
 # RAT Flea DevSec Platform API + console — hardened multi-stage image, with the deep-scanning toolchain
 # (Opengrep + RAT Flea rule pack, Trivy, Gitleaks, Checkov, Bandit) so repository scans run every engine.
 #
-#   docker build -t ghcr.io/sudheerkumard/nerve-myelin:1.8.0 .
-#   docker run ... ghcr.io/sudheerkumard/nerve-myelin:1.8.0            # API (default)
-#   docker run ... ghcr.io/sudheerkumard/nerve-myelin:1.8.0 migrate    # apply database migrations, then exit
-#   docker run ... ghcr.io/sudheerkumard/nerve-myelin:1.8.0 admin tenants
+#   docker build -t ghcr.io/sudheerkumard/nerve-myelin:1.9.0 .
+#   docker run ... ghcr.io/sudheerkumard/nerve-myelin:1.9.0            # API (default)
+#   docker run ... ghcr.io/sudheerkumard/nerve-myelin:1.9.0 migrate    # apply database migrations, then exit
+#   docker run ... ghcr.io/sudheerkumard/nerve-myelin:1.9.0 admin tenants
 #
 # Release builds pin the base image by digest (ARG PY_BASE=python:3.12-slim@sha256:...) and are signed with cosign.
 ARG PY_BASE=python:3.12-slim

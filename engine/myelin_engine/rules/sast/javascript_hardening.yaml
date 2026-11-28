@@ -1,0 +1,74 @@
+# Copyright (c) 2026 Sudheer Kumar.
+# SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
+# RAT Flea DevSec SAST rules for JavaScript/TypeScript: browser and server hardening. Original work: not derived from the semgrep-rules
+# registry.
+rules:
+  - id: nervve.js.cors-reflect-origin
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: CORS trusts every origin (or echoes the caller's origin) with credentials; any site can call the API as the user.
+    metadata: {cwe: "CWE-942", owasp: "A05:2021", confidence: high, category: configuration}
+    pattern-either:
+      - pattern: 'cors({..., origin: true, ..., credentials: true, ...})'
+      - pattern: 'cors({..., credentials: true, ..., origin: true, ...})'
+      - pattern: '$RES.setHeader("Access-Control-Allow-Origin", $REQ.headers.origin)'
+      - pattern: '$RES.header("Access-Control-Allow-Origin", $REQ.headers.origin)'
+      - pattern: '$RES.set("Access-Control-Allow-Origin", $REQ.headers.origin)'
+  - id: nervve.js.postmessage-any-origin
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: postMessage to "*" sends the data to whatever page is in the target window. Name the expected origin.
+    metadata: {cwe: "CWE-345", owasp: "A01:2021", confidence: high, category: browser}
+    pattern: $W.postMessage($MSG, "*")
+  - id: nervve.js.weak-random-token
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: Math.random() is predictable; use crypto.randomBytes / crypto.randomUUID / crypto.getRandomValues for tokens.
+    metadata: {cwe: "CWE-338", owasp: "A02:2021", confidence: medium, category: crypto}
+    patterns:
+      - pattern-inside: |
+          function $F(...) { ... }
+      - metavariable-regex: {metavariable: $F, regex: '(?i).*(token|password|secret|otp|nonce|salt|reset|invite|apikey|session).*'}
+      - pattern: Math.random()
+  - id: nervve.js.regex-from-input
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: A regular expression is built from request data; a crafted pattern hangs the event loop (ReDoS). Escape it or use a fixed pattern.
+    metadata: {cwe: "CWE-1333", owasp: "A04:2021", confidence: medium, category: dos}
+    pattern-either:
+      - pattern: new RegExp($REQ.query.$X, ...)
+      - pattern: new RegExp($REQ.body.$X, ...)
+      - pattern: new RegExp($REQ.params.$X, ...)
+  - id: nervve.js.electron-insecure-webpreferences
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: The Electron window gives web content Node.js access or turns off isolation; any XSS becomes code execution on the desktop.
+    metadata: {cwe: "CWE-94", owasp: "A05:2021", confidence: high, category: configuration}
+    pattern-either:
+      - pattern: '{..., nodeIntegration: true, ...}'
+      - pattern: '{..., contextIsolation: false, ...}'
+      - pattern: '{..., webSecurity: false, ...}'
+      - pattern: '{..., sandbox: false, ...}'
+  - id: nervve.js.insecure-tls-version
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: TLS 1.0/1.1 is allowed. Set minVersion to "TLSv1.2" or higher.
+    metadata: {cwe: "CWE-326", owasp: "A02:2021", confidence: high, category: crypto}
+    pattern-either:
+      - pattern: '{..., minVersion: "TLSv1", ...}'
+      - pattern: '{..., minVersion: "TLSv1.1", ...}'
+      - pattern: '{..., secureProtocol: "TLSv1_method", ...}'
+  - id: nervve.js.disabled-html-escaping
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: Raw HTML is rendered from a variable; if it contains user input this is cross-site scripting. Sanitise with DOMPurify.
+    metadata: {cwe: "CWE-79", owasp: "A03:2021", confidence: medium, category: xss}
+    patterns:
+      - pattern-either:
+          - pattern: '<$E dangerouslySetInnerHTML={{__html: $X}} />'
+          - pattern: '<$E dangerouslySetInnerHTML={{__html: $X}}>...</$E>'
+          - pattern: $SB.bypassSecurityTrustHtml($X)
+          - pattern: $SB.bypassSecurityTrustScript($X)
+          - pattern: $SB.bypassSecurityTrustUrl($X)
+      - pattern-not: '<$E dangerouslySetInnerHTML={{__html: DOMPurify.sanitize(...)}} />'
+      - pattern-not: '<$E dangerouslySetInnerHTML={{__html: "..."}} />'

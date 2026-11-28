@@ -23,7 +23,8 @@ def trivy(doc: dict, repo: str) -> list[dict]:
         for m in r.get("Misconfigurations") or []:
             out.append({"engine": "iac", "rule_id": m.get("ID"), "title": m.get("Title"), "severity": SEV.get(m.get("Severity"), "medium"),
                         "file": target, "line": (m.get("CauseMetadata") or {}).get("StartLine"), "repo": repo,
-                        "remediation": m.get("Resolution"), "source_tool": "trivy"})
+                        "remediation": m.get("Resolution"), "resource": (m.get("CauseMetadata") or {}).get("Resource"),
+                        "source_tool": "trivy"})
         for s in r.get("Secrets") or []:
             out.append({"engine": "secrets", "rule_id": s.get("RuleID"), "title": s.get("Title"), "severity": SEV.get(s.get("Severity"), "high"),
                         "file": target, "line": s.get("StartLine"), "repo": repo, "source_tool": "trivy"})
@@ -50,6 +51,16 @@ SAST_EQUIVALENT = {
     "nervve.php.sql-injection": "NM-SAST-035", "nervve.php.command-injection": "NM-SAST-036",
     "nervve.php.code-injection": "NM-SAST-037", "nervve.php.file-inclusion": "NM-SAST-038",
     "nervve.ruby.sql-injection": "NM-SAST-039", "nervve.ruby.command-injection": "NM-SAST-040",
+    "nervve.python.debug-enabled": "NM-SAST-008", "nervve.python.weak-random-token": "NM-SAST-014",
+    "nervve.python.csrf-exempt": "NM-SAST-042", "nervve.java.spring-csrf-disabled": "NM-SAST-042",
+    "nervve.php.unsafe-deserialisation": "NM-SAST-037",
+    "nervve.c.unbounded-copy": "NM-SAST-048", "nervve.c.gets": "NM-SAST-048", "nervve.c.command-injection": "NM-SAST-049",
+    "nervve.c.tls-verification-disabled": "NM-SAST-050", "nervve.kotlin.webview-javascript-bridge": "NM-SAST-051",
+    "nervve.kotlin.webview-file-access": "NM-SAST-051", "nervve.kotlin.world-readable-storage": "NM-SAST-051",
+    "nervve.kotlin.weak-crypto": "NM-SAST-052", "nervve.scala.weak-crypto": "NM-SAST-052",
+    "nervve.swift.tls-trust-all": "NM-SAST-053", "nervve.swift.keychain-always-accessible": "NM-SAST-053",
+    "nervve.swift.weak-crypto": "NM-SAST-053", "nervve.rust.tls-verification-disabled": "NM-SAST-054",
+    "nervve.bash.pipe-to-shell": "NM-SAST-055", "nervve.bash.tls-verification-disabled": "NM-SAST-055",
 }
 
 
@@ -178,7 +189,7 @@ def checkov(doc, repo: str) -> list[dict]:
                         "severity": (c.get("severity") or _checkov_severity(c.get("check_id", ""), c.get("check_name", ""))).lower(),
                         "file": c.get("file_path"),
                         "line": (c.get("file_line_range") or [None])[0], "repo": repo, "remediation": c.get("guideline"),
-                        "source_tool": "checkov"})
+                        "resource": c.get("resource"), "source_tool": "checkov"})
     return out
 
 

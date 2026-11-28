@@ -38,7 +38,7 @@ def test_safe_scan_finds_misconfigurations(api):
 def test_safe_scan_is_read_only_and_bounded(api):
     r = dast.safe_scan(api, spec=api + "/openapi.json", delay=0)
     assert {e["method"] for e in r["request_log"]} <= {"GET", "HEAD", "OPTIONS"}
-    assert r["requests"] < 40
+    assert r["requests"] < 80                     # includes ~25 GET probes for exposed files (bounded by max_requests)
     with pytest.raises(AssertionError):
         dast.Client().request("POST", api)
     c = dast.Client(max_requests=1, delay=0)

@@ -1,0 +1,210 @@
+# Copyright (c) 2026 Sudheer Kumar.
+# SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
+# RAT Flea DevSec SAST rules for C and C++ (Opengrep rule syntax). Original work: not derived from the semgrep-rules
+# registry. Memory-safety, injection, crypto and TLS weaknesses typical of native, embedded and firmware code.
+rules:
+  - id: nervve.c.unbounded-copy
+    languages: [c, cpp]
+    severity: ERROR
+    message: >-
+      This call copies without a length limit: input longer than the destination overwrites adjacent memory (buffer
+      overflow, often remote code execution). Use bounded functions (strlcpy/snprintf, or std::string).
+    metadata: {cwe: "CWE-120", owasp: "A06:2021", confidence: medium, category: memory-safety}
+    pattern-either:
+      - pattern: strcpy(...)
+      - pattern: strcat(...)
+      - pattern: sprintf(...)
+      - pattern: vsprintf(...)
+      - pattern: wcscpy(...)
+      - pattern: wcscat(...)
+  - id: nervve.c.gets
+    languages: [c, cpp]
+    severity: ERROR
+    message: gets() cannot limit input length and always allows a buffer overflow. Use fgets with the buffer size.
+    metadata: {cwe: "CWE-242", owasp: "A06:2021", confidence: high, category: memory-safety}
+    pattern: gets(...)
+  - id: nervve.c.unbounded-scanf
+    languages: [c, cpp]
+    severity: WARNING
+    message: scanf with %s and no field width overflows the buffer on long input. Give a width (%63s) or use fgets.
+    metadata: {cwe: "CWE-120", owasp: "A06:2021", confidence: high, category: memory-safety}
+    patterns:
+      - pattern-either:
+          - pattern: scanf("$F", ...)
+          - pattern: fscanf($S, "$F", ...)
+          - pattern: sscanf($S, "$F", ...)
+      - metavariable-regex: {metavariable: $F, regex: '.*%s.*'}
+  - id: nervve.c.format-string
+    languages: [c, cpp]
+    severity: ERROR
+    message: >-
+      The format string is not a literal. If it comes from input, %n and %x read and write memory. Use
+      printf("%s", value).
+    metadata: {cwe: "CWE-134", owasp: "A03:2021", confidence: medium, category: injection}
+    patterns:
+      - pattern-either:
+          - pattern: printf($X)
+          - pattern: fprintf($F, $X)
+          - pattern: syslog($P, $X)
+          - pattern: snprintf($B, $N, $X)
+      - pattern-not: printf("...")
+      - pattern-not: fprintf($F, "...")
+      - pattern-not: syslog($P, "...")
+      - pattern-not: snprintf($B, $N, "...")
+  - id: nervve.c.command-injection
+    languages: [c, cpp]
+    severity: ERROR
+    message: >-
+      A shell command is built at run time. If any part comes from input, an attacker runs commands on the
+      device. Use execve with a fixed program and an argument array.
+    metadata: {cwe: "CWE-78", owasp: "A03:2021", confidence: medium, category: injection}
+    patterns:
+      - pattern-either:
+          - pattern: system($X)
+          - pattern: popen($X, ...)
+      - pattern-not: system("...")
+      - pattern-not: popen("...", ...)
+  - id: nervve.c.weak-crypto
+    languages: [c, cpp]
+    severity: WARNING
+    message: $FN uses a broken algorithm (MD5, SHA-1 for signatures, DES, 3DES, RC4 or ECB mode). Use SHA-256 or AES-GCM.
+    metadata: {cwe: "CWE-327", owasp: "A02:2021", confidence: high, category: crypto}
+    patterns:
+      - pattern: $FN(...)
+      - metavariable-regex:
+          metavariable: $FN
+          regex: '^(MD5_Init|MD5|MD4|DES_\w+|EVP_des_\w+|EVP_rc4\w*|EVP_md5|EVP_md4|EVP_aes_\d+_ecb|RC4_set_key|RC4|EVP_bf_\w+)$'
+  - id: nervve.c.tls-verification-disabled
+    languages: [c, cpp]
+    severity: ERROR
+    message: TLS peer verification is turned off, so any certificate is accepted and traffic can be intercepted.
+    metadata: {cwe: "CWE-295", owasp: "A02:2021", confidence: high, category: crypto}
+    pattern-either:
+      - pattern: SSL_CTX_set_verify($C, SSL_VERIFY_NONE, ...)
+      - pattern: SSL_set_verify($C, SSL_VERIFY_NONE, ...)
+      - pattern: curl_easy_setopt($C, CURLOPT_SSL_VERIFYPEER, 0)
+      - pattern: curl_easy_setopt($C, CURLOPT_SSL_VERIFYPEER, 0L)
+      - pattern: curl_easy_setopt($C, CURLOPT_SSL_VERIFYHOST, 0)
+      - pattern: curl_easy_setopt($C, CURLOPT_SSL_VERIFYHOST, 0L)
+  - id: nervve.c.insecure-temp-file
+    languages: [c, cpp]
+    severity: WARNING
+    message: $FN returns a predictable name; another process can create the file first (symlink attack). Use mkstemp.
+    metadata: {cwe: "CWE-377", owasp: "A01:2021", confidence: high, category: file}
+    patterns:
+      - pattern: $FN(...)
+      - metavariable-regex: {metavariable: $FN, regex: '^(tmpnam|tempnam|mktemp|tmpnam_r)$'}
+  - id: nervve.c.weak-random
+    languages: [c, cpp]
+    severity: INFO
+    message: rand() is predictable. Use getrandom(), arc4random() or a CSPRNG for keys, tokens and nonces.
+    metadata: {cwe: "CWE-338", owasp: "A02:2021", confidence: low, category: crypto}
+    pattern-either:
+      - pattern: srand(time(...))
+      - pattern: srand(time(NULL))
+  - id: nervve.c.world-writable
+    languages: [c, cpp]
+    severity: WARNING
+    message: The file is made writable by every user. Give only the owner (and group) the access they need.
+    metadata: {cwe: "CWE-732", owasp: "A01:2021", confidence: high, category: file}
+    pattern-either:
+      - pattern: chmod($P, 0777)
+      - pattern: chmod($P, 0666)
+      - pattern: umask(0)
+  - id: nervve.c.double-free
+    languages: [c, cpp]
+    severity: ERROR
+    message: >-
+      The same pointer is freed twice with no new allocation in between. A double free corrupts the heap allocator
+      and is often exploitable. Set the pointer to NULL right after free, and free it in one place.
+    metadata: {cwe: "CWE-415", owasp: "A06:2021", confidence: medium, category: memory-safety}
+    patterns:
+      - pattern: |
+          free($P);
+          ...
+          free($P);
+      - pattern-not: |
+          free($P);
+          ...
+          $P = $Y;
+          ...
+          free($P);
+  - id: nervve.c.use-after-free
+    languages: [c, cpp]
+    severity: ERROR
+    message: >-
+      The pointer is used after it was freed. The memory may already belong to another allocation, so reads leak data
+      and writes corrupt it (often exploitable). Set the pointer to NULL after free and do not use it afterwards.
+    metadata: {cwe: "CWE-416", owasp: "A06:2021", confidence: medium, category: memory-safety}
+    patterns:
+      - pattern-either:
+          - pattern: |
+              free($P);
+              ...
+              $P[$I] = $V;
+          - pattern: |
+              free($P);
+              ...
+              $P->$F = $V;
+          - pattern: |
+              free($P);
+              ...
+              $T $X = $P[$I];
+          - patterns:
+              - pattern: |
+                  free($P);
+                  ...
+                  $FN(..., $P, ...);
+              - metavariable-regex: {metavariable: $FN, regex: "^(memcpy|memmove|memset|strcpy|strncpy|strcat|strlen|printf|fprintf|puts|fputs|fwrite|fread|send|write|read|realloc)$"}
+      - pattern-not: |
+          free($P);
+          ...
+          $P = $Y;
+          ...
+          $P[$I] = $V;
+      - pattern-not: |
+          free($P);
+          ...
+          $P = $Y;
+          ...
+          $P->$F = $V;
+      - pattern-not: |
+          free($P);
+          ...
+          $P = $Y;
+          ...
+          $T $X = $P[$I];
+      - pattern-not: |
+          free($P);
+          ...
+          $P = $Y;
+          ...
+          $FN(..., $P, ...);
+  - id: nervve.c.allocation-size-overflow
+    languages: [c, cpp]
+    severity: WARNING
+    message: >-
+      The allocation size is computed with unchecked arithmetic. If the operands come from input, the size can wrap
+      around or go negative, giving a tiny or huge buffer and a later overflow. Check the operands against limits
+      first, or use calloc / a checked multiply (__builtin_mul_overflow).
+    metadata: {cwe: "CWE-190", owasp: "A06:2021", confidence: low, category: memory-safety}
+    patterns:
+      - pattern-either:
+          - pattern: $ALLOC($A + $B)
+          - pattern: $ALLOC($A - $B)
+          - pattern: $ALLOC($A * $B)
+          - pattern: |
+              $T $S = $A + $B;
+              ...
+              $ALLOC($S);
+          - pattern: |
+              $T $S = $A - $B;
+              ...
+              $ALLOC($S);
+          - pattern: |
+              $T $S = $A * $B;
+              ...
+              $ALLOC($S);
+      - metavariable-regex: {metavariable: $ALLOC, regex: ^(malloc|realloc|alloca|operator new)$}
+      - metavariable-regex: {metavariable: $A, regex: "^[A-Za-z_][\\w.>-]*$"}
+      - metavariable-regex: {metavariable: $B, regex: "^[A-Za-z_][\\w.>-]*$"}

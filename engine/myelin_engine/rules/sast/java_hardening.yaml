@@ -1,0 +1,65 @@
+# Copyright (c) 2026 Sudheer Kumar.
+# SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
+# RAT Flea DevSec SAST rules for Java: Spring and platform hardening. Original work: not derived from the semgrep-rules
+# registry.
+rules:
+  - id: nervve.java.spring-csrf-disabled
+    languages: [java]
+    severity: WARNING
+    message: >-
+      CSRF protection is disabled. For browser sessions (cookies) a malicious page can submit requests as the user;
+      keep it on unless the API is stateless and uses bearer tokens only.
+    metadata: {cwe: "CWE-352", owasp: "A01:2021", confidence: medium, category: configuration}
+    pattern-either:
+      - pattern: $H.csrf().disable()
+      - pattern: $H.csrf($C -> $C.disable())
+      - pattern-regex: '\.csrf\(\s*AbstractHttpConfigurer::disable\s*\)'
+  - id: nervve.java.cors-any-origin-with-credentials
+    languages: [java]
+    severity: ERROR
+    message: CORS allows every origin with credentials; any site can call the API as the signed-in user.
+    metadata: {cwe: "CWE-942", owasp: "A05:2021", confidence: high, category: configuration}
+    pattern-either:
+      - pattern: '@CrossOrigin(origins = "*", allowCredentials = "true")'
+      - pattern: $R.allowedOriginPatterns("*").$X(...).allowCredentials(true)
+      - pattern: $R.allowedOriginPatterns("*").allowCredentials(true)
+      - pattern: $C.addAllowedOriginPattern("*")
+  - id: nervve.java.jwt-signature-not-verified
+    languages: [java]
+    severity: ERROR
+    message: The token is parsed without verifying its signature (parse / parseClaimsJwt / unsecured), so anyone can forge claims.
+    metadata: {cwe: "CWE-347", owasp: "A07:2021", confidence: medium, category: authentication}
+    pattern-either:
+      - pattern: Jwts.parser().parse($T)
+      - pattern: Jwts.parser().parseClaimsJwt($T)
+      - pattern: Jwts.parser().unsecured().$X(...)
+      - pattern: JWT.decode($T)
+  - id: nervve.java.zip-slip
+    languages: [java]
+    severity: WARNING
+    message: An archive entry name is used as a file path without checking it stays inside the target directory (zip slip).
+    metadata: {cwe: "CWE-22", owasp: "A01:2021", confidence: medium, category: file}
+    patterns:
+      - pattern-either:
+          - pattern: new File($DIR, $E.getName())
+          - pattern: $DIR.resolve($E.getName())
+          - pattern: Paths.get($DIR, $E.getName())
+      - pattern-not-inside: |
+          if (!$P.startsWith(...)) { ... }
+          ...
+  - id: nervve.java.insecure-tls-version
+    languages: [java]
+    severity: WARNING
+    message: An SSL context for SSLv3/TLS 1.0/1.1 is created. Use "TLSv1.3" (or "TLS" with the JDK's defaults).
+    metadata: {cwe: "CWE-326", owasp: "A02:2021", confidence: high, category: crypto}
+    pattern-either:
+      - pattern: SSLContext.getInstance("SSL")
+      - pattern: SSLContext.getInstance("SSLv3")
+      - pattern: SSLContext.getInstance("TLSv1")
+      - pattern: SSLContext.getInstance("TLSv1.1")
+  - id: nervve.java.spring-actuator-exposed
+    languages: [java]
+    severity: WARNING
+    message: Every Actuator endpoint (heapdump, env, configprops) is exposed; they leak secrets and memory.
+    metadata: {cwe: "CWE-200", owasp: "A05:2021", confidence: high, category: configuration}
+    pattern-regex: 'management\.endpoints\.web\.exposure\.include"?\s*[:=,]\s*"?\*'

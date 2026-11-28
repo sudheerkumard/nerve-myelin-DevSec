@@ -65,6 +65,15 @@ SAST = [
     # ── Ruby ──
     ("NM-SAST-039", r"\.(where|find_by_sql|order|pluck)\(\s*\"[^\"]*#\{[^}]*params", "SQL fragment built from params", "high", "CWE-89", (".rb",)),
     ("NM-SAST-040", r"\b(system|exec|spawn|%x|`)[\(\s]*[^)\n]*#\{[^}]*params|YAML\.load\(\s*params|Marshal\.load\(", "Command, YAML or Marshal input from params", "high", "CWE-78", (".rb",)),
+    # native, mobile and shell code (fallbacks for the Opengrep rule packs)
+    ("NM-SAST-048", r"\b(gets|strcpy|strcat|sprintf|vsprintf)\s*\(", "Unbounded buffer copy (overflow risk)", "high", "CWE-120", (".c", ".cc", ".cpp", ".h", ".hpp")),
+    ("NM-SAST-049", r"\b(system|popen)\s*\(\s*[A-Za-z_]\w*\s*[,)]", "Shell command built at run time", "high", "CWE-78", (".c", ".cc", ".cpp")),
+    ("NM-SAST-050", r"SSL_VERIFY_NONE|CURLOPT_SSL_VERIFY(PEER|HOST)\s*,\s*0", "TLS peer verification disabled", "high", "CWE-295", (".c", ".cc", ".cpp", ".h")),
+    ("NM-SAST-051", r"addJavascriptInterface\(|allowFileAccess\s*=\s*true|setAllowFileAccess\(true\)|MODE_WORLD_(READABLE|WRITEABLE)", "Unsafe Android WebView or storage setting", "medium", "CWE-749", (".kt", ".java")),
+    ("NM-SAST-052", r"Cipher\.getInstance\(\"(DES|RC4|AES/ECB|AES\")|MessageDigest\.getInstance\(\"(MD5|SHA-?1)\"\)", "Weak cryptographic algorithm", "medium", "CWE-327", (".kt", ".scala")),
+    ("NM-SAST-053", r"kSecAttrAccessibleAlways|Insecure\.(MD5|SHA1)|CC_MD5\(|completionHandler\(\s*\.useCredential\s*,\s*URLCredential\(\s*trust:", "Insecure iOS crypto, keychain or TLS trust", "high", "CWE-295", (".swift",)),
+    ("NM-SAST-054", r"danger_accept_invalid_(certs|hostnames)\(true\)|SslVerifyMode::NONE", "TLS verification disabled", "high", "CWE-295", (".rs",)),
+    ("NM-SAST-055", r"\b(curl|wget)\b[^|\n]*\|\s*(sudo\s+)?(ba|z)?sh\b|\bcurl\b[^\n]*\s(-k|--insecure)\b|--no-check-certificate", "Unverified download or script piped to a shell", "medium", "CWE-494", (".sh", ".bash")),
 ]
 IAC = [   # line patterns for Terraform/Bicep/ARM; Dockerfile, Compose and Kubernetes are parsed in iac_checks
     ("NM-IAC-003", r"(?i)0\.0\.0\.0/0", "Network rule open to the internet (0.0.0.0/0)", "high", (".tf", ".bicep", ".yaml", ".yml", ".json")),

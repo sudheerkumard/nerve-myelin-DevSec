@@ -1,0 +1,40 @@
+# Copyright (c) 2026 Sudheer Kumar.
+# SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
+# RAT Flea DevSec SAST rules for shell scripts (bash, sh). Original work: not derived from the semgrep-rules registry.
+rules:
+  - id: nervve.bash.pipe-to-shell
+    languages: [bash]
+    severity: WARNING
+    message: A downloaded script is run without checking it; whoever controls the URL (or the network) runs code here.
+    metadata: {cwe: "CWE-494", owasp: "A08:2021", confidence: high, category: supply-chain}
+    pattern-regex: '\b(curl|wget)\b[^|\n]*\|\s*(sudo\s+)?(ba|z|da)?sh\b'
+  - id: nervve.bash.tls-verification-disabled
+    languages: [bash]
+    severity: WARNING
+    message: Certificate checks are disabled for this download, so it can be replaced in transit.
+    metadata: {cwe: "CWE-295", owasp: "A02:2021", confidence: high, category: crypto}
+    pattern-regex: '\bcurl\b[^\n]*\s(-k|--insecure)\b|\bwget\b[^\n]*--no-check-certificate|\bgit\b[^\n]*http\.sslVerify[= ]false'
+  - id: nervve.bash.eval-injection
+    languages: [bash]
+    severity: ERROR
+    message: eval runs a string built from variables; anything in them runs as code. Avoid eval or quote strictly.
+    metadata: {cwe: "CWE-95", owasp: "A03:2021", confidence: medium, category: injection}
+    pattern-regex: '(?m)^\s*eval\s+[^#\n]*\$[{\w(@*]'
+  - id: nervve.bash.world-writable
+    languages: [bash]
+    severity: WARNING
+    message: chmod 777/666 lets every user change the file. Grant only what is needed.
+    metadata: {cwe: "CWE-732", owasp: "A01:2021", confidence: high, category: file}
+    pattern-regex: '\bchmod\s+(-R\s+)?(0?777|0?666|a\+w|o\+w)\b'
+  - id: nervve.bash.password-on-command-line
+    languages: [bash]
+    severity: WARNING
+    message: A password on the command line is visible to every user in the process list and in shell history.
+    metadata: {cwe: "CWE-214", owasp: "A07:2021", confidence: medium, category: secrets}
+    pattern-regex: '\b(sshpass\s+-p\s*\S|mysql\b[^\n]*\s-p\S|PGPASSWORD=\S+\s+psql|--password[= ]\S{3,})'
+  - id: nervve.bash.unquoted-rm
+    languages: [bash]
+    severity: WARNING
+    message: rm -rf on an unquoted variable path; if the variable is empty this deletes from /. Quote it and use ${VAR:?}.
+    metadata: {cwe: "CWE-1286", owasp: "A04:2021", confidence: medium, category: reliability}
+    pattern-regex: '\brm\s+-[rRf]{2,}\s+\$\w+/'

@@ -1,0 +1,80 @@
+# Copyright (c) 2026 Sudheer Kumar.
+# SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
+# RAT Flea DevSec SAST rules for C#/.NET: ASP.NET Core and platform hardening. Original work: not derived from the semgrep-rules
+# registry.
+rules:
+  - id: nervve.csharp.jwt-validation-disabled
+    languages: [csharp]
+    severity: ERROR
+    message: JWT validation is switched off for the signature, issuer, audience or lifetime; forged or expired tokens are accepted.
+    metadata: {cwe: "CWE-347", owasp: "A07:2021", confidence: high, category: authentication}
+    pattern-either:
+      - pattern: ValidateIssuerSigningKey = false
+      - pattern: RequireSignedTokens = false
+      - pattern: ValidateLifetime = false
+      - pattern: 'SignatureValidator = ($T, $P) => new JwtSecurityToken($T)'
+  - id: nervve.csharp.jwt-issuer-audience-not-validated
+    languages: [csharp]
+    severity: WARNING
+    message: JWT issuer or audience validation is off, so tokens issued for another application are accepted.
+    metadata: {cwe: "CWE-287", owasp: "A07:2021", confidence: high, category: authentication}
+    pattern-either:
+      - pattern: ValidateIssuer = false
+      - pattern: ValidateAudience = false
+  - id: nervve.csharp.cors-any-origin-with-credentials
+    languages: [csharp]
+    severity: ERROR
+    message: CORS accepts every origin with credentials (SetIsOriginAllowed(_ => true) + AllowCredentials).
+    metadata: {cwe: "CWE-942", owasp: "A05:2021", confidence: high, category: configuration}
+    pattern-either:
+      - pattern: $P.SetIsOriginAllowed($X => true).$M(...).AllowCredentials()
+      - pattern: $P.SetIsOriginAllowed($X => true).AllowCredentials()
+      - pattern: $P.AllowCredentials().SetIsOriginAllowed($X => true)
+  - id: nervve.csharp.antiforgery-disabled
+    languages: [csharp]
+    severity: WARNING
+    message: Antiforgery validation is turned off for this endpoint; cookie-authenticated requests can be forged.
+    metadata: {cwe: "CWE-352", owasp: "A01:2021", confidence: medium, category: configuration}
+    pattern-either:
+      - pattern-regex: '\[\s*IgnoreAntiforgeryToken\b'
+      - pattern: $E.DisableAntiforgery()
+  - id: nervve.csharp.insecure-cookie
+    languages: [csharp]
+    severity: WARNING
+    message: The cookie is sent over plain HTTP or readable by scripts. Set Secure = true and HttpOnly = true.
+    metadata: {cwe: "CWE-614", owasp: "A05:2021", confidence: high, category: configuration}
+    pattern-either:
+      - pattern: Secure = false
+      - pattern: HttpOnly = false
+      - pattern: SecurePolicy = CookieSecurePolicy.None
+  - id: nervve.csharp.xxe
+    languages: [csharp]
+    severity: ERROR
+    message: The XML parser resolves external entities and DTDs; crafted XML reads local files or makes server requests.
+    metadata: {cwe: "CWE-611", owasp: "A05:2021", confidence: high, category: xxe}
+    pattern-either:
+      - pattern: DtdProcessing = DtdProcessing.Parse
+      - pattern: $D.XmlResolver = new XmlUrlResolver()
+      - pattern: ProhibitDtd = false
+  - id: nervve.csharp.weak-random-token
+    languages: [csharp]
+    severity: WARNING
+    message: System.Random is predictable; use RandomNumberGenerator for tokens, keys and passwords.
+    metadata: {cwe: "CWE-338", owasp: "A02:2021", confidence: low, category: crypto}
+    patterns:
+      - pattern-inside: |
+          $T $F(...) { ... }
+      - metavariable-regex: {metavariable: $F, regex: '(?i).*(token|password|secret|otp|nonce|salt|reset|apikey|session).*'}
+      - pattern: new Random(...)
+  - id: nervve.csharp.insecure-tls-version
+    languages: [csharp]
+    severity: WARNING
+    message: SSL 3 or TLS 1.0/1.1 is enabled. Let the OS choose (SslProtocols.None) or require Tls12/Tls13.
+    metadata: {cwe: "CWE-326", owasp: "A02:2021", confidence: high, category: crypto}
+    pattern-either:
+      - pattern: SecurityProtocolType.Ssl3
+      - pattern: SecurityProtocolType.Tls
+      - pattern: SecurityProtocolType.Tls11
+      - pattern: SslProtocols.Tls
+      - pattern: SslProtocols.Tls11
+      - pattern: SslProtocols.Ssl3

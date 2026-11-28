@@ -372,8 +372,94 @@ def safe_scan(target, spec=None, headers=None, max_requests=300, delay=0.2, veri
                                        "non-sensitive fields (no configuration, site names, counts or versions).",
                                        f"anonymous GET → HTTP {st}; {len(denied)} of {len(anon)} operations refuse anonymous access",
                                        "CWE-306"))
+    findings += exposure_checks(c, base, target, h, body)
     return {"target": target, "duration_s": round(time.time() - t0, 2), "requests": c.count, "request_log": c.log,
             "spec_operations": len(ops), "auth_checks": checked, "findings": findings, "client": c, "spec": spec_doc}
+
+
+# Files that must never be served. Each needs its own content signature, so a catch-all 200 page is not a finding.
+SENSITIVE_PATHS = [
+    ("/.git/HEAD", r"^ref: refs/heads/", "Git repository exposed (source code and history)", "high", "CWE-527"),
+    ("/.git/config", r"\[core\]", "Git configuration exposed", "high", "CWE-527"),
+    ("/.svn/entries", r"^\d+\s*$|svn:", "Subversion metadata exposed", "high", "CWE-527"),
+    ("/.env", r"(?m)^(APP_KEY|DB_PASSWORD|DATABASE_URL|SECRET_KEY|AWS_SECRET_ACCESS_KEY|[A-Z_]*(PASSWORD|SECRET|TOKEN))=.+", "Environment file with secrets exposed", "critical", "CWE-538"),
+    ("/.aws/credentials", r"aws_secret_access_key", "Cloud credentials file exposed", "critical", "CWE-538"),
+    ("/.npmrc", r"_authToken=", "Package registry token exposed", "high", "CWE-538"),
+    ("/id_rsa", r"-----BEGIN (RSA |OPENSSH )?PRIVATE KEY-----", "Private key exposed", "critical", "CWE-538"),
+    ("/backup.sql", r"(?i)(CREATE TABLE|INSERT INTO)", "Database dump exposed", "critical", "CWE-530"),
+    ("/dump.sql", r"(?i)(CREATE TABLE|INSERT INTO)", "Database dump exposed", "critical", "CWE-530"),
+    ("/wp-config.php.bak", r"DB_PASSWORD", "Backup of a configuration file exposed", "critical", "CWE-530"),
+    ("/config.php.bak", r"(?i)password", "Backup of a configuration file exposed", "high", "CWE-530"),
+    ("/web.config", r"<configuration", "web.config served to clients", "medium", "CWE-538"),
+    ("/phpinfo.php", r"phpinfo\(\)|PHP Version", "phpinfo() page exposed", "medium", "CWE-200"),
+    ("/server-status", r"Apache Server Status", "Apache server-status exposed", "medium", "CWE-200"),
+    ("/actuator/env", r"propertySources|activeProfiles", "Spring Boot Actuator environment exposed", "high", "CWE-200"),
+    ("/actuator/heapdump", None, "Spring Boot heap dump downloadable", "critical", "CWE-200"),
+    ("/debug/pprof/", r"Types of profiles available", "Go pprof debug endpoint exposed", "medium", "CWE-200"),
+    ("/elmah.axd", r"Error Log for", "ELMAH error log exposed", "high", "CWE-200"),
+    ("/trace.axd", r"Application Trace", "ASP.NET trace exposed", "high", "CWE-200"),
+    ("/.DS_Store", None, "macOS .DS_Store file lists directory contents", "low", "CWE-538"),
+    ("/docker-compose.yml", r"(?m)^services:", "Docker Compose file exposed", "medium", "CWE-538"),
+]
+
+
+def exposure_checks(c, base, target, h, body):
+    out = []
+    for path, sig, title, sev, cwe in SENSITIVE_PATHS:
+        try:
+            st, hh, _, b = c.request("GET", base + path, auth=False)
+        except (urllib.error.URLError, OSError, RuntimeError):
+            continue
+        if st != 200:
+            continue
+        text = b[:20000].decode("utf-8", "ignore")
+        ctype = (hh.get("content-type") or "").lower()
+        hit = False
+        if path == "/actuator/heapdump":
+            hit = "octet-stream" in ctype and (b[:4] == b"JAVA" or b[:10].startswith(b"\x1f\x8b"))
+        elif path == "/.DS_Store":
+            hit = b[4:8] == b"Bud1"
+        elif sig and "text/html" not in ctype or (sig and path in ("/phpinfo.php", "/server-status", "/elmah.axd", "/trace.axd", "/debug/pprof/")):
+            hit = bool(re.search(sig, text))
+        if hit:
+            out.append(_f("NM-DAST-040", title, sev, base + path, "API8",
+                          "Remove the file from the web root (or block the path at the server/proxy) and rotate any secret it contained.",
+                          f"GET {path} -> HTTP 200 with matching content", cwe))
+    # directory listing
+    if re.search(r"<title>\s*Index of /|Directory listing for /", body[:5000].decode("utf-8", "ignore")):
+        out.append(_f("NM-DAST-041", "Directory listing is enabled", "medium", target, "API8",
+                      "Disable directory indexes (autoindex off / Options -Indexes).", "Index of / page", "CWE-548"))
+    # GraphQL introspection
+    for gp in ("/graphql", "/api/graphql"):
+        try:
+            st, _, _, b = c.request("GET", base + gp + "?query=%7B__schema%7BqueryType%7Bname%7D%7D%7D", auth=False)
+        except (urllib.error.URLError, OSError, RuntimeError):
+            continue
+        if st == 200 and b'"__schema"' in b and b'"queryType"' in b:
+            out.append(_f("NM-DAST-042", "GraphQL introspection is enabled", "medium", base + gp, "API9",
+                          "Disable introspection in production and enforce query depth/complexity limits.", "__schema query answered", "CWE-200"))
+            break
+    # Host header injection (via X-Forwarded-Host, which does not change routing)
+    evil = "myelin-host-probe.invalid"
+    try:
+        st, hh, _, b = c.request("GET", target, headers={"X-Forwarded-Host": evil})
+        if evil in (hh.get("location") or "") or evil.encode() in b[:50000]:
+            out.append(_f("NM-DAST-043", "Host header injection: forwarded host is reflected", "medium", target, "API8",
+                          "Build absolute URLs from a configured host name, and trust X-Forwarded-Host only from your proxy.",
+                          "X-Forwarded-Host value appears in the response", "CWE-644"))
+    except (urllib.error.URLError, OSError, RuntimeError):
+        pass
+    # weak Content-Security-Policy and missing browser policies on HTML
+    if "html" in (h.get("content-type") or ""):
+        csp = h.get("content-security-policy", "")
+        if csp and re.search(r"script-src[^;]*('unsafe-inline'|'unsafe-eval'|\*(?![.\w]))", csp) and "nonce-" not in csp and "strict-dynamic" not in csp:
+            out.append(_f("NM-DAST-044", "Content-Security-Policy allows inline or any-origin scripts", "low", target, "API8",
+                          "Use nonces or hashes instead of 'unsafe-inline'/'unsafe-eval', and list script origins explicitly.", csp[:200], "CWE-693"))
+        missing = [n for n in ("referrer-policy", "permissions-policy") if n not in h]
+        if missing:
+            out.append(_f("NM-DAST-045", "Browser privacy headers missing: " + ", ".join(missing), "low", target, "API8",
+                          "Send Referrer-Policy: strict-origin-when-cross-origin and a restrictive Permissions-Policy.", "", "CWE-693"))
+    return out
 
 
 # ---------------------------------------------------------------------------------------------------

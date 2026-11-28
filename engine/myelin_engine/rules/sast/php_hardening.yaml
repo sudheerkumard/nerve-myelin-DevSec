@@ -1,0 +1,64 @@
+# Copyright (c) 2026 Sudheer Kumar.
+# SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
+# RAT Flea DevSec SAST rules for PHP: deserialisation, XXE, files and randomness. Original work: not derived from the semgrep-rules
+# registry.
+rules:
+  - id: nervve.php.unsafe-deserialisation
+    languages: [php]
+    severity: ERROR
+    message: unserialize() on request data lets an attacker build objects and trigger code paths (PHP object injection). Use json_decode.
+    metadata: {cwe: "CWE-502", owasp: "A08:2021", confidence: high, category: deserialisation}
+    pattern-either:
+      - pattern: unserialize($_GET[...])
+      - pattern: unserialize($_POST[...])
+      - pattern: unserialize($_REQUEST[...])
+      - pattern: unserialize($_COOKIE[...])
+      - pattern: unserialize(base64_decode($_COOKIE[...]))
+      - pattern: unserialize(file_get_contents("php://input"))
+  - id: nervve.php.path-traversal
+    languages: [php]
+    severity: ERROR
+    message: A file path comes straight from the request; ../ reads or writes any file the web server can access.
+    metadata: {cwe: "CWE-22", owasp: "A01:2021", confidence: high, category: file}
+    patterns:
+      - pattern-either:
+          - pattern: $FN($_GET[...], ...)
+          - pattern: $FN($_POST[...], ...)
+          - pattern: $FN($_REQUEST[...], ...)
+          - pattern: $FN("..." . $_GET[...], ...)
+          - pattern: $FN("..." . $_REQUEST[...], ...)
+      - metavariable-regex: {metavariable: $FN, regex: '^(file_get_contents|fopen|readfile|file|unlink|file_put_contents|copy|rename|fpassthru|show_source|highlight_file|parse_ini_file)$'}
+  - id: nervve.php.xxe
+    languages: [php]
+    severity: ERROR
+    message: External entities are enabled for the XML parser; crafted XML reads local files.
+    metadata: {cwe: "CWE-611", owasp: "A05:2021", confidence: high, category: xxe}
+    pattern-either:
+      - pattern: libxml_disable_entity_loader(false)
+      - pattern: $D->loadXML($X, LIBXML_NOENT)
+      - pattern: $D->loadXML($X, LIBXML_NOENT | LIBXML_DTDLOAD)
+      - pattern: simplexml_load_string($X, $C, LIBXML_NOENT)
+  - id: nervve.php.weak-random-token
+    languages: [php]
+    severity: WARNING
+    message: rand()/mt_rand()/uniqid() are predictable; use random_bytes() or random_int() for tokens and passwords.
+    metadata: {cwe: "CWE-338", owasp: "A02:2021", confidence: medium, category: crypto}
+    patterns:
+      - pattern-inside: |
+          function $F(...) { ... }
+      - metavariable-regex: {metavariable: $F, regex: '(?i).*(token|password|secret|otp|nonce|salt|reset|key|session).*'}
+      - pattern-either:
+          - pattern: rand(...)
+          - pattern: mt_rand(...)
+          - pattern: uniqid(...)
+          - pattern: md5(uniqid(...))
+  - id: nervve.php.loose-comparison-auth
+    languages: [php]
+    severity: WARNING
+    message: A hash or token is compared with ==; PHP type juggling makes "0e..." strings equal. Use hash_equals().
+    metadata: {cwe: "CWE-697", owasp: "A07:2021", confidence: low, category: authentication}
+    pattern-either:
+      - pattern: md5($X) == $Y
+      - pattern: sha1($X) == $Y
+      - pattern: $HASH == $_GET[...]
+      - pattern: $HASH == $_POST[...]

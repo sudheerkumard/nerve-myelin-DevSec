@@ -6,6 +6,57 @@ MAJOR for breaking changes, MINOR for new features, PATCH for fixes. Each sectio
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-11-28
+
+### Highlights
+- **Every security domain is covered by every testing type, online and offline.** Findings now carry a security
+  domain (application, network, data, compute, identity, logging, supply chain), and the enterprise report shows a
+  matrix of findings by domain and testing type (SAST, SCA, secrets, IaC, container, DAST). The same checks run with
+  the built-in engine when the external scanners are not installed or the machine has no network access.
+- **Built-in cloud infrastructure checks for AWS, Azure and Google Cloud** across Terraform, CloudFormation, ARM and
+  Bicep, plus Kubernetes network, RBAC and secret checks, with duplicates against the external IaC scanners removed.
+
+### Added
+- **Cloud IaC rules (NM-IAC-1xx to 5xx, 128 rules).** Network exposure (open security groups and NSGs, public
+  databases, load balancers without TLS, public IPs on VMs), data protection (encryption at rest, public buckets and
+  storage, backups, key rotation, TLS minimum versions), compute (IMDSv2, public images, unencrypted disks, serial
+  console), identity (wildcard policies, public principals, admin roles, MFA, service account keys) and logging
+  (CloudTrail, flow logs, SQL auditing, diagnostic settings, log retention). A built-in parser reads Terraform HCL,
+  CloudFormation YAML/JSON with intrinsic functions, ARM JSON and Bicep, with no extra tools.
+- **Kubernetes checks**: LoadBalancer services without source ranges (NM-IAC-151), Ingress without TLS (152),
+  namespaces without a NetworkPolicy where the repository uses them elsewhere (153), RBAC wildcards, secret readers,
+  escalate/bind/impersonate, anonymous bindings and cluster-admin (451–455), Secret objects and credentials in
+  ConfigMaps committed to the repository (251, 252).
+- **Application and server configuration checks (NM-CFG, 37 rules)**: AndroidManifest and network security config,
+  iOS App Transport Security, Spring Boot properties and YAML, ASP.NET web.config, Django settings, php.ini, nginx,
+  Apache, sshd, Redis and MongoDB configuration.
+- **SAST for more languages**: C and C++ (including use-after-free, double free and allocation-size overflow), Kotlin (including Android), Swift, Scala, Rust and shell scripts, and
+  hardening rule packs for Python, JavaScript/TypeScript, Java, C#, Go, PHP and Ruby. The pack now has 181 rules across
+  15 languages, each with a test fixture, and regex fallbacks (NM-SAST-048 to 055) when Opengrep is not installed.
+- **Secret detection**: 59 credential patterns (up from 15), adding source-control, package-registry, CI/CD, cloud
+  (GCP, Azure SAS and connection strings, Alibaba, Tencent, DigitalOcean), secrets-manager, payment, messaging and
+  webhook, observability, identity-provider and AI-provider tokens, database connection strings, kubeconfig keys,
+  PGP/Age/PuTTY keys and keystore passwords.
+- **DAST exposure checks**: exposed sensitive files such as `.git`, `.env` and backups, confirmed by content
+  (NM-DAST-040), directory listing (041), GraphQL introspection (042), Host header reflection (043), weak
+  Content-Security-Policy (044), and missing Referrer-Policy or Permissions-Policy (045).
+- **Container image configuration (NM-CTR-001 to 007)**: running as root, secrets in environment variables, exposed
+  administrative ports, no health check, images older than 180 days, SSH or telnet servers installed, and unexpected
+  setuid/setgid files.
+- **Security-domain matrix** in the enterprise report and a coverage-by-domain table in `docs/WHAT-WE-SCAN.md`.
+
+### Changed
+- Remediation steps for the new rule families start with the rule's own fix, followed by guidance for the weakness
+  family (exposure, transport security, encryption at rest, least privilege, logging, configuration hardening, memory
+  safety, credentials, integrity).
+- External IaC findings that duplicate a built-in check on the same file and resource are dropped, so the same issue
+  is not reported twice.
+- Passive DAST makes about 25 extra GET requests for the exposure checks; it still sends no attack payloads.
+
+### Upgrade notes
+- Expect more findings on repositories with cloud IaC, mobile apps, C/C++, Kotlin, Swift, Rust or shell code, and
+  server configuration files. Review them before turning on blocking policies for the new rule IDs.
+
 ## [1.8.0] - 2026-11-28
 
 ### Highlights

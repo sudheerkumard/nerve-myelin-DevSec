@@ -1,0 +1,106 @@
+# Copyright (c) 2026 Sudheer Kumar.
+# SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
+# RAT Flea DevSec SAST rules for Kotlin (Android and server). Original work: not derived from the semgrep-rules registry.
+rules:
+  - id: nervve.kotlin.sql-injection
+    languages: [kotlin]
+    severity: ERROR
+    message: >-
+      SQL built by string concatenation or a string template. Use selection arguments / bind parameters
+      (rawQuery(sql, arrayOf(id)), PreparedStatement, JPA parameters).
+    metadata: {cwe: "CWE-89", owasp: "A03:2021", confidence: medium, category: injection}
+    pattern-either:
+      - pattern: $DB.rawQuery("..." + $X, ...)
+      - pattern: $DB.execSQL("..." + $X)
+      - pattern: $DB.execSQL("..." + $X, ...)
+      - pattern: $S.executeQuery("..." + $X)
+      - pattern: $S.executeUpdate("..." + $X)
+      - pattern: $EM.createQuery("..." + $X, ...)
+      - pattern: $EM.createNativeQuery("..." + $X, ...)
+      - pattern-regex: '\b(rawQuery|execSQL|executeQuery|executeUpdate|createQuery|createNativeQuery|queryForList|queryForObject)\(\s*"[^"\n]*\$\{?[A-Za-z_]'
+  - id: nervve.kotlin.command-injection
+    languages: [kotlin]
+    severity: ERROR
+    message: A process is started from a command string built at run time. Pass a fixed program and argument list.
+    metadata: {cwe: "CWE-78", owasp: "A03:2021", confidence: medium, category: injection}
+    patterns:
+      - pattern-either:
+          - pattern: Runtime.getRuntime().exec($X)
+          - pattern: ProcessBuilder("sh", "-c", $X)
+          - pattern: ProcessBuilder("/bin/sh", "-c", $X)
+      - pattern-not: Runtime.getRuntime().exec("...")
+      - pattern-not: ProcessBuilder("sh", "-c", "...")
+      - pattern-not: ProcessBuilder("/bin/sh", "-c", "...")
+  - id: nervve.kotlin.webview-javascript-bridge
+    languages: [kotlin]
+    severity: WARNING
+    message: >-
+      A JavaScript bridge exposes app code to every page the WebView loads; any page (or injected script) can call
+      it. Load only trusted, HTTPS content and expose the minimum interface.
+    metadata: {cwe: "CWE-749", owasp: "M4:2024", confidence: medium, category: mobile}
+    pattern: $W.addJavascriptInterface(...)
+  - id: nervve.kotlin.webview-file-access
+    languages: [kotlin]
+    severity: WARNING
+    message: WebView file access lets loaded pages read app files (and with universal access, any origin). Turn it off.
+    metadata: {cwe: "CWE-200", owasp: "M4:2024", confidence: high, category: mobile}
+    pattern-either:
+      - pattern: $S.allowFileAccess = true
+      - pattern: $S.setAllowFileAccess(true)
+      - pattern: $S.allowUniversalAccessFromFileURLs = true
+      - pattern: $S.setAllowUniversalAccessFromFileURLs(true)
+      - pattern: $S.allowFileAccessFromFileURLs = true
+  - id: nervve.kotlin.tls-verification-disabled
+    languages: [kotlin]
+    severity: ERROR
+    message: TLS certificate or host name checks are disabled, so traffic can be intercepted. Use the platform defaults.
+    metadata: {cwe: "CWE-295", owasp: "A02:2021", confidence: medium, category: crypto}
+    pattern-either:
+      - pattern: HostnameVerifier { $A, $B -> true }
+      - pattern: $C.hostnameVerifier { $A, $B -> true }
+      - pattern-regex: 'override\s+fun\s+checkServerTrusted\([^)]*\)\s*(\{\s*\}|=\s*Unit)'
+      - pattern-regex: 'override\s+fun\s+verify\([^)]*\)\s*(:\s*Boolean)?\s*(=\s*true|\{\s*return\s+true\s*\})'
+      - patterns:
+          - pattern-inside: |
+              override fun onReceivedSslError(...) { ... }
+          - pattern: $H.proceed()
+  - id: nervve.kotlin.weak-crypto
+    languages: [kotlin]
+    severity: WARNING
+    message: A broken algorithm or mode (MD5, SHA-1, DES, RC4, ECB) is used. Use SHA-256 and AES/GCM/NoPadding.
+    metadata: {cwe: "CWE-327", owasp: "A02:2021", confidence: high, category: crypto}
+    patterns:
+      - pattern-either:
+          - pattern: Cipher.getInstance("$ALG")
+          - pattern: MessageDigest.getInstance("$ALG")
+      - metavariable-regex: {metavariable: $ALG, regex: '(?i)^(md5|md4|sha-?1|des|desede|rc4|arcfour|blowfish|aes|aes/ecb/.*|.*/ecb/.*|des/.*|rc2)$'}
+  - id: nervve.kotlin.world-readable-storage
+    languages: [kotlin]
+    severity: ERROR
+    message: World-readable or world-writable files can be read or changed by every app on the device. Use MODE_PRIVATE.
+    metadata: {cwe: "CWE-732", owasp: "M9:2024", confidence: high, category: mobile}
+    pattern-either:
+      - pattern: Context.MODE_WORLD_READABLE
+      - pattern: Context.MODE_WORLD_WRITEABLE
+      - pattern: MODE_WORLD_READABLE
+      - pattern: MODE_WORLD_WRITEABLE
+  - id: nervve.kotlin.insecure-random
+    languages: [kotlin]
+    severity: WARNING
+    message: java.util.Random / kotlin.random are predictable; use SecureRandom for tokens, keys and passwords.
+    metadata: {cwe: "CWE-338", owasp: "A02:2021", confidence: low, category: crypto}
+    patterns:
+      - pattern-inside: |
+          fun $F(...): $T { ... }
+      - metavariable-regex: {metavariable: $F, regex: '(?i).*(token|nonce|secret|password|otp|key|salt|session).*'}
+      - pattern-either:
+          - pattern: Random().$M(...)
+          - pattern: java.util.Random().$M(...)
+          - pattern: kotlin.random.Random.$M(...)
+  - id: nervve.kotlin.cleartext-http
+    languages: [kotlin]
+    severity: WARNING
+    message: The app talks to a server over plain HTTP; anyone on the network can read or change the traffic. Use HTTPS.
+    metadata: {cwe: "CWE-319", owasp: "M5:2024", confidence: medium, category: transport}
+    patterns:
+      - pattern-regex: '"http://(?!localhost|127\.0\.0\.1|10\.0\.2\.2|schemas\.android\.com|www\.w3\.org|xmlpull\.org|ns\.adobe\.com)[A-Za-z0-9.-]+\.[a-z]{2,}'

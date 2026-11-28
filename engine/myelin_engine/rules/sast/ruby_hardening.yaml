@@ -1,0 +1,54 @@
+# Copyright (c) 2026 Sudheer Kumar.
+# SPDX-License-Identifier: AGPL-3.0-only. See LICENSE.
+# RAT Flea DevSec SAST rules for Ruby/Rails: framework hardening. Original work: not derived from the semgrep-rules
+# registry.
+rules:
+  - id: nervve.ruby.mass-assignment
+    languages: [ruby]
+    severity: ERROR
+    message: params.permit! accepts every attribute, so a request can set admin flags or foreign keys. Permit named fields.
+    metadata: {cwe: "CWE-915", owasp: "A04:2021", confidence: high, category: authorization}
+    pattern-either:
+      - pattern: params.permit!
+      - pattern: $P.permit!
+  - id: nervve.ruby.csrf-disabled
+    languages: [ruby]
+    severity: WARNING
+    message: Rails CSRF verification is skipped; cookie-authenticated requests can be forged by another site.
+    metadata: {cwe: "CWE-352", owasp: "A01:2021", confidence: medium, category: configuration}
+    pattern-either:
+      - pattern: skip_before_action :verify_authenticity_token
+      - pattern: skip_forgery_protection
+      - pattern: 'protect_from_forgery with: :null_session'
+  - id: nervve.ruby.ssrf
+    languages: [ruby]
+    severity: ERROR
+    message: The server fetches a URL taken from the request (SSRF); attackers reach internal services and cloud metadata.
+    metadata: {cwe: "CWE-918", owasp: "A10:2021", confidence: high, category: ssrf}
+    pattern-either:
+      - pattern: Net::HTTP.get(URI(params[...]))
+      - pattern: Net::HTTP.get_response(URI(params[...]))
+      - pattern: URI.open(params[...])
+      - pattern: HTTParty.get(params[...])
+      - pattern: Faraday.get(params[...])
+      - pattern: RestClient.get(params[...])
+  - id: nervve.ruby.weak-crypto
+    languages: [ruby]
+    severity: WARNING
+    message: MD5, SHA-1 or DES is used. Use SHA-256 and an AEAD cipher (aes-256-gcm).
+    metadata: {cwe: "CWE-327", owasp: "A02:2021", confidence: high, category: crypto}
+    pattern-either:
+      - pattern: Digest::MD5.hexdigest(...)
+      - pattern: Digest::SHA1.hexdigest(...)
+      - pattern: OpenSSL::Cipher.new("des")
+      - pattern: OpenSSL::Cipher.new("des-ede3-cbc")
+      - pattern: OpenSSL::Cipher.new("aes-128-ecb")
+      - pattern: OpenSSL::Cipher.new("aes-256-ecb")
+  - id: nervve.ruby.insecure-session-config
+    languages: [ruby]
+    severity: WARNING
+    message: Rails is configured without HTTPS enforcement or with insecure cookies. Set config.force_ssl = true.
+    metadata: {cwe: "CWE-319", owasp: "A05:2021", confidence: medium, category: configuration}
+    pattern-either:
+      - pattern: config.force_ssl = false
+      - pattern: 'config.session_store :cookie_store, ..., secure: false, ...'

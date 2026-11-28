@@ -11,7 +11,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
-from . import coverage, eol, licence_scan, platform_scan, precision, vulndb, remediation
+from . import config_checks, coverage, domains, eol, iac_cloud, licence_scan, platform_scan, precision, vulndb, remediation
 from . import (ai_security, builtin_rules, cd_posture, cicd_posture, crypto_inventory, iac_checks, normalize, repo_posture, sbom,
                secrets, suppress, supply_chain)
 from .scoring import enrich
@@ -214,6 +214,8 @@ def _scan(path, repo, engines, use_external, criticality, advisory_lookup):
             jobs.append(ex.submit(builtin_rules.scan_path, path, repo))
         if "iac" in engines:
             jobs.append(ex.submit(iac_checks.scan_path, path, repo))
+            jobs.append(ex.submit(iac_cloud.scan, path, repo))        # Terraform / CloudFormation / ARM / Bicep / Kubernetes
+            jobs.append(ex.submit(config_checks.scan_path, path, repo))  # mobile, framework, web-server and service settings
         if "aibom" in engines:
             jobs.append(ex.submit(ai_security.scan, path, repo))
         if "supply" in engines:
@@ -227,6 +229,12 @@ def _scan(path, repo, engines, use_external, criticality, advisory_lookup):
                     jobs.append(ex.submit(_run_external, tool, path, repo, run_info=run_info[tool]))
         for j in jobs:
             findings += j.result()
+    if "iac" in engines:
+        built = [f for f in findings if f.get("engine") == "iac" and str(f.get("rule_id", "")).startswith("NM-IAC-")]
+        ext = [f for f in findings if f.get("engine") == "iac" and f.get("source_tool") in ("checkov", "trivy")]
+        if built and ext:
+            keep = {id(f) for f in iac_cloud.drop_duplicates(built, ext)}
+            findings = [f for f in findings if f.get("source_tool") not in ("checkov", "trivy") or f.get("engine") != "iac" or id(f) in keep]
     if {"sca", "license"} & set(engines):
         # reachability hint: packages imported in first-party code
         findings += sbom.match_advisories(comps, repo, reachable_hint=_imported_packages(path, comps),
@@ -274,6 +282,7 @@ def _scan(path, repo, engines, use_external, criticality, advisory_lookup):
     intel = {"offline": vulndb.offline(), "sources": sorted(intel_status["sources"] | (
         {"bundled advisory pack"} if "sca" in engines and comps else set())), "errors": sorted(intel_status["errors"]),
              "resolution": sorted(intel_status.get("resolution") or []), "notes": platform_notes}
+    domains.assign(uniq)                                             # network, data, compute, identity, logging, ...
     cov = coverage.build(inv, engines, tools_used, uniq, len(comps), intel,
                          deep_rules=rule_count() if {"opengrep", "semgrep"} & set(tools_used) else 0,
                          run_info=run_info, detected=detected, use_external=use_external)
@@ -530,6 +539,8 @@ def scan_image_archive(archive: str, criticality: float = 1.0) -> dict:
         meta = image_tar.unpack(archive, tmp)
         name = next((t for t in meta.get("repo_tags") or [] if t), os.path.basename(archive.rstrip("/")))
         res = scan(tmp, repo=name, engines=["sca", "secrets", "supply", "iac"], use_external=False, criticality=criticality)
+        res["findings"] += image_tar.config_findings(meta, tmp, name)
+        domains.assign(res["findings"])
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     for f in res["findings"]:
