@@ -65,9 +65,9 @@ PATTERNS = [
     ("NM-SEC-054", "Datadog / New Relic / Sentry / Grafana token",
      r"\bNRAK-[A-Z0-9]{27}\b|\bsntry[su]_[A-Za-z0-9+/=_]{60,}|\bglc_[A-Za-z0-9+/]{32,}={0,2}|\bglsa_[A-Za-z0-9]{32}_[a-f0-9]{8}\b|\bdt0c01\.[A-Z0-9]{24}\.[A-Z0-9]{64}\b", "high"),
     ("NM-SEC-055", "Okta / Auth0 / Twitch / Facebook token", r"\b00[A-Za-z0-9_-]{40}\b(?=.*okta)|\bEAA[A-Za-z0-9]{100,}\b", "high"),
-    ("NM-SEC-056", "Age / PGP / PuTTY private key", r"\bAGE-SECRET-KEY-1[0-9A-Z]{58}\b|-----BEGIN PGP PRIVATE KEY BLOCK-----|PuTTY-User-Key-File-\d: ", "critical"),  # myelin:ignore[NM-SEC-056] -- the pattern itself
+    ("NM-SEC-056", "Age / PGP / PuTTY private key", r"\bAGE-SECRET-KEY-1[0-9A-Z]{58}\b|-----BEGIN PGP PRIVATE[ ]KEY BLOCK-----|PuTTY-User-Key-File-\d: ", "critical"),  # myelin:ignore[NM-SEC-056] -- the pattern itself
     ("NM-SEC-057", "Encrypted private key or keystore password",
-     r"-----BEGIN ENCRYPTED PRIVATE KEY-----|(?i:\b(?:keystore|truststore|key_store)[._-]?pass(?:word)?\b)\s*[:=]\s*['\"]?[^\s'\"$]{6,}", "high"),  # myelin:ignore[NM-SEC-057] -- the pattern itself
+     r"-----BEGIN ENCRYPTED PRIVATE[ ]KEY-----|(?i:\b(?:keystore|truststore|key_store)[._-]?pass(?:word)?\b)\s*[:=]\s*['\"]?[^\s'\"$]{6,}", "high"),  # myelin:ignore[NM-SEC-057] -- the pattern itself
     ("NM-SEC-058", "Package registry credentials file",
      r"(?m)^\s*//[^\s]+/:_authToken=[^\s$]{10,}|^\s*_auth\s*=\s*[A-Za-z0-9+/=]{16,}", "high"),
     ("NM-SEC-059", "Generic bearer / basic credential in a URL or header",
