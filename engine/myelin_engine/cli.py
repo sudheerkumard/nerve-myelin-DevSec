@@ -126,12 +126,19 @@ def cmd_scan(a):
     from . import coverage
     engines = a.engines.split(",") if a.engines else None
     if a.image:
-        if a.report:
-            print("--report is available for repository scans.", file=sys.stderr)
-            return 2
         res = orchestrator.scan_image(a.image)
         decision = policy.evaluate(res["findings"], policy.load(a.policy))
         print_report(res, decision)
+        if a.report:
+            if "coverage" not in res:
+                print("--report needs the built-in image scan (an image archive: docker save -o image.tar IMAGE).",
+                      file=sys.stderr)
+            else:
+                from . import report_enterprise
+                with open(a.report, "w", encoding="utf-8") as report_file:
+                    report_file.write(report_enterprise.render({**res, "decision": decision},
+                                                               title="Container image security assessment"))
+                print(f"  Report written to {a.report}")
         if a.json:
             json.dump({**res, "decision": decision}, open(a.json, "w"), indent=2)
         return 1 if decision["decision"] == "block" and a.fail_on != "never" else 0

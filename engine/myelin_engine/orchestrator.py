@@ -538,6 +538,9 @@ def scan_image_archive(archive: str, criticality: float = 1.0) -> dict:
         f["image"] = name
     res.update(path=archive, duration_s=round(time.time() - t0, 2), image_layers=meta.get("layers"),
                tools=["myelin-builtin (image archive)"])
+    cov = res.get("coverage") or {}
+    if "sca" in cov:                                     # the image's packages are reported as the container engine
+        cov["container"] = {**cov.pop("sca"), "assessed": True}
     res["engines"] = sorted({f["engine"] for f in res["findings"] if f.get("engine")} | {"container"})
     return res
 

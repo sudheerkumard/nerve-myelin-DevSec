@@ -31,6 +31,8 @@ ENGINES = [
     ("sca", "Software components (SCA)", "Known vulnerabilities (CVE) and end of life in third-party packages (direct and transitive, "
             "with reachability), operating-system packages, native binaries, firmware, drivers, and the databases, middleware "
             "and platforms declared in infrastructure code."),
+    ("container", "Container images", "Operating-system packages, language packages and binaries inside the image, end of life "
+                  "of the distribution, and secrets in its layers."),
     ("secrets", "Secrets exposure", "Credentials, keys and tokens committed to the repository."),
     ("iac", "Infrastructure as Code", "Misconfiguration in Dockerfiles, Kubernetes, Helm, Terraform, Bicep, Compose and cloud templates."),
     ("cicd", "CI/CD pipeline & deployment", "Build pipelines and continuous delivery: script injection, unpinned actions, token scope, "
