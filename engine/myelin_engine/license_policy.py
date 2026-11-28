@@ -222,7 +222,10 @@ def explain(item: dict, package: str | None = None, version: str | None = None) 
     cat = item.get("category") or "unknown"
     decision = item.get("decision")
     if expr.lower() in ("unknown", "", "noassertion", "none"):
-        reason = (f"{who} declares no licence in the SBOM, and none was found in its package registry metadata.")
+        from . import vulndb
+        reason = (f"{who} declares no licence in the SBOM, and the package registry could not be checked (offline scan)."
+                  if vulndb.offline() else
+                  f"{who} declares no licence in the SBOM, and none was found in its package registry metadata.")
         action = ("Find the licence in the project's repository (LICENSE file, pom.xml <licenses>, package metadata). "
                   "If it is your organisation's own package, add it to the policy as proprietary. Without a licence "
                   "you have no right to use or distribute it.")
